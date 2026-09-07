@@ -70,7 +70,8 @@ Phase 0 (foundation) of `MASTER_BUILD_SPEC.md` §59. Implemented so far:
   MFA-gated permissions, PostgreSQL row-level security, agent CRUD with immutable versioning,
   idempotent mutations and an append-only audit trail;
 - market-data adapters for two venues, normalization, stream-health detection, replay, and the
-  ingestion pipeline with a ClickHouse sink — a live WebSocket transport is not yet connected.
+  ingestion pipeline with a ClickHouse sink — a live WebSocket transport is not yet connected;
+- a deterministic, versioned, point-in-time feature engine.
 
-Not yet implemented: feature engine, backtest engine, model gateway, news intelligence, agent
-runtime, risk engine, paper broker, Temporal workflows, web UI.
+Not yet implemented: backtest engine, model gateway, news intelligence, agent runtime, risk
+engine, paper broker, Temporal workflows, web UI.

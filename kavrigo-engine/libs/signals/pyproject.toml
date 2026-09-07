@@ -1,0 +1,21 @@
+[project]
+name = "kavrigo-signals"
+version = "0.1.0"
+description = "Kavrigo feature engine: deterministic, versioned, point-in-time features"
+requires-python = ">=3.13"
+dependencies = [
+  "kavrigo-domain",
+]
+
+[tool.uv.sources]
+kavrigo-domain = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kavrigo_signals"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/kavrigo_signals/py.typed" = "kavrigo_signals/py.typed"

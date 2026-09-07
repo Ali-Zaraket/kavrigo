@@ -12,6 +12,7 @@ package = false
 members = [
   "kavrigo-engine/libs/domain",
   "kavrigo-engine/libs/market-data",
+  "kavrigo-engine/libs/signals",
   "kavrigo-engine/services/engine-worker",
   "kavrigo-engine/services/market-ingestion",
   "kavrigo-platform/services/api",
@@ -20,6 +21,7 @@ members = [
 [tool.uv.sources]
 kavrigo-domain = { workspace = true }
 kavrigo-marketdata = { workspace = true }
+kavrigo-signals = { workspace = true }
 kavrigo-market-ingestion = { workspace = true }
 
 [dependency-groups]
@@ -76,6 +78,7 @@ ignore = [
 known-first-party = [
   "kavrigo_domain",
   "kavrigo_marketdata",
+  "kavrigo_signals",
   "kavrigo_market_ingestion",
   "kavrigo_api",
   "kavrigo_engine_worker",
@@ -109,6 +112,7 @@ testpaths = [
   "tests",
   "kavrigo-engine/libs/domain/tests",
   "kavrigo-engine/libs/market-data/tests",
+  "kavrigo-engine/libs/signals/tests",
   "kavrigo-engine/services/market-ingestion/tests",
   "kavrigo-engine/tests",
   "kavrigo-platform/services/api/tests",

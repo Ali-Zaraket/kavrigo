@@ -21,15 +21,29 @@ CLICKHOUSE_DATABASE = os.getenv("TEST_CLICKHOUSE_DATABASE", "kavrigo")
 _HEADERS = {"X-ClickHouse-User": CLICKHOUSE_USER, "X-ClickHouse-Key": CLICKHOUSE_PASSWORD}
 
 
+#: Every table the integration tests touch. All of them must exist before the suite runs.
+_REQUIRED_TABLES = ("market_trades", "market_quotes", "market_candles")
+
+
 async def _clickhouse_ready() -> bool:
+    """Whether ClickHouse is up *and* fully initialised.
+
+    Checking a single table is not enough: the server answers ``/ping`` before its
+    ``docker-entrypoint-initdb.d`` scripts have finished, so a probe on the first table in the
+    schema file can succeed while later tables do not exist yet. That produces a suite that
+    half-runs and fails on a missing table instead of skipping cleanly.
+    """
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.post(
-                CLICKHOUSE_URL,
-                params={"query": f"SELECT 1 FROM {CLICKHOUSE_DATABASE}.market_trades LIMIT 1"},
-                headers=_HEADERS,
-            )
-        return response.status_code == 200
+            for table in _REQUIRED_TABLES:
+                response = await client.post(
+                    CLICKHOUSE_URL,
+                    params={"query": f"SELECT 1 FROM {CLICKHOUSE_DATABASE}.{table} LIMIT 1"},
+                    headers=_HEADERS,
+                )
+                if response.status_code != 200:
+                    return False
+        return True
     except httpx.HTTPError:
         return False
 
