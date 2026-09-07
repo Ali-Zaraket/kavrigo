@@ -1,0 +1,223 @@
+# Kavrigo CI (MASTER_BUILD_SPEC.md §36).
+#
+# Pull request: lint → typecheck → unit → property → security scan → build.
+# Nothing here holds a cloud credential: production deploys use GitHub OIDC to AWS and Argo CD
+# pull-based delivery (ADR 0016), so CI never needs long-lived keys.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The safety gate applies in CI too. A test that needs live trading to be enabled is a test
+  # that must not exist (ADR 0001).
+  LIVE_TRADING_ENABLED: "false"
+  DEFAULT_TRADING_MODE: paper
+
+jobs:
+  quality:
+    name: lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Lint
+        run: |
+          uv run ruff check --output-format=github .
+          uv run ruff format --check .
+
+      - name: Typecheck
+        run: |
+          uv run mypy \
+            kavrigo-engine/libs/domain/src \
+            kavrigo-platform/services/api/src \
+            kavrigo-engine/services/engine-worker/src
+
+      - name: Unit and property tests
+        run: uv run pytest --cov=kavrigo_domain --cov=kavrigo_api --cov-report=term-missing
+
+      - name: Assert no provider credentials are required
+        # The suite must pass with every external key unset. If this ever fails, a test has
+        # grown a dependency on a real provider, which breaks reproducibility and CI hygiene.
+        env:
+          COINGECKO_API_KEY: ""
+          COINGLASS_API_KEY: ""
+          DUNE_API_KEY: ""
+          MODEL_GATEWAY_API_KEY: ""
+          CLERK_SECRET_KEY: ""
+        run: uv run pytest -q
+
+  integration:
+    name: integration (postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: kavrigo
+          POSTGRES_PASSWORD: kavrigo_local_dev
+          POSTGRES_DB: kavrigo
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kavrigo -d kavrigo"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # Service containers cannot mount the init directory, so the least-privilege role is
+      # created explicitly below — the same role the local stack creates.
+      POSTGRES_MIGRATION_DSN: postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:5432/kavrigo
+      TEST_POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:5432/kavrigo
+      TEST_POSTGRES_OWNER_DSN: postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:5432/kavrigo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --all-packages
+
+      - name: Create the least-privilege application role
+        run: |
+          PGPASSWORD=kavrigo_local_dev psql -h localhost -U kavrigo -d kavrigo \
+            -v ON_ERROR_STOP=1 \
+            -f kavrigo-infra/local/postgres/init/001_roles.sql
+
+      - name: Apply migrations
+        working-directory: kavrigo-platform/services/api
+        run: uv run alembic upgrade head
+
+      - name: Integration tests
+        run: uv run pytest -m integration -v
+
+      - name: Migration rollback is reversible
+        # A migration that cannot be rolled back is an operational hazard, so the down path is
+        # exercised on every pull request rather than discovered during an incident.
+        working-directory: kavrigo-platform/services/api
+        run: |
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+
+  contracts:
+    name: protobuf contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - name: Lint Protobuf
+        working-directory: kavrigo-engine/libs/data-contracts
+        run: buf lint || echo "::warning::buf lint reported findings; buf.yaml is not configured yet"
+      - name: Check for breaking changes against main
+        if: github.event_name == 'pull_request'
+        working-directory: kavrigo-engine/libs/data-contracts
+        run: |
+          buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=kavrigo-engine/libs/data-contracts" \
+            || echo "::warning::buf breaking could not run; enable once buf.yaml is committed"
+
+  security:
+    name: security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks needs history to scan commits
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+      - name: Filesystem vulnerability and misconfiguration scan
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "0"   # report first; enforce once the baseline is clean
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy.sarif
+
+  codeql:
+    name: codeql
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        language: [python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+
+  build:
+    name: container build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Validate the local compose stack
+        run: docker compose -f kavrigo-infra/local/docker-compose.yml config -q
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: kavrigo-infra/local/Dockerfile
+          target: api
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: kavrigo-infra/local/Dockerfile
+          target: worker
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # SBOM generation (Syft), image signing (Cosign) and ECR push are added with the deployment
+  # pipeline in kavrigo-infra (MASTER_BUILD_SPEC.md §24.4, §36). They are deliberately absent
+  # here rather than stubbed: a signing step that signs nothing is worse than none.

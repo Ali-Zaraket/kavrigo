@@ -1,0 +1,26 @@
+# Kavrigo code owners.
+#
+# Replace the placeholder teams with real GitHub teams when the organization exists.
+# High-impact paths (MASTER_BUILD_SPEC.md §24.6) require stricter review than the default.
+
+*                                   @kavrigo/engineering
+
+# Specifications and engineering brief
+/MASTER_BUILD_SPEC.md               @kavrigo/architecture
+/AGENTS.md                          @kavrigo/architecture
+/docs/adr/                          @kavrigo/architecture
+/docs/threat-model/                 @kavrigo/security @kavrigo/architecture
+
+# High-impact: risk, execution, credentials, auth, billing, tenancy, migrations
+/kavrigo-execution-security/        @kavrigo/execution-security
+/kavrigo-engine/services/risk-engine/        @kavrigo/risk @kavrigo/architecture
+/kavrigo-engine/services/reconciliation/     @kavrigo/risk @kavrigo/execution-security
+/kavrigo-engine/libs/domain/src/kavrigo_domain/money.py       @kavrigo/risk
+/kavrigo-engine/libs/domain/src/kavrigo_domain/risk.py        @kavrigo/risk @kavrigo/architecture
+/kavrigo-engine/libs/domain/src/kavrigo_domain/orders.py      @kavrigo/risk @kavrigo/execution-security
+/kavrigo-platform/services/api/src/kavrigo_api/auth/          @kavrigo/security
+/kavrigo-platform/services/api/migrations/                    @kavrigo/architecture @kavrigo/security
+
+# Supply chain and infrastructure
+/.github/workflows/                 @kavrigo/security @kavrigo/platform
+/kavrigo-infra/                     @kavrigo/platform

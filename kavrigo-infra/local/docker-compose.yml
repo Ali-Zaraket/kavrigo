@@ -1,0 +1,161 @@
+# Kavrigo local development stack (MASTER_BUILD_SPEC.md §60, AGENTS.md § First build sequence 3).
+#
+# Everything here is local and disposable. No external data provider, exchange credential, or
+# model API key is required — the test suite must pass with all of them unset.
+#
+# Managed equivalents in real environments: Aurora PostgreSQL, Redpanda Cloud, ClickHouse Cloud,
+# Temporal Cloud, ElastiCache for Valkey. Local images approximate them; they are not a
+# substitute for testing against the managed services before staging.
+
+name: kavrigo
+
+# Host ports are in a 5xxxx range specific to this stack. Developer machines commonly already
+# run a Postgres on 5432 or a Redis on 6379 for another project, and colliding with those makes
+# the stack fail for reasons that have nothing to do with Kavrigo. Container-internal ports and
+# the service-to-service addresses below are unchanged.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: kavrigo-postgres
+    environment:
+      POSTGRES_USER: kavrigo
+      POSTGRES_PASSWORD: kavrigo_local_dev   # local only; never a real credential
+      POSTGRES_DB: kavrigo
+    ports: ["55432:5432"]
+    volumes:
+      # PostgreSQL 18+ expects a single mount at /var/lib/postgresql, not at .../data:
+      # the image places the cluster in a versioned subdirectory so that `pg_upgrade --link`
+      # does not cross a mount-point boundary. Mounting .../data here fails to initialise.
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kavrigo -d kavrigo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redpanda:
+    image: redpandadata/redpanda:v24.3.6
+    container_name: kavrigo-redpanda
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --default-log-level=warn
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --schema-registry-addr=internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --rpc-addr=redpanda:33145
+      - --advertise-rpc-addr=redpanda:33145
+    ports:
+      - "59092:19092"   # Kafka API
+      - "58081:18081"   # Schema Registry — Protobuf contracts live here
+      - "58082:18082"   # HTTP proxy
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.12-alpine
+    container_name: kavrigo-clickhouse
+    environment:
+      CLICKHOUSE_USER: kavrigo
+      CLICKHOUSE_PASSWORD: kavrigo_local_dev
+      CLICKHOUSE_DB: kavrigo
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "58123:8123"   # HTTP
+      - "59000:9000"   # native
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d:ro
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping | grep -q Ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: kavrigo-valkey
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    ports: ["56379:6379"]
+    # No persistence on purpose: Valkey is ephemeral cache, coordination and rate limiting only.
+    # It is never the authoritative order or position store (MASTER_BUILD_SPEC.md §16.9).
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  temporal:
+    image: temporalio/temporal:1.3.0
+    container_name: kavrigo-temporal
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--ui-ip", "0.0.0.0"]
+    ports:
+      - "57233:7233"   # gRPC
+      - "58233:8233"   # Web UI
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ../..
+      dockerfile: kavrigo-infra/local/Dockerfile
+      target: api
+    container_name: kavrigo-api
+    environment:
+      # The safety gate. Setting this to true makes the process refuse to start (ADR 0001).
+      LIVE_TRADING_ENABLED: "false"
+      DEFAULT_TRADING_MODE: paper
+      KAVRIGO_ENV: local
+      LOG_FORMAT: console
+      # The API connects as the non-superuser, non-owner role so RLS actually applies to it.
+      POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@postgres:5432/kavrigo
+      AUTH_PROVIDER: dev
+      CLICKHOUSE_URL: http://clickhouse:8123
+      REDPANDA_BOOTSTRAP_SERVERS: redpanda:9092
+      VALKEY_URL: redis://valkey:6379/0
+      TEMPORAL_ADDRESS: temporal:7233
+    ports: ["58000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  engine-worker:
+    build:
+      context: ../..
+      dockerfile: kavrigo-infra/local/Dockerfile
+      target: worker
+    container_name: kavrigo-engine-worker
+    environment:
+      LIVE_TRADING_ENABLED: "false"
+      DEFAULT_TRADING_MODE: paper
+      KAVRIGO_ENV: local
+      REDPANDA_BOOTSTRAP_SERVERS: redpanda:9092
+      CLICKHOUSE_URL: http://clickhouse:8123
+      TEMPORAL_ADDRESS: temporal:7233
+    depends_on:
+      redpanda: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+
+volumes:
+  postgres-data:
+  clickhouse-data:

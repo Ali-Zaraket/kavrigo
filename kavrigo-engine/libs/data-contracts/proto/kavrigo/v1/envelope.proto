@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+// Canonical event envelope (MASTER_BUILD_SPEC.md §18.1).
+//
+// Every event published to Redpanda uses this envelope. It exists so that provenance, ordering,
+// tenancy and freshness are never provider-specific concerns.
+//
+// Rules that apply to every message in this package:
+//   * Money and quantity are STRINGS holding exact decimals. Never `double`, never `float`
+//     (AGENTS.md domain rule 6). Protobuf floating point silently loses precision, and a ledger
+//     that disagrees with the venue is worse than no ledger.
+//   * Timestamps are `google.protobuf.Timestamp`, always UTC.
+//   * Field numbers are never reused. Reserve removed numbers.
+
+package kavrigo.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+option java_package = "com.kavrigo.v1";
+option go_package = "github.com/kavrigo/contracts/gen/kavrigo/v1;kavrigov1";
+
+// Where an event came from. Determines how much it may be trusted, and whether its payload must
+// pass the untrusted-content sanitisation pipeline (§14).
+enum SourceKind {
+  SOURCE_KIND_UNSPECIFIED = 0;
+  SOURCE_KIND_EXCHANGE_STREAM = 1;
+  SOURCE_KIND_EXCHANGE_REST = 2;
+  SOURCE_KIND_DATA_PROVIDER = 3;
+  SOURCE_KIND_ONCHAIN = 4;
+  SOURCE_KIND_NEWS_FEED = 5;   // untrusted content
+  SOURCE_KIND_MACRO_CALENDAR = 6;
+  SOURCE_KIND_MCP_TOOL = 7;    // untrusted content
+  SOURCE_KIND_INTERNAL = 8;
+  SOURCE_KIND_SIMULATION = 9;
+}
+
+// Provenance for a single event (§8.4). Every derived feature must be able to point back to one
+// of these.
+message EventSource {
+  SourceKind kind = 1;
+  string provider = 2;
+  string venue = 3;
+  string stream = 4;
+  string schema_version = 5;
+  string transform_version = 6;
+  int64 provider_sequence = 7;
+
+  // When the provider last revised this record. Distinguished from event_time so that a
+  // backtest can refuse to consume a revision that was not knowable at decision time (§8.5).
+  google.protobuf.Timestamp provider_revision_time = 8;
+  bool is_revision = 9;
+
+  // Reference to the data-licence entry permitting use of this record (§8.3).
+  string license_ref = 10;
+}
+
+// Marks an event as private to one workspace. Absent for public market data.
+message TenantScope {
+  string workspace_id = 1;
+}
+
+message EventEnvelope {
+  string event_id = 1;
+
+  // Dotted, versioned type matching the topic, e.g. "market.trade.raw.v1".
+  string event_type = 2;
+  uint32 schema_version = 3;
+  TenantScope tenant_scope = 4;
+  EventSource source = 5;
+
+  // When it happened at the source.
+  google.protobuf.Timestamp event_time = 6;
+  // When Kavrigo first saw it. Staleness is measured against both.
+  google.protobuf.Timestamp ingested_at = 7;
+
+  int64 sequence = 8;
+
+  // Ordering is guaranteed only within this key (§18.3).
+  string partition_key = 9;
+
+  string trace_id = 10;
+  string correlation_id = 11;
+
+  // Typed payloads are preferred; this is the transitional/generic carrier.
+  google.protobuf.Struct payload = 12;
+}

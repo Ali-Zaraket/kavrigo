@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+// Agent decisions, risk evaluations and order intents
+// (MASTER_BUILD_SPEC.md §10, §11, §18.2).
+//
+// Topics: `agent.decision.v1`, `risk.evaluation.v1`, `order.intent.v1`.
+// Partition key: `workspace_id + agent_id` for decisions, `exchange_connection_id` for orders.
+//
+// These messages are tenant-scoped. The envelope's TenantScope must be set.
+
+package kavrigo.v1;
+
+import "google/protobuf/timestamp.proto";
+import "kavrigo/v1/market.proto";
+
+option java_package = "com.kavrigo.v1";
+option go_package = "github.com/kavrigo/contracts/gen/kavrigo/v1;kavrigov1";
+
+// The agent's read of the situation. UNKNOWN is a valid, successful outcome (§6.7).
+enum DecisionState {
+  DECISION_STATE_UNSPECIFIED = 0;
+  DECISION_STATE_BULLISH = 1;
+  DECISION_STATE_BEARISH = 2;
+  DECISION_STATE_NEUTRAL = 3;
+  DECISION_STATE_HIGH_RISK = 4;
+  DECISION_STATE_UNKNOWN = 5;
+}
+
+// The closed set of actions a model may propose. There is no representation here for
+// withdrawing funds, changing risk policy, or any free-form instruction (§6.6).
+enum ProposedAction {
+  PROPOSED_ACTION_UNSPECIFIED = 0;
+  PROPOSED_ACTION_BUY = 1;
+  PROPOSED_ACTION_SELL = 2;
+  PROPOSED_ACTION_REDUCE = 3;
+  PROPOSED_ACTION_CLOSE = 4;
+  PROPOSED_ACTION_HOLD = 5;
+  PROPOSED_ACTION_NO_TRADE = 6;
+}
+
+message Money {
+  string amount = 1;            // exact decimal
+  string currency = 2;
+}
+
+// Per-family signal contributions in [-1, 1]. Signal families, not raw indicators (§7).
+message SignalScores {
+  double price = 1;
+  double order_flow = 2;
+  double derivatives = 3;
+  double liquidity = 4;
+  double onchain = 5;
+  double tokenomics = 6;
+  double defi = 7;
+  double events = 8;
+  double news = 9;
+  double macro = 10;
+}
+
+message Prediction {
+  int32 expected_return_bps = 1;
+  double confidence = 2;
+  double uncertainty = 3;
+  uint32 horizon_minutes = 4;
+}
+
+// A structured decision. NOT an order: it is a proposal that deterministic risk may reject or
+// resize (ADR 0004).
+message AgentDecision {
+  string decision_id = 1;
+  string workspace_id = 2;
+  string agent_version_id = 3;
+  string snapshot_id = 4;
+  InstrumentId instrument = 5;
+  google.protobuf.Timestamp decided_at = 6;
+  string market_regime = 7;
+  DecisionState state = 8;
+  SignalScores signals = 9;
+  Prediction prediction = 10;
+  ProposedAction proposed_action = 11;
+  Money proposed_notional = 12;
+
+  // Concise structured rationale for the user. Never hidden chain-of-thought (§29).
+  string rationale = 13;
+
+  repeated string evidence_refs = 14;
+  repeated string contradicting_evidence_refs = 15;
+  repeated string risk_flags = 16;
+  repeated string reason_codes = 17;
+  string estimated_cost_bps = 18;   // exact decimal
+}
+
+enum RiskDecision {
+  RISK_DECISION_UNSPECIFIED = 0;
+  RISK_DECISION_APPROVED = 1;
+  RISK_DECISION_APPROVED_RESIZED = 2;
+  RISK_DECISION_REJECTED = 3;
+}
+
+// The deterministic outcome. Risk may only reduce, never enlarge, a requested notional.
+message RiskEvaluation {
+  string risk_evaluation_id = 1;
+  string order_intent_id = 2;
+  string decision_id = 3;
+  string workspace_id = 4;
+  google.protobuf.Timestamp evaluated_at = 5;
+  RiskDecision decision = 6;
+  repeated string reason_codes = 7;
+  repeated string applied_policy_ids = 8;
+  string binding_scope = 9;
+  Money requested_notional = 10;
+  Money approved_notional = 11;
+  string evaluator_version = 12;
+  string detail = 13;
+}

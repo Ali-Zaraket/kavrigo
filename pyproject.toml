@@ -1,0 +1,113 @@
+[project]
+name = "kavrigo"
+version = "0.0.0"
+description = "Kavrigo bootstrap workspace (see docs/repo-split-plan.md)"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+  "kavrigo-engine/libs/domain",
+  "kavrigo-engine/services/engine-worker",
+  "kavrigo-platform/services/api",
+]
+
+[tool.uv.sources]
+kavrigo-domain = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.25",
+  "pytest-cov>=6.0",
+  "hypothesis>=6.124",
+  "httpx>=0.28",
+  "ruff>=0.9",
+  "mypy>=1.14",
+  "pre-commit>=4.1",
+]
+
+# ---------------------------------------------------------------------------
+# Lint / format
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["**/_generated"]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "W",      # pycodestyle / pyflakes
+  "I",                # import order
+  "UP",               # pyupgrade
+  "B",                # bugbear
+  "C4",               # comprehensions
+  "SIM",              # simplify
+  "RUF",              # ruff-specific
+  "ASYNC",            # async correctness
+  "S",                # bandit security rules
+  "DTZ",              # naive datetime usage
+  "TID",              # tidy imports
+  "PT",               # pytest style
+]
+ignore = [
+  "S101",    # assert is fine in tests and in internal invariants
+  "E501",    # line length is enforced by the formatter
+  "RUF012",  # Pydantic deep-copies mutable field defaults per instance, so they are not shared
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S105", "S106"]
+# SQL identifiers (schema, table, role names) cannot be bound parameters, so DDL migrations
+# necessarily interpolate them. The interpolated values are module constants, never request
+# input; any migration that interpolates a runtime value is a review failure, not a lint one.
+"**/migrations/versions/*.py" = ["S608"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["kavrigo_domain", "kavrigo_api", "kavrigo_engine_worker"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+# ---------------------------------------------------------------------------
+# Types
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+disallow_any_generics = true
+plugins = ["pydantic.mypy"]
+exclude = ["_generated"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-q --strict-markers --strict-config --import-mode=importlib"
+testpaths = [
+  "tests",
+  "kavrigo-engine/libs/domain/tests",
+  "kavrigo-engine/tests",
+  "kavrigo-platform/services/api/tests",
+]
+markers = [
+  "integration: requires the local docker stack (make up)",
+  "property: hypothesis property-based test",
+]
+asyncio_mode = "auto"
+filterwarnings = [
+  # Warnings from our own code are failures.
+  "error",
+  # Third-party deprecation raised while importing starlette's TestClient. Not actionable here;
+  # remove once starlette stops using the deprecated anyio alias.
+  "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]

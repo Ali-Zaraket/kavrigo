@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+// Normalized public market data (MASTER_BUILD_SPEC.md §7.1, §7.2, §18.2).
+//
+// These are the topics `market.trade.raw.v1`, `market.book.raw.v1` and `market.candle.v1`.
+// Partition key is `venue + symbol`.
+//
+// All prices and quantities are exact-decimal STRINGS. See envelope.proto.
+
+package kavrigo.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.kavrigo.v1";
+option go_package = "github.com/kavrigo/contracts/gen/kavrigo/v1;kavrigov1";
+
+enum InstrumentClass {
+  INSTRUMENT_CLASS_UNSPECIFIED = 0;
+  INSTRUMENT_CLASS_SPOT = 1;
+  INSTRUMENT_CLASS_PERPETUAL = 2;
+  INSTRUMENT_CLASS_FUTURE = 3;
+  INSTRUMENT_CLASS_OPTION = 4;
+  INSTRUMENT_CLASS_INDEX = 5;
+}
+
+// An unambiguous instrument. A bare ticker is not sufficient: it omits venue, quote currency and
+// contract type (§49).
+message InstrumentId {
+  string base = 1;             // "BTC"
+  string quote = 2;            // "USDT"
+  string venue = 3;            // "BINANCE"
+  InstrumentClass instrument_class = 4;
+  string canonical = 5;        // "BTC-USDT.BINANCE"
+}
+
+enum AggressorSide {
+  AGGRESSOR_SIDE_UNSPECIFIED = 0;
+  AGGRESSOR_SIDE_BUY = 1;
+  AGGRESSOR_SIDE_SELL = 2;
+}
+
+// One executed public trade.
+message Trade {
+  InstrumentId instrument = 1;
+  string price = 2;             // exact decimal
+  string quantity = 3;          // exact decimal
+  AggressorSide aggressor = 4;
+  string venue_trade_id = 5;
+  google.protobuf.Timestamp venue_time = 6;
+}
+
+message BookLevel {
+  string price = 1;             // exact decimal
+  string quantity = 2;          // exact decimal
+}
+
+// A depth snapshot or delta. Displayed liquidity can be cancelled, so consumers must combine
+// book state with executed trades before drawing conclusions (§7.2).
+message OrderBook {
+  InstrumentId instrument = 1;
+  repeated BookLevel bids = 2;
+  repeated BookLevel asks = 3;
+  bool is_snapshot = 4;
+  int64 first_update_id = 5;
+  int64 last_update_id = 6;
+  google.protobuf.Timestamp venue_time = 7;
+}
+
+message Candle {
+  InstrumentId instrument = 1;
+  string interval = 2;          // "1m", "5m", "1h"
+  string open = 3;
+  string high = 4;
+  string low = 5;
+  string close = 6;
+  string volume = 7;
+  string quote_volume = 8;
+  uint32 trade_count = 9;
+  google.protobuf.Timestamp open_time = 10;
+  google.protobuf.Timestamp close_time = 11;
+
+  // False while the interval is still forming. A backtest must never consume an unclosed candle
+  // as if it were final — that is look-ahead bias (§12.3).
+  bool is_closed = 12;
+}

@@ -1,0 +1,35 @@
+# Kavrigo secret-scanning configuration.
+title = "kavrigo"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "kavrigo-exchange-credential"
+description = "Possible exchange API credential"
+regex = '''(?i)(binance|coinbase|kraken|bybit|okx)[_-]?(api)?[_-]?(key|secret)\s*[:=]\s*['"][0-9a-zA-Z/+=]{16,}['"]'''
+tags = ["exchange", "credential"]
+
+[[rules]]
+id = "kavrigo-private-key-material"
+description = "Private key material"
+regex = '''-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY( BLOCK)?-----'''
+tags = ["key"]
+
+[[rules]]
+id = "kavrigo-seed-phrase-hint"
+description = "Possible wallet seed phrase assignment"
+regex = '''(?i)(mnemonic|seed[_-]?phrase|recovery[_-]?phrase)\s*[:=]\s*['"](\w+\s+){11,}\w+['"]'''
+tags = ["wallet"]
+
+[allowlist]
+description = "Placeholders and documentation"
+paths = [
+  '''\.env\.example$''',
+  '''\.gitleaks\.toml$''',
+  '''MASTER_BUILD_SPEC\.md$''',
+]
+regexes = [
+  '''replace_me''',
+  '''kavrigo_local_dev''',
+]

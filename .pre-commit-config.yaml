@@ -1,0 +1,44 @@
+# Run `uv run pre-commit install` once after `make setup`.
+default_install_hook_types: [pre-commit, commit-msg]
+fail_fast: false
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-toml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: '\.md$'
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: no-commit-to-branch
+        args: ["--branch", "main"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.23.3
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: no-float-money
+        name: reject float literals in money/quantity contracts
+        entry: python scripts/check_no_float_money.py
+        language: system
+        pass_filenames: true
+        files: '^kavrigo-engine/libs/domain/src/kavrigo_domain/.*\.py$'
