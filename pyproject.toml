@@ -11,12 +11,16 @@ package = false
 [tool.uv.workspace]
 members = [
   "kavrigo-engine/libs/domain",
+  "kavrigo-engine/libs/market-data",
   "kavrigo-engine/services/engine-worker",
+  "kavrigo-engine/services/market-ingestion",
   "kavrigo-platform/services/api",
 ]
 
 [tool.uv.sources]
 kavrigo-domain = { workspace = true }
+kavrigo-marketdata = { workspace = true }
+kavrigo-market-ingestion = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -60,14 +64,22 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S105", "S106"]
+# S608: table and database names are SQL identifiers, which cannot be bound
+# parameters. In tests the interpolated values are module constants, never input.
+"**/tests/**" = ["S105", "S106", "S608"]
 # SQL identifiers (schema, table, role names) cannot be bound parameters, so DDL migrations
 # necessarily interpolate them. The interpolated values are module constants, never request
 # input; any migration that interpolates a runtime value is a review failure, not a lint one.
 "**/migrations/versions/*.py" = ["S608"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["kavrigo_domain", "kavrigo_api", "kavrigo_engine_worker"]
+known-first-party = [
+  "kavrigo_domain",
+  "kavrigo_marketdata",
+  "kavrigo_market_ingestion",
+  "kavrigo_api",
+  "kavrigo_engine_worker",
+]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
@@ -96,6 +108,8 @@ addopts = "-q --strict-markers --strict-config --import-mode=importlib"
 testpaths = [
   "tests",
   "kavrigo-engine/libs/domain/tests",
+  "kavrigo-engine/libs/market-data/tests",
+  "kavrigo-engine/services/market-ingestion/tests",
   "kavrigo-engine/tests",
   "kavrigo-platform/services/api/tests",
 ]

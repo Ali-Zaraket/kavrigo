@@ -58,6 +58,7 @@ from kavrigo_domain.identifiers import (
     InstrumentId,
     new_id,
 )
+from kavrigo_domain.market import AggressorSide, BookTicker, Candle, MarketTrade
 from kavrigo_domain.money import AssetCode, ExactDecimal, Money, Price, Quantity
 from kavrigo_domain.orders import (
     ApprovedOrderIntent,
@@ -96,6 +97,7 @@ __all__ = [
     "AgentDecision",
     "AgentSpec",
     "AgentVersion",
+    "AggressorSide",
     "AnalysisConfig",
     "ApprovalStatus",
     "ApprovedOrderIntent",
@@ -103,6 +105,8 @@ __all__ = [
     "AuditAction",
     "AuditRecord",
     "AuthorKind",
+    "BookTicker",
+    "Candle",
     "DataFamily",
     "DataPack",
     "DataQuality",
@@ -125,6 +129,7 @@ __all__ = [
     "LiquidityFlag",
     "MarketRegime",
     "MarketSnapshot",
+    "MarketTrade",
     "ModelCallRecord",
     "ModelPolicy",
     "ModelProfile",

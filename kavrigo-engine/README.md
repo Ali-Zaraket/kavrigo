@@ -5,11 +5,44 @@ Quant, data and agent services, plus the domain contracts every other repository
 ## Layout
 
 ```text
-libs/domain/          Pydantic domain contracts — the shared vocabulary
-libs/data-contracts/  Protobuf wire contracts for the Redpanda event bus
-services/engine-worker/  worker skeleton; real services land here
-tests/property/       Hypothesis invariants for money, risk and identity
+libs/domain/               Pydantic domain contracts — the shared vocabulary
+libs/data-contracts/       Protobuf wire contracts for the Redpanda event bus
+libs/market-data/          venue adapters, normalization, stream health, replay
+services/market-ingestion/ pipeline, envelopes, ClickHouse sink
+services/engine-worker/    worker skeleton; remaining services land here
+tests/property/            Hypothesis invariants for money, risk and identity
 ```
+
+## Market data
+
+Venue message formats are transcribed from official documentation, with the source URL and
+verification date recorded in each adapter module — nothing is written from recollection of a
+venue API (`AGENTS.md` § Engineering workflow).
+
+| Venue | Channels | Verified against |
+|---|---|---|
+| Binance spot | `@trade`, `@bookTicker`, `@kline_<interval>` | developers.binance.com, 2026-09-07 |
+| Coinbase Exchange | `matches`, `ticker`, `heartbeat` | docs.cdp.coinbase.com, 2026-09-07 |
+
+Three decisions worth knowing about:
+
+- **Symbols are mapped, never inferred.** `BTCUSDT` cannot be split into base and quote without
+  knowing the venue's quote assets, so adapters resolve symbols through an `InstrumentMap` built
+  from what was actually subscribed. An unrecognised symbol is dropped, not guessed at.
+- **The aggressor is derived, never passed through.** Binance's `m` means "was the *buyer* the
+  maker"; Coinbase's `side` is the *maker's* side. Both are inverted to give the taker. Getting
+  this wrong silently inverts CVD and every taker-imbalance feature (`MASTER_BUILD_SPEC.md` §7.2).
+- **Unknown frames are skipped, not raised on.** Venues add message types without notice, and a
+  parser that crashes on one turns a cosmetic upstream change into an ingestion outage.
+
+Stream health (`StreamHealthMonitor`) tracks freshness, sequence gaps, duplicates, out-of-order
+frames, parse failures and reconnects. It fails closed: a stream that has never produced a
+message is `UNKNOWN`, not healthy, because a silent stream reporting healthy would let the risk
+engine approve trades against data that does not exist.
+
+A live production WebSocket transport is **not** wired in yet. Adapters, normalization, health
+and sinks are complete and tested against recorded frames and a scripted transport; connecting a
+real socket with keepalive is the next slice.
 
 ## Contracts
 

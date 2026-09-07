@@ -84,12 +84,23 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U kavrigo -d kavrigo"
           --health-interval 5s --health-timeout 5s --health-retries 20
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.12-alpine
+        env:
+          CLICKHOUSE_USER: kavrigo
+          CLICKHOUSE_PASSWORD: kavrigo_local_dev
+          CLICKHOUSE_DB: kavrigo
+        ports: ["8123:8123"]
+        options: >-
+          --health-cmd "wget -qO- http://127.0.0.1:8123/ping | grep -q Ok"
+          --health-interval 10s --health-timeout 5s --health-retries 20
     env:
       # Service containers cannot mount the init directory, so the least-privilege role is
       # created explicitly below — the same role the local stack creates.
       POSTGRES_MIGRATION_DSN: postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:5432/kavrigo
       TEST_POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:5432/kavrigo
       TEST_POSTGRES_OWNER_DSN: postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:5432/kavrigo
+      TEST_CLICKHOUSE_URL: http://localhost:8123
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -107,6 +118,28 @@ jobs:
       - name: Apply migrations
         working-directory: kavrigo-platform/services/api
         run: uv run alembic upgrade head
+
+      - name: Apply the ClickHouse schema
+        # Service containers cannot mount the init directory, so the same file the local stack
+        # runs on startup is posted over the HTTP interface here.
+        run: |
+          python - <<'PY'
+          import pathlib, urllib.request
+          sql = pathlib.Path("kavrigo-infra/local/clickhouse/init/001_schema.sql").read_text()
+          for statement in (s.strip() for s in sql.split(";")):
+              if not statement or statement.startswith("--"):
+                  continue
+              request = urllib.request.Request(
+                  "http://localhost:8123/",
+                  data=statement.encode(),
+                  headers={
+                      "X-ClickHouse-User": "kavrigo",
+                      "X-ClickHouse-Key": "kavrigo_local_dev",
+                  },
+              )
+              urllib.request.urlopen(request).read()
+          print("ClickHouse schema applied")
+          PY
 
       - name: Integration tests
         run: uv run pytest -m integration -v

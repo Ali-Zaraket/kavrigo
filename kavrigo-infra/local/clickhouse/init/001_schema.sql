@@ -33,6 +33,61 @@ SETTINGS index_granularity = 8192;
 -- TTL is a placeholder. Real retention is dictated by each provider's licence terms
 -- (MASTER_BUILD_SPEC.md §8.3), not by convenience.
 
+-- Top-of-book quotes. `has_venue_time` records whether the venue supplied its own timestamp:
+-- Binance's bookTicker does not, so `event_time` there is arrival time. Without the flag a
+-- consumer could not tell venue latency from our own, and would understate staleness.
+CREATE TABLE IF NOT EXISTS kavrigo.market_quotes
+(
+    venue           LowCardinality(String),
+    instrument_id   LowCardinality(String),
+    event_time      DateTime64(3, 'UTC'),
+    ingested_at     DateTime64(3, 'UTC'),
+    has_venue_time  UInt8,
+    bid_price       Decimal(38, 18),
+    bid_size        Decimal(38, 18),
+    ask_price       Decimal(38, 18),
+    ask_size        Decimal(38, 18),
+    spread_bps      Decimal(38, 18),
+    sequence        Int64,
+    provider        LowCardinality(String),
+    schema_version  LowCardinality(String)
+)
+ENGINE = MergeTree
+PARTITION BY toYYYYMM(event_time)
+ORDER BY (venue, instrument_id, event_time)
+TTL toDateTime(event_time) + INTERVAL 90 DAY;
+
+-- OHLCV bars. `is_closed` is load-bearing: a backtest that consumes an unclosed bar as final
+-- has look-ahead bias, because its close, high and low can all still change
+-- (MASTER_BUILD_SPEC.md 12.3). Queries feeding historical runs must filter on it.
+CREATE TABLE IF NOT EXISTS kavrigo.market_candles
+(
+    venue                 LowCardinality(String),
+    instrument_id         LowCardinality(String),
+    interval              LowCardinality(String),
+    event_time            DateTime64(3, 'UTC'),
+    ingested_at           DateTime64(3, 'UTC'),
+    open_time             DateTime64(3, 'UTC'),
+    close_time            DateTime64(3, 'UTC'),
+    open                  Decimal(38, 18),
+    high                  Decimal(38, 18),
+    low                   Decimal(38, 18),
+    close                 Decimal(38, 18),
+    volume                Decimal(38, 18),
+    quote_volume          Decimal(38, 18),
+    taker_buy_base_volume Decimal(38, 18),
+    trade_count           UInt32,
+    is_closed             UInt8,
+    provider              LowCardinality(String),
+    schema_version        LowCardinality(String)
+)
+ENGINE = ReplacingMergeTree(ingested_at)
+PARTITION BY toYYYYMM(open_time)
+ORDER BY (venue, instrument_id, interval, open_time);
+-- ReplacingMergeTree because a bar is re-sent as it forms and again when it closes: the newest
+-- version of a given (venue, instrument, interval, open_time) is the one that counts. Trades
+-- and quotes stay on plain MergeTree — they are immutable facts, not evolving state.
+
 -- Versioned feature history, doubling as the offline feature store (ADR 0008, §39).
 CREATE TABLE IF NOT EXISTS kavrigo.features
 (

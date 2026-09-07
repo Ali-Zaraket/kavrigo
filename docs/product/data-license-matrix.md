@@ -32,7 +32,8 @@ the API until the corresponding row is completed with written confirmation.
 
 | Provider | Intended use | Path | Licence status | Blocker |
 |---|---|---|---|---|
-| Exchange public WebSockets | trades, ticker, book, candles | native WS | **not confirmed** | venue terms per exchange |
+| Binance spot public WS | trades, book ticker, candles | native WS | **not confirmed** | venue terms; development use only today |
+| Coinbase Exchange public WS | matches, ticker | native WS | **not confirmed** | venue terms; development use only today |
 | CoinGlass | funding, OI, liquidations, positioning | REST (production), MCP (research) | **not confirmed** | commercial display rights; MCP is beta (ADR 0005) |
 | CoinGecko | reference universe, metadata, prices | commercial API | **not confirmed** | commercial tier; no redistribution of raw API access |
 | Dune | custom on-chain queries, decoded contract data | API + MCP | **not confirmed** | derived-data and display rights |
@@ -48,6 +49,8 @@ the API until the corresponding row is completed with written confirmation.
    licence covers that tenant's use (`MASTER_BUILD_SPEC.md` §20, §46).
 2. **Every event and evidence item carries a `license_ref`** (`EventSource.license_ref`,
    `EvidenceItem.license_ref`) so a retention or deletion obligation can be executed precisely.
+   `VenueConfig.license_ref` is `None` for both venues today and the ingestion service logs
+   `venue_license_unconfirmed` on startup — deliberately noisy, so this cannot be forgotten.
 3. **Retention TTLs are licence-derived.** The values in the ClickHouse bootstrap are
    placeholders and must be replaced before any real ingestion.
 4. **We do not proxy or resell raw provider APIs.** The API exposes our normalised, derived
