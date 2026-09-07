@@ -16,8 +16,8 @@ drives abstention, a fabricated zero drives a trade.
 
 from __future__ import annotations
 
+from kavrigo_domain.numeric import FEATURE_CONTEXT, mean, safe_divide, stdev, to_bps
 from kavrigo_signals.engine import DEFAULT_REGISTRY, FeatureEngine, InstrumentFeatures
-from kavrigo_signals.numeric import FEATURE_CONTEXT, mean, safe_divide, stdev, to_bps
 from kavrigo_signals.registry import (
     FEATURE_SET_VERSION,
     FeatureDefinition,

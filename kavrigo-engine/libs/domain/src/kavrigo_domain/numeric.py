@@ -1,8 +1,12 @@
-"""Deterministic decimal arithmetic for feature computation.
+"""Deterministic decimal arithmetic.
 
-Every feature must produce the same value on every machine, in a backtest and in a live run
-(``MASTER_BUILD_SPEC.md`` §12.2). Two things threaten that, and both are handled here rather
-than left to chance:
+Shared by the feature engine and by backtest evaluation, because both must produce the same
+value on every machine, in a historical run and in a live one (``MASTER_BUILD_SPEC.md`` §12.2).
+A second copy of this context would eventually drift from the first, and two components
+disagreeing about arithmetic is the kind of defect that shows up as an unexplained backtest
+mismatch months later.
+
+Two things threaten determinism, and both are handled here rather than left to chance:
 
 * **Binary floats.** ``0.1 + 0.2 != 0.3``, and accumulated over a window the drift is large
   enough to flip a threshold comparison. Features feed sizing and risk checks, so they are
@@ -28,6 +32,7 @@ from decimal import ROUND_HALF_EVEN, Context, Decimal, DivisionByZero, InvalidOp
 from typing import Final
 
 __all__ = [
+    "DECIMAL_CONTEXT",
     "FEATURE_CONTEXT",
     "mean",
     "safe_divide",
@@ -35,10 +40,13 @@ __all__ = [
     "to_bps",
 ]
 
-#: Fixed arithmetic context for every feature computation. 28 significant digits is ample for
+#: Fixed arithmetic context for every derived numeric value. 28 significant digits is ample for
 #: prices and quantities, and pinning it here means no other library's context changes can
 #: alter a recorded feature value.
-FEATURE_CONTEXT: Final[Context] = Context(prec=28, rounding=ROUND_HALF_EVEN)
+DECIMAL_CONTEXT: Final[Context] = Context(prec=28, rounding=ROUND_HALF_EVEN)
+
+#: Retained name for the feature engine, which was written against it first.
+FEATURE_CONTEXT: Final[Context] = DECIMAL_CONTEXT
 
 _ZERO = Decimal(0)
 

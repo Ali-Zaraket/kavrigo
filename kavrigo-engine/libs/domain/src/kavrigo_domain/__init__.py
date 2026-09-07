@@ -60,6 +60,14 @@ from kavrigo_domain.identifiers import (
 )
 from kavrigo_domain.market import AggressorSide, BookTicker, Candle, MarketTrade
 from kavrigo_domain.money import AssetCode, ExactDecimal, Money, Price, Quantity
+from kavrigo_domain.numeric import (
+    DECIMAL_CONTEXT,
+    FEATURE_CONTEXT,
+    mean,
+    safe_divide,
+    stdev,
+    to_bps,
+)
 from kavrigo_domain.orders import (
     ApprovedOrderIntent,
     Fill,
@@ -94,6 +102,8 @@ from kavrigo_domain.snapshot import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "DECIMAL_CONTEXT",
+    "FEATURE_CONTEXT",
     "AgentDecision",
     "AgentSpec",
     "AgentVersion",
@@ -166,7 +176,11 @@ __all__ = [
     "__version__",
     "canonical_json",
     "content_hash",
+    "mean",
     "model_hash",
     "new_id",
+    "safe_divide",
+    "stdev",
+    "to_bps",
     "utc_now",
 ]

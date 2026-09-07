@@ -71,7 +71,10 @@ Phase 0 (foundation) of `MASTER_BUILD_SPEC.md` §59. Implemented so far:
   idempotent mutations and an append-only audit trail;
 - market-data adapters for two venues, normalization, stream-health detection, replay, and the
   ingestion pipeline with a ClickHouse sink — a live WebSocket transport is not yet connected;
-- a deterministic, versioned, point-in-time feature engine.
+- a deterministic, versioned, point-in-time feature engine;
+- backtest contracts — dataset manifests with leakage refusal, cost/slippage/latency models,
+  evaluation metrics and the reproducibility bundle — with a NautilusTrader adapter behind them.
 
-Not yet implemented: backtest engine, model gateway, news intelligence, agent runtime, risk
-engine, paper broker, Temporal workflows, web UI.
+Not yet implemented: model gateway, news intelligence, agent runtime, risk engine, paper broker,
+Temporal workflows, web UI. The backtest engine has no strategy layer yet, so runs report zero
+decisions rather than results.

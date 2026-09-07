@@ -13,6 +13,8 @@ members = [
   "kavrigo-engine/libs/domain",
   "kavrigo-engine/libs/market-data",
   "kavrigo-engine/libs/signals",
+  "kavrigo-engine/libs/backtest",
+  "kavrigo-engine/libs/nautilus-adapter",
   "kavrigo-engine/services/engine-worker",
   "kavrigo-engine/services/market-ingestion",
   "kavrigo-platform/services/api",
@@ -22,6 +24,8 @@ members = [
 kavrigo-domain = { workspace = true }
 kavrigo-marketdata = { workspace = true }
 kavrigo-signals = { workspace = true }
+kavrigo-backtest = { workspace = true }
+kavrigo-nautilus-adapter = { workspace = true }
 kavrigo-market-ingestion = { workspace = true }
 
 [dependency-groups]
@@ -79,6 +83,8 @@ known-first-party = [
   "kavrigo_domain",
   "kavrigo_marketdata",
   "kavrigo_signals",
+  "kavrigo_backtest",
+  "kavrigo_nautilus",
   "kavrigo_market_ingestion",
   "kavrigo_api",
   "kavrigo_engine_worker",
@@ -102,6 +108,14 @@ exclude = ["_generated"]
 module = ["tests.*"]
 disallow_untyped_defs = false
 
+# NautilusTrader's hot path is Cython, so several submodules ship no importable stubs. The
+# override is scoped to that package rather than applied globally: it is confined to the one
+# adapter that is allowed to import it (ADR 0012), and everything on our side of that boundary
+# stays strictly typed.
+[[tool.mypy.overrides]]
+module = ["nautilus_trader.*"]
+ignore_missing_imports = true
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -113,6 +127,8 @@ testpaths = [
   "kavrigo-engine/libs/domain/tests",
   "kavrigo-engine/libs/market-data/tests",
   "kavrigo-engine/libs/signals/tests",
+  "kavrigo-engine/libs/backtest/tests",
+  "kavrigo-engine/libs/nautilus-adapter/tests",
   "kavrigo-engine/services/market-ingestion/tests",
   "kavrigo-engine/tests",
   "kavrigo-platform/services/api/tests",

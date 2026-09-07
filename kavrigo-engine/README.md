@@ -9,6 +9,8 @@ libs/domain/               Pydantic domain contracts — the shared vocabulary
 libs/data-contracts/       Protobuf wire contracts for the Redpanda event bus
 libs/market-data/          venue adapters, normalization, stream health, replay
 libs/signals/              deterministic, versioned, point-in-time feature engine
+libs/backtest/             dataset manifests, cost models, metrics, reproducibility
+libs/nautilus-adapter/     NautilusTrader implementation of the engine contract
 services/market-ingestion/ pipeline, envelopes, ClickHouse sink
 services/engine-worker/    worker skeleton; remaining services land here
 tests/property/            Hypothesis invariants for money, risk and identity
@@ -73,6 +75,35 @@ Three properties hold, each enforced rather than intended:
 A feature that cannot be computed reports `None` with a reason and is never defaulted to zero.
 A one-hour return over four minutes of data is a different quantity, not a small error — and
 downstream, a stated absence drives abstention while a fabricated zero drives a trade.
+
+## Backtesting
+
+Engine-independent contracts in `libs/backtest`; the NautilusTrader implementation is confined
+to `libs/nautilus-adapter`, the only package that imports a Nautilus symbol (ADR 0012). Pinned
+to `nautilus_trader==1.231.0` — fill, fee and latency semantics shift between versions.
+
+**A leaky dataset is refused, not run.** `DatasetManifest.leakage_findings()` reports every
+problem rather than a single flag: cutting on `event_time` instead of `ingested_at`, provider
+revisions, and events or ingestion past the period end. A number derived from a dataset that
+could see the future is worse than no number, because the number is quotable.
+
+**Costs are stated, and optimism is surfaced.** Fees, spread crossing, size impact and latency
+are explicit basis points and milliseconds. `CostModel.optimism_warnings` names the assumptions
+that flatter a result — zero latency, always-maker fills, mid-price fills, no partial fills —
+and those warnings travel with the result, per `MASTER_BUILD_SPEC.md` §33.
+
+**Metrics refuse to lie about small samples.** Sharpe, Sortino, volatility and expected
+shortfall report `None` with a reason below the observation threshold; profit factor is
+undefined with no losing trades rather than infinite; `beat_benchmark` is `None` without a
+benchmark rather than `False`. A promotion gate reading a Sharpe of 4.0 from six observations
+would approve on noise.
+
+One engine behaviour worth knowing, verified against 1.231.0: Nautilus composes latency
+additively, so the insert latency it reports is `base + insert`. Passing an already-summed total
+would double-count the base leg.
+
+**Not yet wired:** the strategy layer. The agent runtime that produces decisions is step 10, so
+a run today reports zero decisions rather than being dressed up as a result.
 
 A live production WebSocket transport is **not** wired in yet. Adapters, normalization, health
 and sinks are complete and tested against recorded frames and a scripted transport; connecting a

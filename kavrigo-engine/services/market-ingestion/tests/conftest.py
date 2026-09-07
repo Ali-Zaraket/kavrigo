@@ -62,16 +62,36 @@ def require_clickhouse(clickhouse_available: bool) -> None:
         )
 
 
+async def _truncate(client: httpx.AsyncClient, table: str, *, attempts: int = 20) -> None:
+    """Truncate a table and wait until it actually reads as empty.
+
+    TRUNCATE on a MergeTree drops parts, and a read issued immediately afterwards has been
+    observed to still see rows. That produced a suite which passed in isolation and failed
+    intermittently in a full run — the worst kind of test, because it teaches people to re-run
+    until green. Confirming the post-condition removes the race whatever its cause.
+    """
+    qualified = f"{CLICKHOUSE_DATABASE}.{table}"
+    await client.post(
+        CLICKHOUSE_URL, params={"query": f"TRUNCATE TABLE IF EXISTS {qualified}"}, headers=_HEADERS
+    )
+    for _ in range(attempts):
+        response = await client.post(
+            CLICKHOUSE_URL,
+            params={"query": f"SELECT count() FROM {qualified}"},
+            headers=_HEADERS,
+        )
+        if response.status_code == 200 and response.text.strip() == "0":
+            return
+        await asyncio.sleep(0.05)
+    raise RuntimeError(f"{qualified} did not become empty after TRUNCATE; tests cannot isolate")
+
+
 @pytest.fixture
 async def clickhouse_client(require_clickhouse: None) -> AsyncIterator[httpx.AsyncClient]:
-    """A client with the market tables truncated, so each test starts from a known state."""
+    """A client with the market tables verified empty, so each test starts from a known state."""
     async with httpx.AsyncClient(timeout=10.0) as client:
         for table in ("market_trades", "market_quotes", "market_candles"):
-            await client.post(
-                CLICKHOUSE_URL,
-                params={"query": f"TRUNCATE TABLE IF EXISTS {CLICKHOUSE_DATABASE}.{table}"},
-                headers=_HEADERS,
-            )
+            await _truncate(client, table)
         yield client
 
 

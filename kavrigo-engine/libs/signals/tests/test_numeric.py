@@ -6,7 +6,7 @@ from decimal import Decimal, getcontext, localcontext
 
 import pytest
 
-from kavrigo_signals import FEATURE_CONTEXT, mean, safe_divide, stdev, to_bps
+from kavrigo_domain.numeric import FEATURE_CONTEXT, mean, safe_divide, stdev, to_bps
 
 
 class TestDeterminism:

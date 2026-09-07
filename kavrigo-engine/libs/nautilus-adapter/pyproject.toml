@@ -1,0 +1,27 @@
+[project]
+name = "kavrigo-nautilus-adapter"
+version = "0.1.0"
+description = "NautilusTrader implementation of the Kavrigo backtest engine contract"
+requires-python = ">=3.13"
+dependencies = [
+  "kavrigo-domain",
+  "kavrigo-backtest",
+  # Pinned to a stable release. ADR 0012: nightly and release-candidate features are not used
+  # in production without an explicit ADR, and the fill/fee/latency semantics this adapter
+  # depends on are exactly the kind that shift between versions.
+  "nautilus_trader==1.231.0",
+]
+
+[tool.uv.sources]
+kavrigo-domain = { workspace = true }
+kavrigo-backtest = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kavrigo_nautilus"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/kavrigo_nautilus/py.typed" = "kavrigo_nautilus/py.typed"
