@@ -1,6 +1,6 @@
 # Kavrigo — engineering handoff
 
-**Written:** 2026-09-08 · **Position:** steps 1–8 of 15 complete (step 8 is local/mock only) · **Next:** step 9 (news intelligence)
+**Written:** 2026-09-08 · **Position:** steps 1–9 of 15 complete (steps 8–9 are local/mock only) · **Next:** step 10 (agent runtime)
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
@@ -17,14 +17,14 @@ blocked by a concrete dependency. Every session so far has advanced it one step 
 |---|---|---|
 | 1 | Repository / bootstrap | done |
 | 2 | Contracts | done |
-| 3 | Local development | done, **partly unverified** — see §5 |
+| 3 | Local development | full local stack boot verified; CI still pending — see §5 |
 | 4 | Auth / tenant control plane | done |
 | 5 | Market ingestion | done **except the live WebSocket transport** — see §5 |
 | 6 | Feature engine | done |
 | 7 | Backtest engine | done **except the strategy layer** — see §5 |
 | 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
-| 9 | News intelligence | **← next** |
-| 10 | Agent runtime | not started |
+| 9 | News intelligence | local synthetic-feed slice done — see §5 |
+| 10 | Agent runtime | **← next** |
 | 11 | Risk engine | not started |
 | 12 | Paper broker | not started |
 | 13 | Temporal workflows | not started |
@@ -43,6 +43,7 @@ The milestone all of this is aimed at (`AGENTS.md`, last line):
 ## 2. Commits so far
 
 ```text
+a77d1db  Model gateway: reserve budgets, validate outputs and bind recorded provenance (step 8)
 6be11f9  Fix intermittent ClickHouse test failures: TTL, Replacing key, isolation
 fa03130  Backtest engine: manifests, cost realism, metrics, Nautilus adapter   (step 7)
 637823b  Feature engine: deterministic, versioned, point-in-time features      (step 6)
@@ -71,6 +72,7 @@ kavrigo-engine/
   libs/model-gateway/       bounded mock calls, strict output validation, replay, OTel hooks
   libs/nautilus-adapter/    the ONLY package that may import a NautilusTrader symbol
   services/market-ingestion/  pipeline, envelopes, ClickHouse sink
+  services/news-intelligence/ synthetic feeds, exact dedupe, validated extraction, frozen evidence
   services/engine-worker/   skeleton; remaining services land here
 kavrigo-platform/
   services/api/             FastAPI control plane + Alembic migrations
@@ -78,7 +80,7 @@ kavrigo-platform/
 kavrigo-execution-security/ BOUNDARY PLACEHOLDER — must stay empty, see §6
 kavrigo-infra/local/        docker compose stack, Dockerfiles, DB bootstrap
 kavrigo-research/           empty
-docs/adr/                   22 ADRs (0001–0022) + template + index
+docs/adr/                   23 ADRs (0001–0023) + template + index
 ```
 
 ---
@@ -121,12 +123,13 @@ are scoped-out work with a reason.
 
 ### From step 3 — local stack
 
-- **Full stack boot remains unverified.** Step 8 attempted `make up` and found an unpublished
-  Temporal tag, omitted workspace packages and missing API runtime dependencies; these are
-  corrected. The first full dependency install failed on a NumPy download timeout. A retry
-  uses a build cache, two concurrent downloads and a 300-second local HTTP timeout.
-  Postgres/ClickHouse migrations and all 50 integration tests pass; API/worker boot still needs
-  verification after the large dependencies finish downloading.
+- **Full local stack boot is now verified.** Step 8 fixed an unpublished Temporal tag,
+  omitted workspace packages and missing API dependencies. Its initial NumPy download timed
+  out; the cache/timeout/concurrency fix then completed successfully. Step 9 repeated
+  `make up && make migrate && make test-integration`: both images built, services started,
+  migrations succeeded and all 50 integration tests passed. API, PostgreSQL, ClickHouse,
+  Redpanda, Temporal and Valkey were healthy; the engine worker is a running skeleton,
+  not a configured collector or Temporal workflow worker.
 - **CI has never executed.** `.github/workflows/ci.yml` has six jobs including a Postgres +
   ClickHouse integration job. All written, none run — there is no remote.
 - **Protobuf has never been generated.** `make proto` requires `protoc`, which is not installed,
@@ -195,6 +198,28 @@ are scoped-out work with a reason.
   The gateway does not turn a model answer into an order or attach a strategy to Nautilus.
 - **Stream schemas remain as before.** Gateway call records are internal Pydantic contracts;
   no model-call event publisher or Protobuf binding is introduced in this slice.
+
+### From step 9 — news intelligence
+
+- **Synthetic feeds only.** No provider wire schema, network collector, commercial right or
+  hosted model is configured. The local pipeline refuses non-local startup; source policies
+  accept synthetic-fixture rights only. Verify actual provider docs and rights before adapting.
+- **Exact dedupe, not semantic novelty.** Normalized headline/body copies are suppressed within
+  workspace/agent/version/transform, including cross-source syndication. Different headlines or
+  near-duplicates are not resolved. Novelty 1 means exact uniqueness in that local corpus only.
+- **Primary source and quality are trusted registry configuration.** No link resolver, source
+  quality methodology or independent corroboration is implemented. Corroborating references
+  remain empty; reposts cannot upgrade quality or count as independent sources.
+- **No durable collector/store or publisher.** Bounded in-memory dedupe loses state on restart;
+  capacity refuses new work. `NewsRecord` and the existing generic event envelope round-trip
+  with integrity checks, but there is no generated news Protobuf binding or Redpanda producer.
+  Hashes do not authenticate caller-controlled records; a future store must enforce tenancy.
+- **Injection detection is defense in depth.** HTML becomes text, common attacks are quarantined,
+  model output is closed-schema and quotes/entities need source support. This is not a complete
+  detector or proof of truth. Runtime must continue treating frozen evidence as untrusted data
+  and expose no write tools. Broader golden-eval coverage belongs to step 15.
+- **Historical extraction is refused.** Backtests use recorded evidence available by decision
+  time; a fresh model call over an old article cannot be silently backdated.
 
 ### Cross-cutting
 
@@ -277,10 +302,10 @@ make up && make migrate           # local stack + database migrations
 make test-integration             # RLS, immutability, API, ClickHouse (needs the stack)
 ```
 
-Step 8 verification: **630 tests pass** (580 unit/property + 50 integration) in a full
-`make check` with local-service access; ruff/format and mypy `--strict` clean on **83 source
+Step 9 verification: **676 tests pass** (626 unit/property + 50 integration) in a full
+`make check` with local-service access; ruff/format and mypy `--strict` clean on **90 source
 files**. `make migrate` and `make test-integration` also pass. The sandbox-only check passes
-580 and skips 50 because localhost sockets are denied; do not confuse that with full verification.
+unit tests and skips integration tests because localhost sockets are denied; do not confuse that with full verification.
 `make typecheck` and CI now discover all source packages; their old static lists omitted steps
 5–7. `make setup` also installs every Python workspace package, and declares the Starlette
 TestClient dependency (`httpx2`) in the dev group.
@@ -333,12 +358,18 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task — step 9, news intelligence
+## 10. Your next task — step 10, agent runtime
 
-Implement the feed adapter interface, dedupe, source classification, asset/entity mapping and
-prompt-injection-aware extraction described in `MASTER_BUILD_SPEC.md` §7.12, §14 and §42.
-Inspect existing `NewsEvent` and `EvidenceItem` before extending them. Use scripted feeds until
-an actual provider's schema and licensing are verified.
+Implement scanner, network context interface, asset analyzer, portfolio decision and structured
+`AgentDecision`, with no exchange write tools. Inspect existing `AgentSpec`, `MarketSnapshot`,
+`PortfolioSnapshot`, `DecisionProposal` and backtest contracts first. Bind authoritative identity,
+immutable version/snapshot references and actual gateway calls in service code. A model proposal
+is never an order and cannot change risk; UNKNOWN/NO_TRADE must remain successful outcomes.
+
+Step 9 is in `services/news-intelligence`. Reuse frozen `NewsRecord.evidence`, selecting by actual
+structured availability through `available_evidence()`, and preserve supporting/contradicting
+provenance. Register `NEWS_PROMPT` only for separately authorized EXTRACT_FAST extraction scopes.
+See [news behavior](docs/product/news-intelligence.md) and [ADR 0023](docs/adr/0023-local-news-evidence.md).
 
 The step 8 gateway is in `libs/model-gateway`. Register trusted prompt/input/output types and
 use `ModelRequest`/`ModelGateway`; no domain or service may import a provider SDK. Output cannot

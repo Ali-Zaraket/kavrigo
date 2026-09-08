@@ -117,6 +117,11 @@ single-attempt timeout and cancellation handling, validated structured/embedding
 recorded replay. See [model gateway behavior](../docs/product/model-gateway.md) and
 [ADR 0022](../docs/adr/0022-local-model-gateway-reservations.md). No paid provider is enabled.
 
+Step 9 adds [local news intelligence](../docs/product/news-intelligence.md): typed synthetic
+feeds, exact dedupe, source policy, entity mapping, injection-aware extraction and frozen
+news evidence. It retains actual model provenance and structured availability timestamps.
+No network feed, redistribution right or independent corroboration is implied.
+
 `libs/domain` encodes the non-negotiable domain rules structurally rather than by convention:
 
 | Rule (`AGENTS.md`) | Where it lives |
@@ -135,7 +140,7 @@ response cannot enter the domain unnoticed.
 
 ## Services not yet built
 
-`market-ingestion`, `feature-engine`, `news-intelligence`, `agent-runtime`, `portfolio-engine`,
+`agent-runtime`, `portfolio-engine`,
 `risk-engine`, `backtest-service`, `paper-broker`, `reconciliation`
 (`MASTER_BUILD_SPEC.md` §17). They are added in the order given by `AGENTS.md` § First build
 sequence, each behind the contracts above.
