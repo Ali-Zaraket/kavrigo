@@ -1,6 +1,7 @@
 # Prompt for the next agent
 
-Paste everything below the line into Codex, together with `HANDOFF.md`.
+Open the transferred repository on the destination machine, then paste everything below the
+line into Codex. The repository contains all referenced handoff files.
 
 ---
 
@@ -18,12 +19,25 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 ## Where things stand
 
-Steps 1–7 of the 15-step "First build sequence" in `AGENTS.md` are complete and committed:
-bootstrap, contracts, local dev stack, auth/tenant control plane, market ingestion, feature
-engine, backtest engine. 557 tests pass; ruff and `mypy --strict` are clean on 76 source files.
+Implementation was paused on 2026-09-08 to move machines. Steps 1–10 have committed slices;
+steps 8–10 are local/mock only. Read all deferrals in `HANDOFF.md` §5 before calling a step
+complete. Latest implementation commits are `a77d1db` (gateway), `3abe65d` (news) and `c46b315`
+(runtime). No step 11 code exists. No remote has been configured or pushed.
 
-**Your task is step 8: the model gateway.** `HANDOFF.md` §10 spells out the requirements and the
-constraints that shape the design. Then continue through the sequence in order.
+**First restore and verify the development environment using `MACHINE_HANDOFF.md`.** Docker
+images, volumes, databases and the old Python virtualenv are not in the Git bundle. Rebuild
+images and start fresh local databases unless a separate data migration is explicitly arranged.
+The old machine's Docker daemon became unreachable after a host disk-space incident; do not
+carry that local failure over as an application defect or claim its integration tests passed.
+
+Latest step 10 `make check`: **680 passed, 50 integration tests skipped**, ruff/format clean on
+206 files and `mypy --strict` clean on 99 source files. Separately, all 680 non-integration tests
+passed. Step 9 had a verified full stack/migration run and all 50 integration tests passed, but
+that does not verify the final step 10 code. Run the full checks below on this machine first.
+
+**Then implement step 11: deterministic risk**, as described in `HANDOFF.md` §10. Continue the
+sequence in order and commit each completed step separately. Step 14 has a specific frontend
+skill requirement recorded in `HANDOFF.md` §7. Do not restart steps 8–10 from scratch.
 
 ## How to work
 

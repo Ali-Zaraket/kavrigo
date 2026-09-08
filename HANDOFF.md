@@ -1,17 +1,22 @@
 # Kavrigo — engineering handoff
 
-**Written:** 2026-09-08 · **Position:** steps 1–10 implemented (steps 8–10 are local/mock only; step 10 stack recheck pending) · **Next:** step 11 (risk engine)
+**Written:** 2026-09-08 · **Position:** steps 1–10 implemented (steps 8–10 are local/mock only; step 10 stack recheck pending) · **Next:** verify the stack on the destination machine, then step 11 (risk engine)
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
 left undone, and the things that already cost someone an hour to discover.
+
+**Paused by the user on 2026-09-08 for a move to another machine.** Implementation is stopped;
+no step 11 code was written. Start with [MACHINE_HANDOFF.md](MACHINE_HANDOFF.md) for transfer,
+Docker persistence and setup instructions. [HANDOFF_PROMPT.md](HANDOFF_PROMPT.md) is the updated
+copy/paste prompt for the next agent. Local chat history is not needed to resume.
 
 ---
 
 ## 1. How the work is organised
 
 `AGENTS.md` § "First build sequence" is a numbered 15-step plan. Execute it **in order** unless
-blocked by a concrete dependency. Every session so far has advanced it one step and committed.
+blocked by a concrete dependency. Completed steps are committed separately; read their messages for scope and verification.
 
 | # | Step | State |
 |---|---|---|
@@ -43,6 +48,7 @@ The milestone all of this is aimed at (`AGENTS.md`, last line):
 ## 2. Commits so far
 
 ```text
+c46b315  Agent runtime: freeze analysis, bind decisions and bound portfolio proposals (step 10)
 3abe65d  News intelligence: freeze supported extraction with service-owned provenance (step 9)
 a77d1db  Model gateway: reserve budgets, validate outputs and bind recorded provenance (step 8)
 6be11f9  Fix intermittent ClickHouse test failures: TTL, Replacing key, isolation
@@ -244,13 +250,17 @@ are scoped-out work with a reason.
   is created. Canonical Decimal hashing now avoids ambient-context rounding; old artifacts
   whose hashes relied on rounding/signed-zero formatting must be regenerated as new artifacts,
   never silently rewritten (ADR 0024).
-- **Current stack recheck is blocked by Docker's stopped VM.** Before this outage, step 9's
-  full stack/migrations/50 integration tests passed. During step 10, all 50 integrations skipped
-  as localhost services stopped responding. Docker logs record host “no space left on device”
-  errors at 2026-09-08 11:10 UTC and a graceful VM stop at 11:15 UTC. Later host inspection
-  showed 15 GiB free. `docker desktop start --timeout 30` said already running while status
-  could not reach the engine; a bounded `docker desktop restart --timeout 30` failed because Docker processes did not stop before its deadline. No volumes/data were
-  deleted. Repeat `make up && make migrate && make test-integration` after recovery.
+- **Current stack recheck is blocked by an unreachable Docker daemon.** Before this outage,
+  step 9's full stack/migrations/50 integration tests passed. During step 10, all 50 integrations
+  skipped as localhost services stopped responding. Docker logs record host “no space left on
+  device” errors at 2026-09-08 11:10 UTC and a graceful VM stop at 11:15 UTC. Later inspection
+  showed 15 GiB free. Normal start reported already running; bounded restart failed to stop
+  stuck processes. With explicit user approval, seven verified Docker-only processes were
+  force-quit and Desktop restarted. The VM log then recorded startup at 13:27:55 UTC, but the
+  daemon remained unreachable. Do not describe the VM as still stopped or recovery as verified.
+  Implementation was then stopped at the user's request. No database export was possible and
+  no volume deletion was requested. See MACHINE_HANDOFF.md for the final cleanup outcome.
+  Repeat `make up && make migrate && make test-integration` on the destination machine.
 
 ### Cross-cutting
 
@@ -339,8 +349,9 @@ and six health-checked services were healthy. Step 10's latest provider-free sui
 mypy `--strict` clean on **99 source files**. Final step 10 `make check` passed **680 tests
 and skipped 50 integration tests** because Docker services were unreachable (70.81 seconds).
 `make up` stalled at the unavailable engine and was cancelled; its chained migrate/integration
-commands did not execute. Bounded Desktop restart also failed; stack recheck remains pending. Do not describe
-skipped database tests as integration verification. `make typecheck` and CI discover all Python
+commands did not execute. Docker Desktop was subsequently force-restarted with user approval,
+but its daemon remained unreachable; stack recheck remains pending. Do not describe skipped
+database tests as integration verification. `make typecheck` and CI discover all Python
 source packages; `make setup` installs every workspace package, including Starlette TestClient's
 `httpx2` dev dependency.
 
