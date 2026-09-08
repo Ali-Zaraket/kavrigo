@@ -36,3 +36,4 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0021](0021-standards-based-token-verification.md) | Standards-based token verification behind an identity abstraction | Accepted |
 | [0022](0022-local-model-gateway-reservations.md) | Local model gateway reservations and recorded replay | Accepted |
 | [0023](0023-local-news-evidence.md) | Local news extraction with service-owned provenance | Accepted |
+| [0024](0024-local-agent-runtime.md) | Bounded local runtime and unapproved portfolio allocations | Accepted |

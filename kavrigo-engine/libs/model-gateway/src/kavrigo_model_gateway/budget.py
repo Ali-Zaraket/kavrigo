@@ -149,6 +149,19 @@ class LocalBudgetLedger:
             self._tickets[key] = ticket
             return ticket, True
 
+    def record_for(self, request: ModelRequest, fingerprint: str) -> ModelCallRecord | None:
+        with self._lock:
+            ticket = self._tickets.get((request.scope.workspace_id, request.idempotency_key))
+            if ticket is None:
+                return None
+            if ticket.fingerprint != fingerprint:
+                raise GatewayError(FailureCode.IDEMPOTENCY_CONFLICT)
+            return (
+                ModelCallRecord.model_validate_json(ticket.record.model_dump_json())
+                if ticket.record
+                else None
+            )
+
     def finish(
         self,
         ticket: Ticket,

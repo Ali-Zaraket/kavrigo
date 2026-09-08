@@ -1,6 +1,6 @@
 # Kavrigo — engineering handoff
 
-**Written:** 2026-09-08 · **Position:** steps 1–9 of 15 complete (steps 8–9 are local/mock only) · **Next:** step 10 (agent runtime)
+**Written:** 2026-09-08 · **Position:** steps 1–10 implemented (steps 8–10 are local/mock only; step 10 stack recheck pending) · **Next:** step 11 (risk engine)
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
@@ -24,8 +24,8 @@ blocked by a concrete dependency. Every session so far has advanced it one step 
 | 7 | Backtest engine | done **except the strategy layer** — see §5 |
 | 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
 | 9 | News intelligence | local synthetic-feed slice done — see §5 |
-| 10 | Agent runtime | **← next** |
-| 11 | Risk engine | not started |
+| 10 | Agent runtime | local decision/allocation slice done; stack recheck pending — see §5 |
+| 11 | Risk engine | **← next** |
 | 12 | Paper broker | not started |
 | 13 | Temporal workflows | not started |
 | 14 | Product UI | not started — has a **specific tooling instruction**, see §7 |
@@ -43,6 +43,7 @@ The milestone all of this is aimed at (`AGENTS.md`, last line):
 ## 2. Commits so far
 
 ```text
+3abe65d  News intelligence: freeze supported extraction with service-owned provenance (step 9)
 a77d1db  Model gateway: reserve budgets, validate outputs and bind recorded provenance (step 8)
 6be11f9  Fix intermittent ClickHouse test failures: TTL, Replacing key, isolation
 fa03130  Backtest engine: manifests, cost realism, metrics, Nautilus adapter   (step 7)
@@ -73,6 +74,7 @@ kavrigo-engine/
   libs/nautilus-adapter/    the ONLY package that may import a NautilusTrader symbol
   services/market-ingestion/  pipeline, envelopes, ClickHouse sink
   services/news-intelligence/ synthetic feeds, exact dedupe, validated extraction, frozen evidence
+  services/agent-runtime/    scanner, frozen contexts, analysis, unapproved portfolio allocations
   services/engine-worker/   skeleton; remaining services land here
 kavrigo-platform/
   services/api/             FastAPI control plane + Alembic migrations
@@ -80,7 +82,7 @@ kavrigo-platform/
 kavrigo-execution-security/ BOUNDARY PLACEHOLDER — must stay empty, see §6
 kavrigo-infra/local/        docker compose stack, Dockerfiles, DB bootstrap
 kavrigo-research/           empty
-docs/adr/                   23 ADRs (0001–0023) + template + index
+docs/adr/                   24 ADRs (0001–0024) + template + index
 ```
 
 ---
@@ -221,6 +223,35 @@ are scoped-out work with a reason.
 - **Historical extraction is refused.** Backtests use recorded evidence available by decision
   time; a fresh model call over an old article cannot be silently backdated.
 
+### From step 10 — agent runtime
+
+- **Local library, not a deployed agent worker.** Snapshot/evidence loading, authenticated
+  evaluation HTTP endpoint, durable run storage and Temporal scheduling remain unwired.
+  The runtime receives authorized immutable registrations and frozen inputs in process.
+- **USD-quoted spot valuation only.** No stablecoin parity or FX is assumed. Portfolio overlap
+  groups are explicit configuration, not empirical correlations. Pending orders and unknown
+  marks/reconciliation block allocation; fills must precede reuse of sale proceeds.
+- **Allocations are inert proposals.** No OrderIntent, RiskEvaluation, approval, order or fill is
+  constructed by the runtime. Step 11 must enforce independent deterministic risk before step 12.
+- **Model orchestration remains scripted.** No vendor SDK/tool loop. One configured horizon per
+  evaluation; workflow scheduling/trigger delivery is step 13. Runtime and gateway budgets and
+  idempotency are bounded in one process, not durable/distributed scheduling or billing.
+- **Backtest strategy/data wiring is still incomplete.** The runtime supplies actual decisions,
+  but no Nautilus strategy or data adapter has been connected. Recorded-model artifact loading
+  must be combined with risk and paper fills for the pending meaningful BTC/ETH fixture run.
+- **API prompt migration is explicit.** New versions pin shared prompt v2 matching the gateway;
+  prior scaffold v1 rows remain immutable and are refused by this runtime until a new version
+  is created. Canonical Decimal hashing now avoids ambient-context rounding; old artifacts
+  whose hashes relied on rounding/signed-zero formatting must be regenerated as new artifacts,
+  never silently rewritten (ADR 0024).
+- **Current stack recheck is blocked by Docker's stopped VM.** Before this outage, step 9's
+  full stack/migrations/50 integration tests passed. During step 10, all 50 integrations skipped
+  as localhost services stopped responding. Docker logs record host “no space left on device”
+  errors at 2026-09-08 11:10 UTC and a graceful VM stop at 11:15 UTC. Later host inspection
+  showed 15 GiB free. `docker desktop start --timeout 30` said already running while status
+  could not reach the engine; a bounded `docker desktop restart --timeout 30` failed because Docker processes did not stop before its deadline. No volumes/data were
+  deleted. Repeat `make up && make migrate && make test-integration` after recovery.
+
 ### Cross-cutting
 
 - **The data-licence matrix has zero confirmed rows** (`docs/product/data-license-matrix.md`).
@@ -302,13 +333,16 @@ make up && make migrate           # local stack + database migrations
 make test-integration             # RLS, immutability, API, ClickHouse (needs the stack)
 ```
 
-Step 9 verification: **676 tests pass** (626 unit/property + 50 integration) in a full
-`make check` with local-service access; ruff/format and mypy `--strict` clean on **90 source
-files**. `make migrate` and `make test-integration` also pass. The sandbox-only check passes
-unit tests and skips integration tests because localhost sockets are denied; do not confuse that with full verification.
-`make typecheck` and CI now discover all source packages; their old static lists omitted steps
-5–7. `make setup` also installs every Python workspace package, and declares the Starlette
-TestClient dependency (`httpx2`) in the dev group.
+Step 9 verification: **676 tests passed** including all 50 integrations; both images rebuilt
+and six health-checked services were healthy. Step 10's latest provider-free suite passes
+**680 tests** (`pytest -m 'not integration'`), with ruff/format clean on **206 files** and
+mypy `--strict` clean on **99 source files**. Final step 10 `make check` passed **680 tests
+and skipped 50 integration tests** because Docker services were unreachable (70.81 seconds).
+`make up` stalled at the unavailable engine and was cancelled; its chained migrate/integration
+commands did not execute. Bounded Desktop restart also failed; stack recheck remains pending. Do not describe
+skipped database tests as integration verification. `make typecheck` and CI discover all Python
+source packages; `make setup` installs every workspace package, including Starlette TestClient's
+`httpx2` dev dependency.
 
 Integration tests **skip cleanly** when Postgres or ClickHouse is unreachable, so `make test`
 works with nothing but Python. They must never require an external provider key — the CI
@@ -358,13 +392,19 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task — step 10, agent runtime
+## 10. Your next task — step 11, deterministic risk
 
-Implement scanner, network context interface, asset analyzer, portfolio decision and structured
-`AgentDecision`, with no exchange write tools. Inspect existing `AgentSpec`, `MarketSnapshot`,
-`PortfolioSnapshot`, `DecisionProposal` and backtest contracts first. Bind authoritative identity,
-immutable version/snapshot references and actual gateway calls in service code. A model proposal
-is never an order and cannot change risk; UNKNOWN/NO_TRADE must remain successful outcomes.
+Implement deterministic policy evaluation and reason codes, then prove with property tests:
+rejected intents cannot reach execution, limits cannot be exceeded, stale data rejects, and
+idempotent duplicates cannot produce another submission. Inspect `RiskPolicy`, `RiskLimits`,
+`RiskEvaluation`, `OrderIntent`, `ApprovedOrderIntent`, portfolio and freshness contracts first.
+Risk owns approval; no runtime/model field may grant it or increase the requested notional.
+
+Step 10 is in `services/agent-runtime`. `EvaluationResult` contains server-bound AgentDecision
+objects, actual model-call records (including cancellation), policy/input hashes and inert
+PortfolioDecision allocations. Register immutable versions and explicit runtime policy; API
+versions now pin shared prompt v2. See [runtime behavior](docs/product/agent-runtime.md) and
+[ADR 0024](docs/adr/0024-local-agent-runtime.md). No order/execution classes are imported there.
 
 Step 9 is in `services/news-intelligence`. Reuse frozen `NewsRecord.evidence`, selecting by actual
 structured availability through `available_evidence()`, and preserve supporting/contradicting

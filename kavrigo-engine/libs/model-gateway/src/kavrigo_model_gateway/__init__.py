@@ -22,7 +22,11 @@ from kavrigo_model_gateway.contracts import (
     ScopeBudget,
     Usage,
 )
-from kavrigo_model_gateway.gateway import LocalModelGateway, registered_prompt_hash
+from kavrigo_model_gateway.gateway import (
+    LocalModelGateway,
+    prompt_text_hash,
+    registered_prompt_hash,
+)
 from kavrigo_model_gateway.mock import MockProvider
 
 __all__ = [
@@ -48,5 +52,6 @@ __all__ = [
     "Route",
     "ScopeBudget",
     "Usage",
+    "prompt_text_hash",
     "registered_prompt_hash",
 ]

@@ -184,6 +184,12 @@ class ModelGateway(Protocol):
 
     async def embed(self, request: EmbeddingRequest) -> ModelResponse[EmbeddingOutput]: ...
 
+    def record_for(
+        self, request: ModelRequest, output_type: type[DomainModel]
+    ) -> ModelCallRecord | None:
+        """Read an authorized terminal record without dispatch, including after cancellation."""
+        ...
+
 
 class RecordedResponse(DomainModel):
     request_hash: Digest

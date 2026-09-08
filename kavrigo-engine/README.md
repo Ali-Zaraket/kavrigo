@@ -122,6 +122,10 @@ feeds, exact dedupe, source policy, entity mapping, injection-aware extraction a
 news evidence. It retains actual model provenance and structured availability timestamps.
 No network feed, redistribution right or independent corroboration is implied.
 
+Step 10 adds [the local agent runtime](../docs/product/agent-runtime.md): a deterministic
+scanner, frozen network interface, evidence-checked asset analysis, authoritative decision
+binding and conservative portfolio allocation. It constructs no order or risk approval.
+
 `libs/domain` encodes the non-negotiable domain rules structurally rather than by convention:
 
 | Rule (`AGENTS.md`) | Where it lives |
@@ -140,7 +144,7 @@ response cannot enter the domain unnoticed.
 
 ## Services not yet built
 
-`agent-runtime`, `portfolio-engine`,
+`portfolio-engine` (deployed service),
 `risk-engine`, `backtest-service`, `paper-broker`, `reconciliation`
 (`MASTER_BUILD_SPEC.md` §17). They are added in the order given by `AGENTS.md` § First build
 sequence, each behind the contracts above.

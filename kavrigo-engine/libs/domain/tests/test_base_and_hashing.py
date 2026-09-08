@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 from pydantic import ValidationError
@@ -62,3 +62,21 @@ class TestHashing:
 
     def test_canonical_json_has_no_insignificant_whitespace(self) -> None:
         assert canonical_json({"a": 1, "b": [1, 2]}) == '{"a":1,"b":[1,2]}'
+
+    def test_decimal_hash_does_not_round_under_ambient_context(self) -> None:
+        value = Decimal("1234567890.12345678901234567890")
+        expected = content_hash(value)
+        with localcontext() as context:
+            context.prec = 3
+            assert content_hash(value) == expected
+            assert content_hash(value) != content_hash(Decimal("1230000000"))
+            assert canonical_json(value) == '"1234567890.1234567890123456789"'
+
+    @pytest.mark.parametrize("value", ["NaN", "Infinity", "-Infinity"])
+    def test_non_finite_decimals_cannot_be_hashed(self, value: str) -> None:
+        with pytest.raises(ValueError, match="non-finite decimal"):
+            content_hash(Decimal(value))
+
+    def test_decimal_zero_and_scale_normalize_without_arithmetic(self) -> None:
+        assert content_hash(Decimal("-0.000")) == content_hash(Decimal("0"))
+        assert content_hash(Decimal("1E+3")) == content_hash(Decimal("1000.00"))

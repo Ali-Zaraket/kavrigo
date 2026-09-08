@@ -34,7 +34,14 @@ def _canonicalise(value: Any) -> Any:
         return [_canonicalise(v) for v in value]
     if isinstance(value, Decimal):
         # Normalise so that Decimal("1.10") and Decimal("1.1") hash identically.
-        return format(value.normalize(), "f")
+        # Decimal.normalize() rounds under the ambient context before removing zeros. Hashing
+        # must never silently round authoritative money when a caller uses a low precision.
+        if not value.is_finite():
+            raise ValueError("cannot hash a non-finite decimal")
+        if value.is_zero():
+            return "0"
+        text = format(value, "f")
+        return text.rstrip("0").rstrip(".") if "." in text else text
     if isinstance(value, datetime):
         if value.tzinfo is None:
             raise ValueError("cannot hash a naive datetime")
