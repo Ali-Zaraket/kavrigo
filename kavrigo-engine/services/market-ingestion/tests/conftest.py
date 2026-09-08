@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
 from collections.abc import AsyncIterator, Iterator
 
 import httpx
@@ -62,36 +63,24 @@ def require_clickhouse(clickhouse_available: bool) -> None:
         )
 
 
-async def _truncate(client: httpx.AsyncClient, table: str, *, attempts: int = 20) -> None:
-    """Truncate a table and wait until it actually reads as empty.
+@pytest.fixture
+def provider_tag() -> str:
+    """A discriminator unique to this test, written into every row it inserts.
 
-    TRUNCATE on a MergeTree drops parts, and a read issued immediately afterwards has been
-    observed to still see rows. That produced a suite which passed in isolation and failed
-    intermittently in a full run — the worst kind of test, because it teaches people to re-run
-    until green. Confirming the post-condition removes the race whatever its cause.
+    Tests used to truncate the shared market tables between cases. That isolates a test from its
+    predecessors but not from a *concurrent* run — two pytest processes against the same
+    ClickHouse deleted each other's rows, which is what produced a suite that passed alone and
+    failed intermittently otherwise. Tagging rows and filtering every assertion removes the
+    shared mutable state instead of trying to sequence access to it, so concurrent runs and CI
+    re-runs are both safe, and nothing has to be deleted.
     """
-    qualified = f"{CLICKHOUSE_DATABASE}.{table}"
-    await client.post(
-        CLICKHOUSE_URL, params={"query": f"TRUNCATE TABLE IF EXISTS {qualified}"}, headers=_HEADERS
-    )
-    for _ in range(attempts):
-        response = await client.post(
-            CLICKHOUSE_URL,
-            params={"query": f"SELECT count() FROM {qualified}"},
-            headers=_HEADERS,
-        )
-        if response.status_code == 200 and response.text.strip() == "0":
-            return
-        await asyncio.sleep(0.05)
-    raise RuntimeError(f"{qualified} did not become empty after TRUNCATE; tests cannot isolate")
+    return f"test-{uuid.uuid4().hex[:12]}"
 
 
 @pytest.fixture
 async def clickhouse_client(require_clickhouse: None) -> AsyncIterator[httpx.AsyncClient]:
-    """A client with the market tables verified empty, so each test starts from a known state."""
+    """A plain client. Isolation comes from `provider_tag`, not from deleting rows."""
     async with httpx.AsyncClient(timeout=10.0) as client:
-        for table in ("market_trades", "market_quotes", "market_candles"):
-            await _truncate(client, table)
         yield client
 
 

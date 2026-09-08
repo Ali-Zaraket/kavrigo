@@ -84,6 +84,10 @@ CREATE TABLE IF NOT EXISTS kavrigo.market_candles
 ENGINE = ReplacingMergeTree(ingested_at)
 PARTITION BY toYYYYMM(open_time)
 ORDER BY (venue, instrument_id, interval, open_time);
+-- Note that `provider` is NOT part of the ORDER BY key. Two rows sharing (venue, instrument,
+-- interval, open_time) are the same bar as far as the engine is concerned, and the newer
+-- ingested_at wins. That is the intent for a bar reissued as it forms, and it means a second
+-- writer cannot be distinguished from a correction.
 -- ReplacingMergeTree because a bar is re-sent as it forms and again when it closes: the newest
 -- version of a given (venue, instrument, interval, open_time) is the one that counts. Trades
 -- and quotes stay on plain MergeTree — they are immutable facts, not evolving state.
