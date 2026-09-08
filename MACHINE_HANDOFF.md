@@ -116,8 +116,11 @@ the VM logged startup at 13:27:55 UTC, but Docker's daemon remained unreachable.
 source-machine infrastructure problem, not a verified diagnosis of an application failure.
 
 The user subsequently requested image deletion and Docker pruning after the handoff. The
-requested cleanup retains volumes. Its exact outcome is recorded in `DOCKER_CLEANUP.txt` in
-the transfer archive. The cleanup commands, to run on the **source machine**, are:
+requested cleanup retains volumes. **Both cleanup commands were attempted and exited 1 with
+“Cannot connect to the Docker daemon.” No resources were deleted by these attempts; container
+shutdown and image/cache cleanup remain unverified.** The exact output is in
+`DOCKER_CLEANUP.txt` in the transfer archive. Retry after recovering Docker on the **source
+machine**; no further recovery process was left running by the agent. The commands are:
 
 ```bash
 docker compose -f kavrigo-infra/local/docker-compose.yml down --rmi all --timeout 15

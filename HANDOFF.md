@@ -259,7 +259,9 @@ are scoped-out work with a reason.
   force-quit and Desktop restarted. The VM log then recorded startup at 13:27:55 UTC, but the
   daemon remained unreachable. Do not describe the VM as still stopped or recovery as verified.
   Implementation was then stopped at the user's request. No database export was possible and
-  no volume deletion was requested. See MACHINE_HANDOFF.md for the final cleanup outcome.
+  no volume deletion was requested. The later user-requested Compose image removal and system
+  prune both failed with daemon-unreachable errors; nothing was deleted by those attempts.
+  Container shutdown remains unverified. See MACHINE_HANDOFF.md for the cleanup commands.
   Repeat `make up && make migrate && make test-integration` on the destination machine.
 
 ### Cross-cutting
