@@ -1,6 +1,6 @@
 # Kavrigo — engineering handoff
 
-**Written:** 2026-09-07 · **Position:** steps 1–7 of 15 complete · **Next:** step 8 (model gateway)
+**Written:** 2026-09-08 · **Position:** steps 1–7 of 15 complete · **Next:** step 8 (model gateway)
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
@@ -43,6 +43,7 @@ The milestone all of this is aimed at (`AGENTS.md`, last line):
 ## 2. Commits so far
 
 ```text
+6be11f9  Fix intermittent ClickHouse test failures: TTL, Replacing key, isolation
 fa03130  Backtest engine: manifests, cost realism, metrics, Nautilus adapter   (step 7)
 637823b  Feature engine: deterministic, versioned, point-in-time features      (step 6)
 ce50933  Market ingestion: venue adapters, normalization, stream health, sinks (step 5)
@@ -76,7 +77,7 @@ kavrigo-platform/
 kavrigo-execution-security/ BOUNDARY PLACEHOLDER — must stay empty, see §6
 kavrigo-infra/local/        docker compose stack, Dockerfiles, DB bootstrap
 kavrigo-research/           empty
-docs/adr/                   21 ADRs (0001–0021)
+docs/adr/                   21 ADRs (0001–0021) + template + index
 ```
 
 ---
