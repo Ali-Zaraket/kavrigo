@@ -20,7 +20,7 @@ from pydantic import Field, model_validator
 from kavrigo_backtest.costs import CostModel
 from kavrigo_backtest.manifest import DatasetManifest
 from kavrigo_backtest.metrics import PerformanceMetrics
-from kavrigo_domain import AgentSpec, DomainModel, Money, UtcDatetime, content_hash
+from kavrigo_domain import AgentSpec, DomainModel, ModelCallRecord, Money, UtcDatetime, content_hash
 
 __all__ = [
     "BacktestEngine",
@@ -116,6 +116,36 @@ class ReproducibilityBundle(DomainModel):
     engine_version: Annotated[str, Field(min_length=1, max_length=32)]
     container_image_digest: Annotated[str, Field(min_length=1, max_length=128)]
     code_version: Annotated[str, Field(min_length=1, max_length=64)]
+    model_calls: tuple[ModelCallRecord, ...] = ()
+    """Actual gateway calls, including failures. Empty for the pre-runtime zero-decision run."""
+
+    def with_model_calls(self, calls: tuple[ModelCallRecord, ...]) -> Self:
+        """Bind actual calls instead of inventing provenance for an unexecuted model.
+
+        The legacy singular profile/model/prompt fields describe the primary successful call;
+        the complete list retains extraction/analysis attempts with distinct profiles too.
+        """
+        successful = [call for call in calls if call.outcome == "success"]
+        if not successful:
+            raise ValueError("a model-backed bundle needs a successful model call")
+        if any(
+            call.agent_version_id != self.agent_version_id
+            or call.request_hash is None
+            or call.route_hash is None
+            for call in calls
+        ):
+            raise ValueError("model calls must identify this immutable agent version and request")
+        if len({call.workspace_id for call in calls}) != 1 or calls[0].workspace_id is None:
+            raise ValueError("model calls must belong to one workspace")
+        primary = successful[-1]
+        values = self.model_dump()
+        values.update(
+            model_calls=calls,
+            model_profile=primary.profile,
+            resolved_model_identifier=primary.resolved_model_identifier,
+            prompt_hash=primary.prompt_hash,
+        )
+        return type(self).model_validate(values)
 
     @property
     def bundle_hash(self) -> str:

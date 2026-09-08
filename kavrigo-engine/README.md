@@ -10,6 +10,7 @@ libs/data-contracts/       Protobuf wire contracts for the Redpanda event bus
 libs/market-data/          venue adapters, normalization, stream health, replay
 libs/signals/              deterministic, versioned, point-in-time feature engine
 libs/backtest/             dataset manifests, cost models, metrics, reproducibility
+libs/model-gateway/        bounded local model calls, schema validation, replay and tracing
 libs/nautilus-adapter/     NautilusTrader implementation of the engine contract
 services/market-ingestion/ pipeline, envelopes, ClickHouse sink
 services/engine-worker/    worker skeleton; remaining services land here
@@ -110,6 +111,11 @@ and sinks are complete and tested against recorded frames and a scripted transpo
 real socket with keepalive is the next slice.
 
 ## Contracts
+
+The step 8 model gateway has a local scripted provider with workspace/agent/decision budgets,
+single-attempt timeout and cancellation handling, validated structured/embedding outputs and
+recorded replay. See [model gateway behavior](../docs/product/model-gateway.md) and
+[ADR 0022](../docs/adr/0022-local-model-gateway-reservations.md). No paid provider is enabled.
 
 `libs/domain` encodes the non-negotiable domain rules structurally rather than by convention:
 

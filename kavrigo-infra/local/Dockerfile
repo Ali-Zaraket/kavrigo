@@ -9,21 +9,23 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
+    UV_HTTP_TIMEOUT=300 \
+    UV_CONCURRENT_DOWNLOADS=2 \
     UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /app
 
-# Dependency layer: only the manifests, so a source edit does not re-resolve dependencies.
+# All workspace members must exist for uv to resolve the workspace. The previous three-
+# package COPY silently failed its first sync and omitted every later engine library.
+# Verified 2026-09-08: https://docs.astral.sh/uv/guides/integration/docker/
 COPY pyproject.toml uv.lock* ./
-COPY kavrigo-engine/libs/domain/pyproject.toml kavrigo-engine/libs/domain/
-COPY kavrigo-engine/services/engine-worker/pyproject.toml kavrigo-engine/services/engine-worker/
-COPY kavrigo-platform/services/api/pyproject.toml kavrigo-platform/services/api/
-RUN uv sync --no-install-project --no-dev || true
-
-COPY kavrigo-engine/libs/domain kavrigo-engine/libs/domain
-COPY kavrigo-engine/services/engine-worker kavrigo-engine/services/engine-worker
+COPY kavrigo-engine/libs kavrigo-engine/libs
+COPY kavrigo-engine/services kavrigo-engine/services
 COPY kavrigo-platform/services/api kavrigo-platform/services/api
-RUN uv sync --no-dev
+# Keep completed downloads across interrupted builds on slow local links. These are local
+# install settings, not runtime provider timeouts. Verified 2026-09-08:
+# https://docs.astral.sh/uv/reference/environment/#uv_http_timeout
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --all-packages --no-dev
 
 # Never run as root, even locally: it keeps the local image close to the production posture.
 RUN useradd --create-home --uid 10001 kavrigo && chown -R kavrigo:kavrigo /app /opt/venv

@@ -37,6 +37,7 @@ from kavrigo_domain.audit import AuditAction, AuditRecord
 from kavrigo_domain.base import DomainModel, UtcDatetime, utc_now
 from kavrigo_domain.decision import (
     AgentDecision,
+    DecisionProposal,
     DecisionState,
     ModelCallRecord,
     Prediction,
@@ -120,6 +121,7 @@ __all__ = [
     "DataFamily",
     "DataPack",
     "DataQuality",
+    "DecisionProposal",
     "DecisionState",
     "DomainModel",
     "EventEnvelope",

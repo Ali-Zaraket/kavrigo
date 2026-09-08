@@ -1,6 +1,6 @@
 # Kavrigo — engineering handoff
 
-**Written:** 2026-09-08 · **Position:** steps 1–7 of 15 complete · **Next:** step 8 (model gateway)
+**Written:** 2026-09-08 · **Position:** steps 1–8 of 15 complete (step 8 is local/mock only) · **Next:** step 9 (news intelligence)
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
@@ -22,8 +22,8 @@ blocked by a concrete dependency. Every session so far has advanced it one step 
 | 5 | Market ingestion | done **except the live WebSocket transport** — see §5 |
 | 6 | Feature engine | done |
 | 7 | Backtest engine | done **except the strategy layer** — see §5 |
-| 8 | Model gateway | **← you are here** |
-| 9 | News intelligence | not started |
+| 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
+| 9 | News intelligence | **← next** |
 | 10 | Agent runtime | not started |
 | 11 | Risk engine | not started |
 | 12 | Paper broker | not started |
@@ -68,6 +68,7 @@ kavrigo-engine/
   libs/market-data/         venue adapters, normalization, stream health, replay
   libs/signals/             deterministic, versioned, point-in-time feature engine
   libs/backtest/            dataset manifests, cost models, metrics, reproducibility
+  libs/model-gateway/       bounded mock calls, strict output validation, replay, OTel hooks
   libs/nautilus-adapter/    the ONLY package that may import a NautilusTrader symbol
   services/market-ingestion/  pipeline, envelopes, ClickHouse sink
   services/engine-worker/   skeleton; remaining services land here
@@ -77,7 +78,7 @@ kavrigo-platform/
 kavrigo-execution-security/ BOUNDARY PLACEHOLDER — must stay empty, see §6
 kavrigo-infra/local/        docker compose stack, Dockerfiles, DB bootstrap
 kavrigo-research/           empty
-docs/adr/                   21 ADRs (0001–0021) + template + index
+docs/adr/                   22 ADRs (0001–0022) + template + index
 ```
 
 ---
@@ -120,9 +121,12 @@ are scoped-out work with a reason.
 
 ### From step 3 — local stack
 
-- **The API and worker Docker images have never been built.** `docker compose config` validates
-  and Postgres/ClickHouse run, but `make up` end-to-end is unverified. Redpanda, Temporal and
-  Valkey have never been started.
+- **Full stack boot remains unverified.** Step 8 attempted `make up` and found an unpublished
+  Temporal tag, omitted workspace packages and missing API runtime dependencies; these are
+  corrected. The first full dependency install failed on a NumPy download timeout. A retry
+  uses a build cache, two concurrent downloads and a 300-second local HTTP timeout.
+  Postgres/ClickHouse migrations and all 50 integration tests pass; API/worker boot still needs
+  verification after the large dependencies finish downloading.
 - **CI has never executed.** `.github/workflows/ci.yml` has six jobs including a Postgres +
   ClickHouse integration job. All written, none run — there is no remote.
 - **Protobuf has never been generated.** `make proto` requires `protoc`, which is not installed,
@@ -171,6 +175,26 @@ are scoped-out work with a reason.
   is tested against a real engine — that boundary works; the data path does not exist yet.
 - **No dataset builder.** `DatasetManifest` is a contract with leakage detection and a content
   hash. Nothing yet *constructs* one from ClickHouse rows.
+
+### From step 8 — model gateway
+
+- **Local scripted providers only.** Both gateway and ledger refuse non-local startup and the
+  gateway rejects network providers. No SDK/provider account is configured. Before paid
+  routing: implement a durable PostgreSQL reservation/idempotency ledger with crash recovery,
+  verified provider token/pricing/timeout semantics, and retention policy (ADR 0022).
+- **Budgets are atomic within one local process, not distributed billing.** Unknown usage
+  retains its reservation. Capacity exhaustion refuses new calls rather than forgetting spend.
+  A restart loses local state; do not use this implementation to authorize paid calls.
+- **Langfuse export is not configured.** OTel generation/embedding hooks and metrics are tested
+  with in-memory SDK exporters. The library exports no prompt/output/exception bodies and reads
+  no key. Hosted export needs account provisioning and privacy/retention review.
+- **No model tools, retries or fallback.** One bounded provider attempt per idempotency key.
+  OpenAI Agents SDK orchestration awaits a verified provider adapter and read-only tool needs.
+- **Recorded responses are contracts, not a durable artifact store.** Replay validates hashes,
+  scope and schema, but storage/authentication and audit persistence belong to the service.
+  The gateway does not turn a model answer into an order or attach a strategy to Nautilus.
+- **Stream schemas remain as before.** Gateway call records are internal Pydantic contracts;
+  no model-call event publisher or Protobuf binding is introduced in this slice.
 
 ### Cross-cutting
 
@@ -253,8 +277,13 @@ make up && make migrate           # local stack + database migrations
 make test-integration             # RLS, immutability, API, ClickHouse (needs the stack)
 ```
 
-Baseline at handoff time: **557 tests pass** (507 unit/property + 50 integration), ruff and
-mypy `--strict` clean on 76 source files.
+Step 8 verification: **630 tests pass** (580 unit/property + 50 integration) in a full
+`make check` with local-service access; ruff/format and mypy `--strict` clean on **83 source
+files**. `make migrate` and `make test-integration` also pass. The sandbox-only check passes
+580 and skips 50 because localhost sockets are denied; do not confuse that with full verification.
+`make typecheck` and CI now discover all source packages; their old static lists omitted steps
+5–7. `make setup` also installs every Python workspace package, and declares the Starlette
+TestClient dependency (`httpx2`) in the dev group.
 
 Integration tests **skip cleanly** when Postgres or ClickHouse is unreachable, so `make test`
 works with nothing but Python. They must never require an external provider key — the CI
@@ -304,35 +333,30 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task — step 8, the model gateway
+## 10. Your next task — step 9, news intelligence
 
-From `AGENTS.md` step 8, implement:
+Implement the feed adapter interface, dedupe, source classification, asset/entity mapping and
+prompt-injection-aware extraction described in `MASTER_BUILD_SPEC.md` §7.12, §14 and §42.
+Inspect existing `NewsEvent` and `EvidenceItem` before extending them. Use scripted feeds until
+an actual provider's schema and licensing are verified.
 
-- a **provider-neutral request/response contract** (`ModelGateway` protocol — the sketch is in
-  `MASTER_BUILD_SPEC.md` §13.2);
-- **cost, timeout and rate budgets** per workspace and per agent (§46);
-- a **mock model provider** — the suite must pass with no API key;
-- **tracing** hooks (Langfuse is ADR 0011, but it is *not* the audit ledger — §13.4);
-- **structured output validation** — unvalidated model JSON must never enter the domain.
+The step 8 gateway is in `libs/model-gateway`. Register trusted prompt/input/output types and
+use `ModelRequest`/`ModelGateway`; no domain or service may import a provider SDK. Output cannot
+own workspace identity, model-call records or risk approval. `DecisionProposal` is the shared
+model-owned portion of `AgentDecision`; the runtime binds authoritative context in step 10.
 
-Constraints that shape the design:
+`AgentAccess.from_version` binds the AgentSpec cost, output-token, profile and timeout policy.
+Persist `registered_prompt_hash()` on the AgentVersion. Successful responses carry the existing
+`ModelCallRecord`; failures after dispatch also carry one. Unknown usage is explicitly reserved,
+not reported as zero cost. Reuse an idempotency key to retrieve a result, not to submit again.
 
-- **Route by profile, not model name** (§13.5): `extract_fast`, `classify_fast`,
-  `reason_balanced`, `reason_deep`, `embed`. Product behaviour must not be hard-coded to a
-  current model name.
-- **Record the resolved model identifier**, not just the profile. A routing fallback must never
-  silently change what produced a reproducible result (ADR 0010). `ReproducibilityBundle` and
-  `ModelCallRecord` already have fields for this — wire them.
-- **No domain component may import a vendor SDK directly.** Same boundary discipline as
-  `libs/nautilus-adapter`.
-- **The gateway is the choke point that guarantees no credential ever enters model context**
-  (§15.2). It must not be able to read one.
-- `ModelCallRecord` in `kavrigo_domain/decision.py` is the existing contract for what a call
-  produced — extend rather than duplicate it.
+`RecordedResponse` replay checks scope, request/prompt/schema/route/output hashes and resolved
+model, then revalidates the schema without a provider call. Backtests require a model pin.
+`ReproducibilityBundle.with_model_calls()` binds actual call records; the zero-decision Nautilus
+run remains unchanged until the strategy/runtime/risk work is implemented.
 
-Suggested location: `kavrigo-engine/libs/model-gateway/` (`MASTER_BUILD_SPEC.md` §17 lists it),
-registered in the root `pyproject.toml` workspace members, `[tool.uv.sources]`, `testpaths` and
-ruff `known-first-party` — copy how `libs/backtest` was added.
+See [gateway behavior](docs/product/model-gateway.md) and [ADR 0022](docs/adr/0022-local-model-gateway-reservations.md)
+for security limits, exact budget semantics and official documentation references.
 
 ---
 

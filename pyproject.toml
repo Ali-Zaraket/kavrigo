@@ -14,6 +14,7 @@ members = [
   "kavrigo-engine/libs/market-data",
   "kavrigo-engine/libs/signals",
   "kavrigo-engine/libs/backtest",
+  "kavrigo-engine/libs/model-gateway",
   "kavrigo-engine/libs/nautilus-adapter",
   "kavrigo-engine/services/engine-worker",
   "kavrigo-engine/services/market-ingestion",
@@ -25,6 +26,7 @@ kavrigo-domain = { workspace = true }
 kavrigo-marketdata = { workspace = true }
 kavrigo-signals = { workspace = true }
 kavrigo-backtest = { workspace = true }
+kavrigo-model-gateway = { workspace = true }
 kavrigo-nautilus-adapter = { workspace = true }
 kavrigo-market-ingestion = { workspace = true }
 
@@ -35,9 +37,11 @@ dev = [
   "pytest-cov>=6.0",
   "hypothesis>=6.124",
   "httpx>=0.28",
+  "httpx2>=2.12,<3", # installed Starlette 1.6 TestClient requires this test-only client
   "ruff>=0.9",
   "mypy>=1.14",
   "pre-commit>=4.1",
+  "opentelemetry-sdk>=1.39,<2",
 ]
 
 # ---------------------------------------------------------------------------
@@ -84,6 +88,7 @@ known-first-party = [
   "kavrigo_marketdata",
   "kavrigo_signals",
   "kavrigo_backtest",
+  "kavrigo_model_gateway",
   "kavrigo_nautilus",
   "kavrigo_market_ingestion",
   "kavrigo_api",
@@ -128,6 +133,7 @@ testpaths = [
   "kavrigo-engine/libs/market-data/tests",
   "kavrigo-engine/libs/signals/tests",
   "kavrigo-engine/libs/backtest/tests",
+  "kavrigo-engine/libs/model-gateway/tests",
   "kavrigo-engine/libs/nautilus-adapter/tests",
   "kavrigo-engine/services/market-ingestion/tests",
   "kavrigo-engine/tests",

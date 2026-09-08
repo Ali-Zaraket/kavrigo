@@ -17,6 +17,7 @@ from pydantic import Field, model_validator
 
 from kavrigo_domain.base import DomainModel, UtcDatetime
 from kavrigo_domain.identifiers import (
+    AgentId,
     AgentVersionId,
     DecisionId,
     EvidenceId,
@@ -29,6 +30,7 @@ from kavrigo_domain.snapshot import MarketRegime
 
 __all__ = [
     "AgentDecision",
+    "DecisionProposal",
     "DecisionState",
     "ModelCallRecord",
     "Prediction",
@@ -123,21 +125,37 @@ class ModelCallRecord(DomainModel):
     tool_calls: Annotated[int, Field(ge=0)] = 0
     schema_validation_failed: bool = False
     trace_id: Annotated[str | None, Field(default=None, max_length=64)] = None
+    # Additive fields: historical records remain readable. Gateway-produced records populate
+    # these from trusted call context, never from model-generated JSON.
+    workspace_id: WorkspaceId | None = None
+    agent_id: AgentId | None = None
+    agent_version_id: AgentVersionId | None = None
+    decision_id: DecisionId | None = None
+    request_hash: Annotated[str | None, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = None
+    output_hash: Annotated[str | None, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = None
+    schema_hash: Annotated[str | None, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = None
+    route_hash: Annotated[str | None, Field(pattern=r"^sha256:[0-9a-f]{64}$")] = None
+    outcome: Annotated[str, Field(pattern=r"^[a-z_]{1,48}$")] = "success"
+    usage_known: bool = True
+    cost_is_reservation: bool = False
+    """True when no reliable usage returned: this is a retained upper bound, not an invoice."""
+
+    @model_validator(mode="after")
+    def _validate_cost(self) -> Self:
+        if self.cost.currency != "USD" or self.cost.amount < 0:
+            raise ValueError("model call cost must be non-negative USD")
+        if self.cost_is_reservation and self.usage_known:
+            raise ValueError("reserved cost cannot claim known usage")
+        return self
 
 
-class AgentDecision(DomainModel):
-    """A structured, evidence-backed decision. Not an order.
+class DecisionProposal(DomainModel):
+    """The model-owned part of a decision: no identity, timestamps, audit or call records.
 
     The decision is a *proposal*. Whether anything happens is determined by the portfolio layer
     and the deterministic risk engine, which the model cannot influence at runtime (ADR 0004).
     """
 
-    decision_id: DecisionId
-    workspace_id: WorkspaceId
-    agent_version_id: AgentVersionId
-    snapshot_id: SnapshotId
-    instrument_id: InstrumentId
-    decided_at: UtcDatetime
     market_regime: MarketRegime
     state: DecisionState
     signals: SignalScores
@@ -152,7 +170,6 @@ class AgentDecision(DomainModel):
     contradicting_evidence_refs: Annotated[list[EvidenceId], Field(max_length=256)] = []
     risk_flags: Annotated[list[str], Field(max_length=32)] = []
     reason_codes: Annotated[list[str], Field(max_length=32)] = []
-    model_calls: Annotated[list[ModelCallRecord], Field(max_length=64)] = []
     estimated_cost_bps: Annotated[ExactDecimal | None, Field(default=None)] = None
     """Estimated round-trip cost in basis points: fees plus expected slippage. The risk engine
     rejects when estimated edge does not exceed this plus a safety margin (§11.1)."""
@@ -185,3 +202,15 @@ class AgentDecision(DomainModel):
     def is_abstention(self) -> bool:
         """``NO_TRADE`` and ``HOLD`` are successful outcomes, not failures."""
         return not self.proposed_action.requires_order
+
+
+class AgentDecision(DecisionProposal):
+    """A validated proposal bound to server-owned context by the agent runtime. Not an order."""
+
+    decision_id: DecisionId
+    workspace_id: WorkspaceId
+    agent_version_id: AgentVersionId
+    snapshot_id: SnapshotId
+    instrument_id: InstrumentId
+    decided_at: UtcDatetime
+    model_calls: Annotated[list[ModelCallRecord], Field(max_length=64)] = []

@@ -4,8 +4,9 @@ SHELL := /bin/bash
 VENV := .venv
 PY := $(VENV)/bin/python
 COMPOSE := docker compose -f kavrigo-infra/local/docker-compose.yml
-PKGS := kavrigo-engine/libs/domain kavrigo-platform/services/api kavrigo-engine/services/engine-worker
-SRC := kavrigo-engine/libs/domain/src kavrigo-platform/services/api/src kavrigo-engine/services/engine-worker/src
+# Cover every Python package; the original static list silently omitted steps 5-7.
+PKGS := $(patsubst %/pyproject.toml,%,$(wildcard kavrigo-engine/libs/*/pyproject.toml kavrigo-engine/services/*/pyproject.toml kavrigo-platform/services/*/pyproject.toml))
+SRC := $(addsuffix /src,$(PKGS))
 
 .PHONY: help
 help: ## Show this help
@@ -20,7 +21,7 @@ setup: ## Create the virtualenv and install workspace packages
 	  echo "==> uv not found; falling back to venv + pip (install uv: https://docs.astral.sh/uv/)"; \
 	  python3 -m venv $(VENV); \
 	  $(PY) -m pip install --quiet --upgrade pip; \
-	  $(PY) -m pip install --quiet pytest pytest-asyncio pytest-cov hypothesis httpx httpx2 ruff mypy pre-commit; \
+	  $(PY) -m pip install --quiet pytest pytest-asyncio pytest-cov hypothesis httpx httpx2 ruff mypy pre-commit 'opentelemetry-sdk>=1.39,<2'; \
 	  $(PY) -m pip install --quiet $(foreach p,$(PKGS),-e $(p)); \
 	fi
 	@echo "==> ready. 'make test' to verify."

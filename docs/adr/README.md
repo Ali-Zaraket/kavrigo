@@ -34,3 +34,4 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0019](0019-hybrid-repository-structure.md) | Hybrid repository structure | Accepted |
 | [0020](0020-saas-usage-pricing.md) | SaaS plus usage metering; no performance fee | Accepted |
 | [0021](0021-standards-based-token-verification.md) | Standards-based token verification behind an identity abstraction | Accepted |
+| [0022](0022-local-model-gateway-reservations.md) | Local model gateway reservations and recorded replay | Accepted |

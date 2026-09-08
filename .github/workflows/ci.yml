@@ -49,11 +49,7 @@ jobs:
           uv run ruff format --check .
 
       - name: Typecheck
-        run: |
-          uv run mypy \
-            kavrigo-engine/libs/domain/src \
-            kavrigo-platform/services/api/src \
-            kavrigo-engine/services/engine-worker/src
+        run: make typecheck PY='uv run python'
 
       - name: Unit and property tests
         run: uv run pytest --cov=kavrigo_domain --cov=kavrigo_api --cov-report=term-missing

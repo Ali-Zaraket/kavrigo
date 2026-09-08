@@ -19,6 +19,7 @@ from kavrigo_domain import (
     AgentSpec,
     DataPack,
     InstrumentId,
+    ModelCallRecord,
     ModelPolicy,
     Money,
     ScheduleConfig,
@@ -126,6 +127,34 @@ class TestReproducibilityBundle:
 
     def test_the_bundle_hash_is_stable(self) -> None:
         assert _bundle().bundle_hash == _bundle().bundle_hash
+
+    def test_actual_model_calls_set_bundle_identity(self) -> None:
+        bundle = _bundle()
+        call = ModelCallRecord(
+            model_call_id=oid("mc"),
+            profile="reason_deep",
+            resolved_model_identifier="mock-pinned-v2",
+            prompt_hash="sha256:" + "cd" * 32,
+            input_tokens=2,
+            output_tokens=3,
+            cost=Money(amount=Decimal("0.01"), currency="USD"),
+            latency_ms=4,
+            workspace_id=oid("ws"),
+            agent_id=oid("ag"),
+            agent_version_id=bundle.agent_version_id,
+            decision_id=oid("dec"),
+            request_hash=HASH,
+            route_hash=HASH,
+        )
+        bound = bundle.with_model_calls((call,))
+        assert bound.resolved_model_identifier == call.resolved_model_identifier
+        assert bound.prompt_hash == call.prompt_hash
+        assert bound.model_calls == (call,)
+        assert bound.bundle_hash != bundle.bundle_hash
+        with pytest.raises(ValueError, match="agent version"):
+            bundle.with_model_calls((call.model_copy(update={"agent_version_id": oid("av", 9)}),))
+        with pytest.raises(ValueError, match="successful"):
+            bundle.with_model_calls(())
 
 
 class TestRefusal:

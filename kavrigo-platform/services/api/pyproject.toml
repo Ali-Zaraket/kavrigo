@@ -10,6 +10,13 @@ dependencies = [
   "pydantic-settings>=2.7",
   "uvicorn[standard]>=0.34",
   "structlog>=24.4",
+  # Required by the already-implemented DB/auth modules. A developer's populated venv
+  # masked these missing runtime declarations; a clean container must install them too.
+  "sqlalchemy[asyncio]>=2.0.52,<3",
+  "asyncpg>=0.31,<1",
+  "alembic>=1.19.2,<2",
+  "pyjwt[crypto]>=2.13,<3",
+  "httpx>=0.28,<1",
 ]
 
 [tool.uv.sources]
