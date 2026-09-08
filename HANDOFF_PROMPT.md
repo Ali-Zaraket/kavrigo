@@ -12,9 +12,11 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 1. `AGENTS.md` — your brief and the non-negotiable domain rules. This is the authority.
 2. `MASTER_BUILD_SPEC.md` — the product and architecture specification.
-3. `HANDOFF.md` — the current state of play: what exists, what was deliberately deferred, the
+3. `PROGRESS.md` — the concise checkpoint, verification results and next slice.
+4. `HANDOFF.md` — the current state of play: what exists, what was deliberately deferred, the
    environment's quirks, and the traps that already cost hours to find.
-4. The most recent commit messages (`git log`). They are long on purpose and record *why*,
+5. `MACHINE_HANDOFF.md` — GitHub cloning, setup and data persistence on this machine.
+6. The most recent commit messages (`git log`). They are long on purpose and record *why*,
    including bugs found and alternatives rejected.
 
 ## Where things stand
@@ -22,10 +24,12 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 Implementation was paused on 2026-09-08 to move machines. Steps 1–10 have committed slices;
 steps 8–10 are local/mock only. Read all deferrals in `HANDOFF.md` §5 before calling a step
 complete. Latest implementation commits are `a77d1db` (gateway), `3abe65d` (news) and `c46b315`
-(runtime). No step 11 code exists. No remote has been configured or pushed.
+(runtime). No step 11 code exists. The GitHub repository is `Ali-Zaraket/kavrigo`; the
+progress/handoff update uses `codex/progress-handoff`. Verify the checked-out branch and commit
+before continuing, using the transfer instructions in `MACHINE_HANDOFF.md`.
 
 **First restore and verify the development environment using `MACHINE_HANDOFF.md`.** Docker
-images, volumes, databases and the old Python virtualenv are not in the Git bundle. Rebuild
+images, volumes, databases and the old Python virtualenv are not transferred by Git. Rebuild
 images and start fresh local databases unless a separate data migration is explicitly arranged.
 The old machine's Docker daemon became unreachable after a host disk-space incident; do not
 carry that local failure over as an application defect or claim its integration tests passed.
@@ -55,8 +59,10 @@ make up && make migrate           # local stack (ports are in a 5xxxx range — 
 make test-integration             # needs the stack; skips cleanly without it
 ```
 
-Commit each completed step separately, with a message that explains the reasoning and names
-anything you deferred.
+Commit each completed step separately on a `codex/` work branch, with a message that explains
+the reasoning and names anything you deferred. Update `PROGRESS.md` and the relevant handoff
+documents with the actual checks and remaining work. Follow `CONTRIBUTING.md`: push authorized
+work branches and use pull requests for `main`.
 
 ## Things that will get you into trouble
 

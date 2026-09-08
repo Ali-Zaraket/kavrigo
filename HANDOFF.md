@@ -10,6 +10,7 @@ left undone, and the things that already cost someone an hour to discover.
 no step 11 code was written. Start with [MACHINE_HANDOFF.md](MACHINE_HANDOFF.md) for transfer,
 Docker persistence and setup instructions. [HANDOFF_PROMPT.md](HANDOFF_PROMPT.md) is the updated
 copy/paste prompt for the next agent. Local chat history is not needed to resume.
+See [PROGRESS.md](PROGRESS.md) for the concise checkpoint and verification ledger.
 
 ---
 
@@ -59,8 +60,9 @@ b62bfda  Bootstrap Kavrigo: contracts, local stack, and tenant control plane   (
 ```
 
 Commit messages are long on purpose — they record *why*, including bugs found and rejected
-alternatives. Read the one for the step you are extending. Nothing has been pushed; there is no
-remote yet.
+alternatives. Read the one for the step you are extending. The GitHub remote is now configured
+for [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). The progress/handoff update is
+on `codex/progress-handoff`; use the GitHub transfer instructions in `MACHINE_HANDOFF.md`.
 
 ---
 
@@ -138,8 +140,10 @@ are scoped-out work with a reason.
   migrations succeeded and all 50 integration tests passed. API, PostgreSQL, ClickHouse,
   Redpanda, Temporal and Valkey were healthy; the engine worker is a running skeleton,
   not a configured collector or Temporal workflow worker.
-- **CI has never executed.** `.github/workflows/ci.yml` has six jobs including a Postgres +
-  ClickHouse integration job. All written, none run — there is no remote.
+- **Hosted CI results are unverified at this checkpoint.** `.github/workflows/ci.yml` has six
+  jobs including a Postgres + ClickHouse integration job. The remote now exists; inspect GitHub
+  Actions for the commit being resumed. The workflow triggers on pull requests and pushes to
+  `main`, so a feature-branch push alone does not run it.
 - **Protobuf has never been generated.** `make proto` requires `protoc`, which is not installed,
   and there is no `buf.yaml`, so the CI `contracts` job degrades to a warning. The `.proto`
   files in `libs/data-contracts/` are hand-written and unvalidated by a compiler.
@@ -449,7 +453,9 @@ for security limits, exact budget semantics and official documentation reference
 Do not attempt these; flag them.
 
 - Install `uv`, `protoc`/`buf`, `gitleaks`.
-- Create the GitHub org and the five repositories; push.
+- Create the GitHub org and split the five repositories with the required access controls.
+  The bootstrap repository already has a GitHub remote; ordinary authorized branch pushes
+  do not require the organization split.
 - Provision accounts: Clerk, Temporal Cloud, Redpanda Cloud, ClickHouse Cloud, Langfuse, AWS,
   Cloudflare, Stripe, a model provider.
 - **Start commercial data-rights conversations with CoinGecko, CoinGlass and Dune.** Longest

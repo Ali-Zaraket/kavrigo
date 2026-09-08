@@ -13,6 +13,10 @@ Authoritative documents, in reading order:
 2. [`AGENTS.md`](AGENTS.md) — engineering agent brief and non-negotiable domain rules.
 3. [`docs/adr/`](docs/adr/) — architecture decision records.
 
+For continuing work, start with [`PROGRESS.md`](PROGRESS.md), then the detailed
+[`HANDOFF.md`](HANDOFF.md). [`MACHINE_HANDOFF.md`](MACHINE_HANDOFF.md) explains how to clone
+and set up another machine; [`HANDOFF_PROMPT.md`](HANDOFF_PROMPT.md) supplies the next-task prompt.
+
 ## Launch mode
 
 ```text
@@ -44,10 +48,11 @@ are mirrored as top-level directories until the GitHub organization exists. The 
 
 ## Quick start
 
-Requires Docker, and [uv](https://docs.astral.sh/uv/) for Python.
+Requires Git, Make, Python 3.13 and Docker with Compose v2.
+[uv](https://docs.astral.sh/uv/) is preferred; `make setup` falls back to venv/pip if unavailable.
 
 ```bash
-make setup             # create the uv virtualenv and install workspace packages
+make setup             # create the virtualenv and install workspace packages
 make up                # start Postgres, Redpanda, ClickHouse, Temporal, Valkey, API, worker
 make migrate           # apply database migrations
 make test              # unit + property tests (no docker stack, no provider keys required)
@@ -61,20 +66,12 @@ No external data provider, exchange credential, or model API key is required to 
 
 ## Current status
 
-Phase 0 (foundation) of `MASTER_BUILD_SPEC.md` §59. Implemented so far:
+Committed slices cover steps 1–10 of `AGENTS.md`, through the local/mock model gateway,
+synthetic news intelligence and agent runtime. Risk evaluation, the paper broker, Temporal
+workflows and the product UI remain pending; the end-to-end paper milestone is not complete.
+The backtest engine still needs strategy/data wiring and a meaningful BTC/ETH fixture run.
 
-- repository bootstrap, ADRs, threat-model template, CI skeleton, secret scanning;
-- typed domain contracts (`kavrigo-engine/libs/domain`) and Protobuf stream contracts;
-- local development stack;
-- auth and tenant control plane: identity abstraction, workspaces and memberships, role and
-  MFA-gated permissions, PostgreSQL row-level security, agent CRUD with immutable versioning,
-  idempotent mutations and an append-only audit trail;
-- market-data adapters for two venues, normalization, stream-health detection, replay, and the
-  ingestion pipeline with a ClickHouse sink — a live WebSocket transport is not yet connected;
-- a deterministic, versioned, point-in-time feature engine;
-- backtest contracts — dataset manifests with leakage refusal, cost/slippage/latency models,
-  evaluation metrics and the reproducibility bundle — with a NautilusTrader adapter behind them.
-
-Not yet implemented: model gateway, news intelligence, agent runtime, risk engine, paper broker,
-Temporal workflows, web UI. The backtest engine has no strategy layer yet, so runs report zero
-decisions rather than results.
+The latest implementation checkpoint passed 680 tests with 50 database integrations skipped
+because the source Docker daemon was unreachable. Verify the full stack on the destination
+machine before resuming step 11. See [`PROGRESS.md`](PROGRESS.md) for commit references,
+recorded validation, completed slices and remaining work.
