@@ -1,6 +1,6 @@
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-09 · **Latest implementation:** `97c4d60` · **Position:** slices through step 11 (steps 8–11 local/mock only) · **Next:** step 12 paper broker
+**Updated:** 2026-09-09 · **Latest implementation:** `5fc9234` · **Position:** slices through step 12 (steps 8–12 local/mock only) · **Next:** step 13 durable workflows/account recovery
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
@@ -8,7 +8,8 @@ left undone, and the things that already cost someone an hour to discover.
 
 **Resumed on the Windows destination after the 2026-09-08 transfer.** The baseline passed
 730 tests with all 50 integrations before step 11 began; the risk slice passed 806 with no
-skips. [MACHINE_HANDOFF.md](MACHINE_HANDOFF.md) records Docker-based verification with Python
+skips; the paper slice passed **847 with no skips**, including all 50 integrations.
+[MACHINE_HANDOFF.md](MACHINE_HANDOFF.md) records Docker-based verification with Python
 3.13.11 because this host has no Python 3.13 virtualenv. [HANDOFF_PROMPT.md](HANDOFF_PROMPT.md)
 is the next-agent prompt. Local chat history is not needed to resume.
 See [PROGRESS.md](PROGRESS.md) for the concise checkpoint and verification ledger.
@@ -33,8 +34,8 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 9 | News intelligence | local synthetic-feed slice done — see §5 |
 | 10 | Agent runtime | local decision/allocation slice; destination stack verified — see §5 |
 | 11 | Risk engine | local deterministic session, retained reservations and one-time handoff — see §5 |
-| 12 | Paper broker | **← next** |
-| 13 | Temporal workflows | not started |
+| 12 | Paper broker | local single-generation ledger, IOC fills and reconciliation/replay — see §5 |
+| 13 | Temporal workflows | **← next**, with durable account recovery |
 | 14 | Product UI | not started — has a **specific tooling instruction**, see §7 |
 | 15 | Observability / evals | not started |
 
@@ -50,6 +51,7 @@ The milestone all of this is aimed at (`AGENTS.md`, last line):
 ## 2. Commits so far
 
 ```text
+5fc9234  Paper broker: simulate exact IOC fills and reconcile recorded receipts (step 12)
 97c4d60  Risk engine: enforce deterministic paper limits and reserve approvals (step 11)
 c46b315  Agent runtime: freeze analysis, bind decisions and bound portfolio proposals (step 10)
 3abe65d  News intelligence: freeze supported extraction with service-owned provenance (step 9)
@@ -88,6 +90,7 @@ kavrigo-engine/
   services/news-intelligence/ synthetic feeds, exact dedupe, validated extraction, frozen evidence
   services/agent-runtime/    scanner, frozen contexts, analysis, unapproved portfolio allocations
   services/risk-engine/      deterministic policy, exact sizing, local reservations and paper permit
+  services/paper-broker/     local exact ledger, synthetic fills and replay reconciliation
   services/engine-worker/   skeleton; remaining services land here
 kavrigo-platform/
   services/api/             FastAPI control plane + Alembic migrations
@@ -95,7 +98,7 @@ kavrigo-platform/
 kavrigo-execution-security/ BOUNDARY PLACEHOLDER — must stay empty, see §6
 kavrigo-infra/local/        docker compose stack, Dockerfiles, DB bootstrap
 kavrigo-research/           empty
-docs/adr/                   25 ADRs (0001–0025) + template + index
+docs/adr/                   26 ADRs (0001–0026) + template + index
 ```
 
 ---
@@ -112,7 +115,7 @@ machine, so the whole stack was remapped. Container-internal ports are unchanged
 | Redpanda Kafka | 59092 |
 | Valkey | 56379 |
 | Temporal | 57233 (UI 58233) |
-| API | 58000 |
+| API | 58000 default; destination uses **58300** via `KAVRIGO_API_HOST_PORT` |
 
 **Two PostgreSQL roles, and the split is load-bearing.** `kavrigo` owns the schema and runs
 migrations; `kavrigo_app` is what the application connects as — not a superuser, not the table
@@ -250,7 +253,8 @@ are scoped-out work with a reason.
   marks/reconciliation block allocation; fills must precede reuse of sale proceeds.
 - **Allocations are inert proposals.** No OrderIntent, RiskEvaluation, approval, order or fill is
   constructed by the runtime. Step 11 now provides independent deterministic risk; step 12
-  still needs to authenticate and enforce its recorded issuance.
+  consumes its actual recorded issuance and enforces ceilings locally. Deployed authentication
+  and durable ownership remain open.
 - **Model orchestration remains scripted.** No vendor SDK/tool loop. One configured horizon per
   evaluation; workflow scheduling/trigger delivery is step 13. Runtime and gateway budgets and
   idempotency are bounded in one process, not durable/distributed scheduling or billing.
@@ -289,19 +293,45 @@ are scoped-out work with a reason.
   precision rejects. Because positions lack agent attribution, all registered policies apply
   to the account (at most 16 distinct policies); upper scopes must agree. Network groups,
   mark prices, liquidity, fees and calendar observations are trusted local configuration.
-- **The paper broker must enforce the permit.** Only session handoff returns a one-time
-  `PaperRiskPermit`, after freshness, control, expiry and fencing rechecks. The future consumer
-  must authenticate issuance and enforce quantity/cash ceilings and client-order idempotency.
+- **The paper broker enforces the permit locally.** Only session handoff returns a one-time
+  `PaperRiskPermit`, after freshness, control, expiry and fencing rechecks. Step 12 consumes
+  actual issuance with immutable execution assumptions, ceilings and client-order idempotency.
+  It holds the risk guard through matching. A deployed consumer still needs authenticated issuance.
   A constructed Pydantic approval or matching hash does not authenticate the issuer.
 - **Reservations never release here.** Expiry, handed-off commands, unknown acknowledgement
   and capacity pressure retain reservations. No unfilled sale proceeds fund a buy. Partial
-  fills, crash recovery, unknown fills, cancellation and safe release require the canonical
-  broker ledger and reconciliation in steps 12–13; they cannot be claimed as execution tests.
+  fills, unknown fills and broker-view recovery are tested locally in step 12. Process restart
+  and safe risk release still require the durable ledger and ownership in step 13.
 - **Independent review is pending.** Author threat review and local property/replay tests
   passed; independent security/CODEOWNERS and human approval are required before deployment.
   No provider adapter, private credential, live order or execution-security code was added.
   Details: [ADR 0025](docs/adr/0025-local-deterministic-risk.md),
   [behavior](docs/product/deterministic-risk.md), [threat model](docs/threat-model/deterministic-risk.md).
+
+### From step 12 — paper broker
+
+- **One local batch generation.** `LocalPaperVenue` owns the journal and receives permits from
+  the actual risk object; `LocalPaperBroker` is a separate projection. New orders are refused
+  after the first eligible matching attempt. Risk reservations are retained; no reset/reseed
+  or release exists. No API, durable store, deployed worker or continuous trading is implied.
+- **Honest recovery boundary.** A disconnected view is unreconciled and cannot submit. Replay
+  discovers missed fills and a new broker can recover over the same live venue object. A full
+  process restart loses authority. Failure between risk issuance and journal commit can strand
+  a retained reservation; do not retry issuance or create a fresh session to regain capacity.
+- **Synthetic execution assumptions.** USD spot MARKET/IOC, finite depth shared in submission
+  order, latency, adverse tick-rounded slippage and taker fees. Partial IOC remainders cancel.
+  Cash/quantity/notional ceilings use 12-place integer accounting; basis is authoritative and
+  rounded averages are projections. Books are synthetic internal contracts, not provider fields.
+- **Bounded historical artifacts.** Hashes bind initial config/account, commands and result
+  states. Up to 1,000 commands and 10 MB per artifact, checked before commit; no dedupe eviction.
+  Imports only replay history; they never authenticate execution. Workspace checks and Python
+  locks protect trusted local operations, not remote tenants or competing service processes.
+- **Durable work remains.** Step 13 needs transactional PostgreSQL receipts/idempotency,
+  audit/outbox, serialized account fencing, safe risk generation transitions and Temporal
+  recovery/supervision. RLS/API authorization, persistent event publishing and independent review
+  precede deployment. Existing Nautilus strategy/data and UI deferrals remain unchanged.
+  Details: [ADR 0026](docs/adr/0026-local-paper-broker.md),
+  [behavior](docs/product/paper-broker.md), [threat model](docs/threat-model/paper-broker.md).
 
 ### Cross-cutting
 
@@ -393,6 +423,14 @@ guard passed on 105 source files. Both Compose images rebuilt, health checks pas
 Alembic upgrade succeeded. Exact commands are in MACHINE_HANDOFF.md; local log files in
 `.local/` are ignored and do not transfer. Hosted CI and independent review are separate.
 
+Step 12 `5fc9234`: ruff check/format **232 files**, strict mypy **110 sources**, full pytest
+**847 passed, zero skips** (15.52s), dedicated integrations **50 passed / 797 deselected**
+(6.28s). Paper/risk tests: **117 passed** (41 paper + 76 risk), **94% paper coverage**
+(559 statements, 33 missed). Monetary AST guard passed on 110 sources. Compose config,
+both image rebuilds, health wait, Alembic upgrade and API `/healthz` passed. Windows excluded
+TCP ports 57976–58075 after Docker restart; set `KAVRIGO_API_HOST_PORT=58300` for Compose on
+this destination. The user restarted Desktop; no reset, pruning or volume deletion was done.
+
 Historical source results remain in PROGRESS.md: step 10's 680 passes/50 skips did not verify
 its databases; step 9's 676 passes included integrations. `make typecheck` and CI discover
 all source packages; `make setup` installs every workspace package and the `httpx2` dev dependency.
@@ -445,21 +483,25 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task — step 12, paper broker
+## 10. Your next task — step 13, durable workflows and account recovery
 
-Implement canonical paper order state, fills, cash/positions, fees, P&L and replay, following
-the master specification and the existing order/portfolio contracts. Read ADR 0025 and the
-risk behavior/threat model first. Risk owns approval; no model/runtime field grants execution.
-Consume authenticated recorded risk issuance through `PaperRiskPermit`, enforcing its exact
-quantity/cash ceilings, expiry, workspace/account, client-order idempotency and fencing.
+Implement AgentEvaluationWorkflow, BacktestWorkflow, DataHealthWorkflow and paper
+reconciliation/supervision. Read ADRs 0025–0026 and the risk/paper behavior and threat models.
+Inspect current Temporal official SDK documentation; use the local dev server for tests and
+keep Temporal Cloud provisioning separate. Do not put every market tick into Temporal.
 
-Choose and document the authoritative ledger/reconciliation boundary before wiring broker
-state back into risk. Do not reset a session from a stale portfolio to regain capacity or
-release on an ambiguous timeout. Replays must cover duplicates, partial/out-of-order fills,
-reconnect, rejection, stale data, lease expiry, crash after submission, and an unknown fill
-found by reconciliation. Keep step 13 durable workflow work explicit. The first meaningful
-BTC/ETH backtest still requires Nautilus strategy/data wiring; flat zero-decision runs do not
-satisfy it. Commit this next slice separately and retain all §5 deferrals.
+Define durable PostgreSQL account ownership/fencing, receipts/idempotency and audit/outbox
+contracts before wiring continuous paper operation. Preserve the pure deterministic ledger
+kernel while replacing in-memory authority with transactional state. Risk refresh/release
+must use reconciled canonical state and durable receipts. A workflow retry must retrieve a
+recorded outcome, never duplicate issuance or reset an ambiguous command's reservation.
+
+Cover workflow replay/retry, worker/process crash after submit before acknowledgement,
+expired leadership, duplicate commands, unknown fills and recovery with database-backed
+integration tests. Broker-view recovery over an existing Python object does not establish
+process-restart durability. Register versioned inputs and retain freeze/freshness semantics.
+The first meaningful BTC/ETH backtest still needs Nautilus strategy/data wiring; flat
+zero-decision runs do not satisfy it. Commit the slice separately and retain all §5 deferrals.
 
 Step 10 is in `services/agent-runtime`. `EvaluationResult` contains server-bound AgentDecision
 objects, actual model-call records (including cancellation), policy/input hashes and inert

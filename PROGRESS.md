@@ -1,8 +1,8 @@
 # Kavrigo progress
 
-**Updated:** 2026-09-09. **Latest implementation:** `97c4d60` (step 11 local risk).
+**Updated:** 2026-09-09. **Latest implementation:** `5fc9234` (step 12 local paper broker).
 **Starting checkpoint:** `de77742`. **Current branch:** `main` (user-directed workflow).
-**Next:** step 12 paper broker; independent review of risk remains pending.
+**Next:** step 13 durable workflows/account recovery; independent security review remains pending.
 
 [MASTER_BUILD_SPEC.md](MASTER_BUILD_SPEC.md) and [AGENTS.md](AGENTS.md) are authoritative.
 [HANDOFF.md](HANDOFF.md) records detailed limits; [MACHINE_HANDOFF.md](MACHINE_HANDOFF.md)
@@ -10,16 +10,19 @@ covers setup/persistence; [HANDOFF_PROMPT.md](HANDOFF_PROMPT.md) is the continua
 
 ## Current outcome
 
-Slices through step 11 are implemented, with steps 8–11 local/mock only. The Windows
+Slices through step 12 are implemented, with steps 8–12 local/mock only. The Windows
 destination was rebuilt with fresh local databases and the baseline passed before new work.
 Deterministic risk now binds frozen decisions/allocations, checks policy independently, sizes
 with exact fixed point, reserves resources across agents and permits one-time paper handoff
-after freshness/control/fencing rechecks. No broker or venue receives orders yet.
+after freshness/control/fencing rechecks. The local paper broker now receives actual risk
+issuance, simulates finite-depth IOC fills, accounts for cash/basis/fees/P&L, and reconciles
+missed fills by replaying a bounded journal. The mock model → runtime → risk → paper path is tested.
 
-The full paper product milestone is **not achieved**. Risk is an in-memory account session.
-Durable reservations/audit, canonical paper orders/fills, reconciliation, workflows,
+The full paper product milestone is **not achieved**. Risk and paper authority are in memory,
+limited to one batch generation with retained risk reservations. Durable reservations/audit,
+process-restart recovery, continuous operation, workflows,
 meaningful backtest strategy/data wiring and UI remain open. See
-[ADR 0025](docs/adr/0025-local-deterministic-risk.md) and [risk behavior](docs/product/deterministic-risk.md).
+[ADR 0026](docs/adr/0026-local-paper-broker.md) and [paper behavior](docs/product/paper-broker.md).
 
 ## Build sequence
 
@@ -36,8 +39,8 @@ meaningful backtest strategy/data wiring and UI remain open. See
 | 9. News intelligence | Local synthetic feed | No live/durable collector |
 | 10. Agent runtime | Local decisions/allocations | No deployed worker |
 | 11. Risk engine | Local deterministic session | Shared reservations, exact sizing, one-time permit; durable operation/review pending |
-| 12. Paper broker | Next | Orders, fills, cash/positions, fees, P&L, reconciliation/replay |
-| 13. Temporal | Not started | Durable workflows and paper supervision |
+| 12. Paper broker | Local batch implemented | Exact orders/fills/accounting, missed-fill reconciliation/replay; no process-restart durability |
+| 13. Temporal | Next | Durable workflows, account ownership, receipts/outbox and paper supervision |
 | 14. UI | Not started | Frontend skill requirement in HANDOFF.md §7 |
 | 15. Observability/evals | Dedicated step pending | Existing OTel/local audit; hosted export and broader golden evals pending |
 
@@ -57,6 +60,11 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | Step 11 | Risk tests with coverage | 76 passed, 94% (573 statements, 37 missed) |
 | Step 11 | Float-money AST guard; `git diff --check` | 105 sources passed; no whitespace errors |
 | Step 11 | Compose config, rebuild, health wait, Alembic upgrade | Passed; six health-checked services healthy, skeleton worker running |
+| Step 12 `5fc9234`, 2026-09-09 | Ruff check/format, mypy `--strict`, pytest | 232 formatted files, 110 typed sources; 847 passed, zero skips (15.52s) |
+| Step 12 | `pytest -m integration` | 50 passed / 797 deselected (6.28s) |
+| Step 12 | Paper/risk tests with paper coverage | 117 passed (41 paper + 76 risk), 94% paper coverage (559 statements, 33 missed) |
+| Step 12 | Float-money AST guard; `git diff --check` | 110 sources passed; no whitespace errors |
+| Step 12 | Compose config, both image rebuilds, health wait, Alembic upgrade, API health | Passed; API uses host 58300 because Windows excluded 58000 |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -66,10 +74,12 @@ pull-request workflow lookup for `de77742` returned no runs, which was not a CI 
 
 ## Next slice and safety
 
-Follow [HANDOFF.md §10](HANDOFF.md#10-your-next-task--step-12-paper-broker) for the paper broker.
-Define authoritative ledger/reconciliation before releasing reservations; authenticate risk
-issuance and enforce cash/quantity ceilings, expiry, fencing and client-order idempotency.
-Add duplicate, partial/out-of-order fill, reconnect and crash replay tests. Retain all deferrals.
+Follow [HANDOFF.md §10](HANDOFF.md#10-your-next-task--step-13-durable-workflows-and-account-recovery).
+Define durable PostgreSQL ownership, receipts/idempotency, audit/outbox and safe risk generation
+transitions before continuous operation. Implement Temporal evaluation/backtest/data-health and
+paper supervision workflows. Preserve unknown acknowledgement handling; never reset risk from
+a stale portfolio. Existing replay restores a broker view over the same live simulator only.
+Retain all earlier deferrals.
 
 Keep `LIVE_TRADING_ENABLED=false` and `DEFAULT_TRADING_MODE=paper`; no exchange credentials
 or execution-security code. Risk supports USD spot MARKET/IOC paper/backtest, 12 fractional

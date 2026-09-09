@@ -66,14 +66,14 @@ No external data provider, exchange credential, or model API key is required to 
 
 ## Current status
 
-Committed slices cover steps 1–11 of `AGENTS.md`, through the local/mock model gateway,
-synthetic news intelligence, agent runtime and deterministic risk session. Risk independently
-checks policy and reserves approvals with one-time paper handoff; its in-memory ledger is
-local-only. The paper broker, Temporal workflows and product UI remain pending, so the
-end-to-end paper milestone is not complete.
+Committed slices cover steps 1–12 of `AGENTS.md`, through the local/mock model gateway,
+synthetic news intelligence, agent runtime, deterministic risk and paper broker. The broker
+models exact IOC fills, fees, cash/positions and P&L, with idempotent receipts and journal
+reconciliation. It is a bounded local batch; process-restart durability, continuous operation,
+Temporal workflows and the product UI remain pending. The end-to-end paper milestone is not complete.
 The backtest engine still needs strategy/data wiring and a meaningful BTC/ETH fixture run.
 
-The destination checkpoint passed 806 tests with zero skips, plus a dedicated run of all 50
-database integrations. Lint, strict typing, image rebuilds and migrations passed. Step 12 is
+The destination checkpoint passed 847 tests with zero skips, plus a dedicated run of all 50
+database integrations. Lint, strict typing, image rebuilds and migrations passed. Step 13 is
 next; independent risk/security review and durable operation remain pending. See
 [`PROGRESS.md`](PROGRESS.md) for commit references, recorded validation and remaining work.

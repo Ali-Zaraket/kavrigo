@@ -22,29 +22,33 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 ## Where things stand
 
 The Windows destination baseline `de77742` was restored and verified before step 11.
-Latest implementation is `97c4d60`, now included on `main`: local deterministic risk
-evaluation, exact sizing, shared reservations, reason codes and one-time paper permit handoff.
-Read ADR 0025 and all deferrals in HANDOFF.md §5. Steps 8–11 remain local/mock only; there is
-no deployed risk service, paper broker or live execution. Independent security review is pending.
+Latest implementation is `5fc9234`, on `main`: local paper orders/fills, exact cash/basis/fees/P&L,
+issued-risk guards, idempotent receipts and replay reconciliation. Read ADRs 0025–0026 and all
+deferrals in HANDOFF.md §5. Steps 8–12 remain local/mock only. Paper is a single-generation
+batch; there is no deployed risk/paper service, continuous operation or process-restart
+durability. Independent security review is pending; no live execution exists.
 
-Docker Python 3.13.11 checks passed: **806 tests, zero skips**, ruff check/format on 219 files,
-mypy `--strict` on 105 sources; dedicated integrations **50 passed / 756 deselected**.
-Both service images rebuilt, stack health and Alembic upgrade passed. Risk-only coverage is
-94% across 76 tests. See MACHINE_HANDOFF.md for exact commands and current Docker status.
+Docker Python 3.13.11 checks passed: **847 tests, zero skips**, ruff check/format on 232 files,
+mypy `--strict` on 110 sources; dedicated integrations **50 passed / 797 deselected**.
+Both service images rebuilt, stack/API health and Alembic upgrade passed. Paper/risk tests
+passed 117 (41 paper + 76 risk), with 94% paper coverage. Docker recovered after the user's
+restart; use `$env:KAVRIGO_API_HOST_PORT='58300'` in PowerShell because Windows reserved 58000.
+See MACHINE_HANDOFF.md for exact commands and current Docker status.
 No host Python 3.13 venv or tool installation was performed. Verify branch/commit and the
 current stack before work; preserve existing destination volumes rather than reinitializing them.
 
-**Implement step 12: paper broker**, following HANDOFF.md §10. Define canonical order/fill,
-cash/position, fee and P&L state with idempotency and reconciliation. Authenticate risk issuance
-and enforce permit ceilings, expiry and fencing. Never release reservations after an ambiguous
-handoff or rebuild a risk session from a stale portfolio. Test duplicates, partial/out-of-order
-fills, reconnect and crashes. Keep durable workflow work explicit for step 13 and retain the
-pending meaningful Nautilus BTC/ETH strategy/data wiring.
+**Implement step 13: durable workflows and account recovery**, following HANDOFF.md §10.
+Define PostgreSQL ownership/fencing, receipts/idempotency, audit/outbox and safe risk generation
+transitions before enabling continuous operation. Add Temporal evaluation, backtest, data-health
+and paper supervision workflows using the local dev server. Never release reservations after
+an ambiguous handoff or rebuild a risk session from a stale portfolio. Test actual durable
+worker/process recovery; existing replay only restores broker views over the same live venue.
+Retain the pending meaningful Nautilus BTC/ETH strategy/data wiring and all earlier deferrals.
 
 Continue in order and commit each slice separately on `main`, as the user requested on
 2026-09-09. Use ordinary non-force pushes; the prior work-branch/PR requirement is superseded.
 Independent risk/security review remains required before deployment. Do not restart
-steps 8–11. Step 14's frontend skill requirement remains in HANDOFF.md §7.
+steps 8–12. Step 14's frontend skill requirement remains in HANDOFF.md §7.
 
 ## How to work
 
