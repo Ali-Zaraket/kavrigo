@@ -3,7 +3,7 @@
 ## Before you change anything
 
 1. Read `MASTER_BUILD_SPEC.md` and `AGENTS.md`.
-2. State which requirement or ADR you are implementing in the pull request.
+2. State which requirement or ADR you are implementing in the commit or pull request.
 3. Inspect existing contracts before adding new ones.
 4. Verify external API/library behaviour against current official documentation. Do not invent
    provider fields or endpoints; use mocks until credentials exist.
@@ -43,11 +43,14 @@ uv run pre-commit install
 
 ## Commit and branch rules
 
-- Small, auditable pull requests.
-- Branch protection on `main`; no direct pushes.
+- Current bootstrap workflow, explicitly requested by the user on 2026-09-09: work on
+  `main`, commit each completed slice separately, and use ordinary non-force pushes.
+  This supersedes the earlier work-branch/PR workflow for this repository. Do not change
+  remote branch protections or bypass a server-side rejection.
+- Keep commits small and auditable. Use pull requests when separately requested.
 - Changes to risk, execution, credentials, auth, billing entitlements, tenant isolation or
   schema migrations require the stricter reviewers listed in `CODEOWNERS`.
-- Architecture changes require an ADR (`docs/adr/0000-template.md`) merged with the change.
+- Architecture changes require an ADR (`docs/adr/0000-template.md`) committed with the change.
 
 ## Things that are never acceptable
 

@@ -8,7 +8,10 @@ No account memory or previous chat is required. No background build is intended 
 
 - Latest implementation: `97c4d60` (step 11); starting destination checkpoint: `de77742`.
 - GitHub repository: [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo).
-  Current work branch: `codex/deterministic-risk`, based on `main` at `de77742`.
+  Current branch: `main`, fast-forwarded through `a1e0ecf` at the user's 2026-09-09 request.
+  Continue directly on main with separate slice commits and ordinary non-force pushes.
+  The previous work-branch/PR instruction is superseded; independent review before deployment
+  remains required. `codex/deterministic-risk` is retained as a published prior checkpoint.
 - Step 8: `a77d1db`, provider-neutral model gateway with local mock calls, exact budgets,
   structured validation and metadata traces. No paid provider adapter.
 - Step 9: `3abe65d`, synthetic news feeds, dedupe, injection-aware extraction and frozen evidence.
@@ -27,15 +30,14 @@ No account memory or previous chat is required. No background build is intended 
 Use a GitHub identity with access to the repository. On the destination machine:
 
 ```bash
-git clone --branch codex/deterministic-risk https://github.com/Ali-Zaraket/kavrigo.git
+git clone --branch main https://github.com/Ali-Zaraket/kavrigo.git
 cd kavrigo
 git status --short --branch
 git log -5 --oneline
 ```
 
-If the handoff branch has since been merged and deleted, clone the default branch instead and
-confirm `PROGRESS.md` contains this checkpoint. For an existing clone, first commit or otherwise
-preserve any local work, then fetch and switch to the published handoff branch. Open that folder
+Confirm `PROGRESS.md` contains this checkpoint. For an existing clone, first commit or otherwise
+preserve any local work, then fetch and switch to `main` and pull with `--ff-only`. Open that folder
 as a local project in Codex and read `HANDOFF_PROMPT.md`.
 
 The source machine's remote uses the local SSH alias `github.com-personal`. That alias is not
@@ -66,7 +68,8 @@ mistaking it for a hosted repository. To obtain newer committed handoff updates 
 ```bash
 git remote add origin https://github.com/Ali-Zaraket/kavrigo.git
 git fetch origin
-git switch --track origin/codex/deterministic-risk
+git switch main
+git merge --ff-only origin/main
 ```
 
 Older archives predate `PROGRESS.md` and these GitHub instructions. GitHub is the source for
@@ -172,11 +175,11 @@ Docker command behavior was checked against the installed CLI and official
 ## Switching machines after setup
 
 Before leaving a machine, review `git status --short --branch`, update the progress/handoff
-documents with actual results and remaining work, then commit the intended files on a
-`codex/` work branch. Push that branch using `git push -u origin HEAD` on its first push.
-Follow [CONTRIBUTING.md](CONTRIBUTING.md): changes reach `main` through a pull request.
+documents with actual results and remaining work, then commit the intended files on `main`.
+Push with `git push origin main` and verify its remote SHA. Follow the current user-directed
+workflow in [CONTRIBUTING.md](CONTRIBUTING.md); preserve server-side branch protections.
 
-On the other machine, preserve any local changes, fetch, switch to the same work branch and
+On the other machine, preserve any local changes, fetch, switch to `main` and
 run `git pull --ff-only`. Compare `git log -1 --oneline` with the source machine's pushed
 commit, then read `PROGRESS.md` before continuing. If the branches diverged, reconcile the
 changes explicitly; do not force-push or discard work to make the machines match.

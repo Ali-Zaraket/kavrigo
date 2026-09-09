@@ -63,8 +63,10 @@ b62bfda  Bootstrap Kavrigo: contracts, local stack, and tenant control plane   (
 
 Commit messages are long on purpose — they record *why*, including bugs found and rejected
 alternatives. Read the one for the step you are extending. The GitHub remote is now configured
-for [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). The progress/handoff update is
-on `codex/deterministic-risk`; use the GitHub transfer instructions in `MACHINE_HANDOFF.md`.
+for [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). The user requested work directly
+on `main` on 2026-09-09; it was fast-forwarded through `a1e0ecf`. Continue there with separate
+slice commits and ordinary non-force pushes. This supersedes the previous work-branch/PR
+instruction; independent security review still precedes deployment. See MACHINE_HANDOFF.md.
 
 ---
 

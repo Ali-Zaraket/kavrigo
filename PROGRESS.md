@@ -1,7 +1,7 @@
 # Kavrigo progress
 
 **Updated:** 2026-09-09. **Latest implementation:** `97c4d60` (step 11 local risk).
-**Starting checkpoint:** `de77742`. **Work branch:** `codex/deterministic-risk`.
+**Starting checkpoint:** `de77742`. **Current branch:** `main` (user-directed workflow).
 **Next:** step 12 paper broker; independent review of risk remains pending.
 
 [MASTER_BUILD_SPEC.md](MASTER_BUILD_SPEC.md) and [AGENTS.md](AGENTS.md) are authoritative.
@@ -77,7 +77,10 @@ places, a conservative account-wide policy union and no reservation release/rese
 Git transfers tracked source, not volumes, databases, venvs, ignored data or credentials.
 Provider rights, hosted accounts, jurisdiction, domain and trademark decisions remain open.
 
-Repository: [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). Publish
-`codex/deterministic-risk` through a PR; independent review is pending and `main` is unchanged.
+Repository: [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). On 2026-09-09 the user
+requested normal work on `main`. Main was fast-forwarded through `a1e0ecf`, preserving both
+step 11 commits. Continue on `main` with ordinary non-force pushes; no PR is required for this
+user-directed bootstrap workflow. Independent risk/security review remains pending before
+deployment. The published `codex/deterministic-risk` branch is retained as a prior checkpoint.
 Update actual commits/checks at each slice and verify the remote after pushing. Never promote
 historical results or skipped integrations into verification of newer code.

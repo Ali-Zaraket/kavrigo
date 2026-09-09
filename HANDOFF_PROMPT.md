@@ -22,7 +22,7 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 ## Where things stand
 
 The Windows destination baseline `de77742` was restored and verified before step 11.
-Latest implementation is `97c4d60` on `codex/deterministic-risk`: local deterministic risk
+Latest implementation is `97c4d60`, now included on `main`: local deterministic risk
 evaluation, exact sizing, shared reservations, reason codes and one-time paper permit handoff.
 Read ADR 0025 and all deferrals in HANDOFF.md §5. Steps 8–11 remain local/mock only; there is
 no deployed risk service, paper broker or live execution. Independent security review is pending.
@@ -41,7 +41,9 @@ handoff or rebuild a risk session from a stale portfolio. Test duplicates, parti
 fills, reconnect and crashes. Keep durable workflow work explicit for step 13 and retain the
 pending meaningful Nautilus BTC/ETH strategy/data wiring.
 
-Continue in order, commit each slice separately and use a PR for `main`. Do not restart
+Continue in order and commit each slice separately on `main`, as the user requested on
+2026-09-09. Use ordinary non-force pushes; the prior work-branch/PR requirement is superseded.
+Independent risk/security review remains required before deployment. Do not restart
 steps 8–11. Step 14's frontend skill requirement remains in HANDOFF.md §7.
 
 ## How to work
@@ -60,10 +62,10 @@ make up && make migrate           # local stack (ports are in a 5xxxx range — 
 make test-integration             # needs the stack; skips cleanly without it
 ```
 
-Commit each completed step separately on a `codex/` work branch, with a message that explains
+Commit each completed step separately on `main`, with a message that explains
 the reasoning and names anything you deferred. Update `PROGRESS.md` and the relevant handoff
-documents with the actual checks and remaining work. Follow `CONTRIBUTING.md`: push authorized
-work branches and use pull requests for `main`.
+documents with the actual checks and remaining work. Follow the current user-directed workflow
+in `CONTRIBUTING.md`; do not force-push or bypass remote branch protections.
 
 ## Things that will get you into trouble
 
