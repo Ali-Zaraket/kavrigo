@@ -66,12 +66,14 @@ No external data provider, exchange credential, or model API key is required to 
 
 ## Current status
 
-Committed slices cover steps 1–10 of `AGENTS.md`, through the local/mock model gateway,
-synthetic news intelligence and agent runtime. Risk evaluation, the paper broker, Temporal
-workflows and the product UI remain pending; the end-to-end paper milestone is not complete.
+Committed slices cover steps 1–11 of `AGENTS.md`, through the local/mock model gateway,
+synthetic news intelligence, agent runtime and deterministic risk session. Risk independently
+checks policy and reserves approvals with one-time paper handoff; its in-memory ledger is
+local-only. The paper broker, Temporal workflows and product UI remain pending, so the
+end-to-end paper milestone is not complete.
 The backtest engine still needs strategy/data wiring and a meaningful BTC/ETH fixture run.
 
-The latest implementation checkpoint passed 680 tests with 50 database integrations skipped
-because the source Docker daemon was unreachable. Verify the full stack on the destination
-machine before resuming step 11. See [`PROGRESS.md`](PROGRESS.md) for commit references,
-recorded validation, completed slices and remaining work.
+The destination checkpoint passed 806 tests with zero skips, plus a dedicated run of all 50
+database integrations. Lint, strict typing, image rebuilds and migrations passed. Step 12 is
+next; independent risk/security review and durable operation remain pending. See
+[`PROGRESS.md`](PROGRESS.md) for commit references, recorded validation and remaining work.

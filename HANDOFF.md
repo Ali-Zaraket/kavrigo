@@ -1,15 +1,16 @@
 # Kavrigo — engineering handoff
 
-**Written:** 2026-09-08 · **Position:** steps 1–10 implemented (steps 8–10 are local/mock only; step 10 stack recheck pending) · **Next:** verify the stack on the destination machine, then step 11 (risk engine)
+**Updated:** 2026-09-09 · **Latest implementation:** `97c4d60` · **Position:** slices through step 11 (steps 8–11 local/mock only) · **Next:** step 12 paper broker
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
 left undone, and the things that already cost someone an hour to discover.
 
-**Paused by the user on 2026-09-08 for a move to another machine.** Implementation is stopped;
-no step 11 code was written. Start with [MACHINE_HANDOFF.md](MACHINE_HANDOFF.md) for transfer,
-Docker persistence and setup instructions. [HANDOFF_PROMPT.md](HANDOFF_PROMPT.md) is the updated
-copy/paste prompt for the next agent. Local chat history is not needed to resume.
+**Resumed on the Windows destination after the 2026-09-08 transfer.** The baseline passed
+730 tests with all 50 integrations before step 11 began; the risk slice passed 806 with no
+skips. [MACHINE_HANDOFF.md](MACHINE_HANDOFF.md) records Docker-based verification with Python
+3.13.11 because this host has no Python 3.13 virtualenv. [HANDOFF_PROMPT.md](HANDOFF_PROMPT.md)
+is the next-agent prompt. Local chat history is not needed to resume.
 See [PROGRESS.md](PROGRESS.md) for the concise checkpoint and verification ledger.
 
 ---
@@ -30,9 +31,9 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 7 | Backtest engine | done **except the strategy layer** — see §5 |
 | 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
 | 9 | News intelligence | local synthetic-feed slice done — see §5 |
-| 10 | Agent runtime | local decision/allocation slice done; stack recheck pending — see §5 |
-| 11 | Risk engine | **← next** |
-| 12 | Paper broker | not started |
+| 10 | Agent runtime | local decision/allocation slice; destination stack verified — see §5 |
+| 11 | Risk engine | local deterministic session, retained reservations and one-time handoff — see §5 |
+| 12 | Paper broker | **← next** |
 | 13 | Temporal workflows | not started |
 | 14 | Product UI | not started — has a **specific tooling instruction**, see §7 |
 | 15 | Observability / evals | not started |
@@ -49,6 +50,7 @@ The milestone all of this is aimed at (`AGENTS.md`, last line):
 ## 2. Commits so far
 
 ```text
+97c4d60  Risk engine: enforce deterministic paper limits and reserve approvals (step 11)
 c46b315  Agent runtime: freeze analysis, bind decisions and bound portfolio proposals (step 10)
 3abe65d  News intelligence: freeze supported extraction with service-owned provenance (step 9)
 a77d1db  Model gateway: reserve budgets, validate outputs and bind recorded provenance (step 8)
@@ -62,7 +64,7 @@ b62bfda  Bootstrap Kavrigo: contracts, local stack, and tenant control plane   (
 Commit messages are long on purpose — they record *why*, including bugs found and rejected
 alternatives. Read the one for the step you are extending. The GitHub remote is now configured
 for [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). The progress/handoff update is
-on `codex/progress-handoff`; use the GitHub transfer instructions in `MACHINE_HANDOFF.md`.
+on `codex/deterministic-risk`; use the GitHub transfer instructions in `MACHINE_HANDOFF.md`.
 
 ---
 
@@ -83,6 +85,7 @@ kavrigo-engine/
   services/market-ingestion/  pipeline, envelopes, ClickHouse sink
   services/news-intelligence/ synthetic feeds, exact dedupe, validated extraction, frozen evidence
   services/agent-runtime/    scanner, frozen contexts, analysis, unapproved portfolio allocations
+  services/risk-engine/      deterministic policy, exact sizing, local reservations and paper permit
   services/engine-worker/   skeleton; remaining services land here
 kavrigo-platform/
   services/api/             FastAPI control plane + Alembic migrations
@@ -90,7 +93,7 @@ kavrigo-platform/
 kavrigo-execution-security/ BOUNDARY PLACEHOLDER — must stay empty, see §6
 kavrigo-infra/local/        docker compose stack, Dockerfiles, DB bootstrap
 kavrigo-research/           empty
-docs/adr/                   24 ADRs (0001–0024) + template + index
+docs/adr/                   25 ADRs (0001–0025) + template + index
 ```
 
 ---
@@ -117,9 +120,11 @@ one would pass the isolation tests while providing no isolation.
 **PostgreSQL 18 changed its data mount.** It wants a single mount at `/var/lib/postgresql`, not
 `/var/lib/postgresql/data`. Already fixed in the compose file; don't "correct" it back.
 
-**Tooling not installed on the dev machine:** `uv`, `protoc`, `buf`, `gitleaks`. The Python
-environment is a plain `.venv` built with `venv` + `pip`. `make setup` falls back to that
-automatically. ADR 0014 chose `uv`; installing it is a pending human action.
+**Source-machine tooling:** `uv`, `protoc`, `buf`, `gitleaks` were not installed; its `.venv`
+used `venv` + `pip`. **Windows destination:** no host Python 3.13 virtualenv was created or
+tool installed. Python 3.13.11 and uv from the repository's Linux Docker image ran the complete
+checks in an isolated container. See MACHINE_HANDOFF.md for exact commands. Host tool
+installation remains a human action; no portable dependency lock is committed.
 
 **The network on that machine is slow** (~150–300 KB/s). Docker image pulls took 20–40 minutes;
 NautilusTrader took ~2 minutes. Start long installs in the background and do other work.
@@ -242,7 +247,8 @@ are scoped-out work with a reason.
   groups are explicit configuration, not empirical correlations. Pending orders and unknown
   marks/reconciliation block allocation; fills must precede reuse of sale proceeds.
 - **Allocations are inert proposals.** No OrderIntent, RiskEvaluation, approval, order or fill is
-  constructed by the runtime. Step 11 must enforce independent deterministic risk before step 12.
+  constructed by the runtime. Step 11 now provides independent deterministic risk; step 12
+  still needs to authenticate and enforce its recorded issuance.
 - **Model orchestration remains scripted.** No vendor SDK/tool loop. One configured horizon per
   evaluation; workflow scheduling/trigger delivery is step 13. Runtime and gateway budgets and
   idempotency are bounded in one process, not durable/distributed scheduling or billing.
@@ -254,7 +260,7 @@ are scoped-out work with a reason.
   is created. Canonical Decimal hashing now avoids ambient-context rounding; old artifacts
   whose hashes relied on rounding/signed-zero formatting must be regenerated as new artifacts,
   never silently rewritten (ADR 0024).
-- **Current stack recheck is blocked by an unreachable Docker daemon.** Before this outage,
+- **Historical source-machine Docker outage, now separate from destination verification.** Before this outage,
   step 9's full stack/migrations/50 integration tests passed. During step 10, all 50 integrations
   skipped as localhost services stopped responding. Docker logs record host “no space left on
   device” errors at 2026-09-08 11:10 UTC and a graceful VM stop at 11:15 UTC. Later inspection
@@ -266,7 +272,34 @@ are scoped-out work with a reason.
   no volume deletion was requested. The later user-requested Compose image removal and system
   prune both failed with daemon-unreachable errors; nothing was deleted by those attempts.
   Container shutdown remains unverified. See MACHINE_HANDOFF.md for the cleanup commands.
-  Repeat `make up && make migrate && make test-integration` on the destination machine.
+  On the destination, equivalent Compose/migration commands and all 50 integrations passed
+  before step 11 and again after its implementation. The source incident is not an application
+  failure. See MACHINE_HANDOFF.md for the destination's verification and current setup.
+
+### From step 11 — deterministic risk
+
+- **Local account session only.** `LocalRiskSession` refuses non-local startup and owns one
+  workspace/account/frozen portfolio generation. Durable reservations, audit/outbox, HTTP/RLS
+  authorization, account ownership, state refresh and event publishing are deferred. Creating
+  a second session or restarting loses its protection; it is not a deployed risk service.
+- **Conservative policies and arithmetic.** USD spot MARKET/IOC in paper/backtest mode only;
+  12-place fixed point and input magnitude at most 10^18. Unknown state or unsupported
+  precision rejects. Because positions lack agent attribution, all registered policies apply
+  to the account (at most 16 distinct policies); upper scopes must agree. Network groups,
+  mark prices, liquidity, fees and calendar observations are trusted local configuration.
+- **The paper broker must enforce the permit.** Only session handoff returns a one-time
+  `PaperRiskPermit`, after freshness, control, expiry and fencing rechecks. The future consumer
+  must authenticate issuance and enforce quantity/cash ceilings and client-order idempotency.
+  A constructed Pydantic approval or matching hash does not authenticate the issuer.
+- **Reservations never release here.** Expiry, handed-off commands, unknown acknowledgement
+  and capacity pressure retain reservations. No unfilled sale proceeds fund a buy. Partial
+  fills, crash recovery, unknown fills, cancellation and safe release require the canonical
+  broker ledger and reconciliation in steps 12–13; they cannot be claimed as execution tests.
+- **Independent review is pending.** Author threat review and local property/replay tests
+  passed; independent security/CODEOWNERS and human approval are required before deployment.
+  No provider adapter, private credential, live order or execution-security code was added.
+  Details: [ADR 0025](docs/adr/0025-local-deterministic-risk.md),
+  [behavior](docs/product/deterministic-risk.md), [threat model](docs/threat-model/deterministic-risk.md).
 
 ### Cross-cutting
 
@@ -349,17 +382,18 @@ make up && make migrate           # local stack + database migrations
 make test-integration             # RLS, immutability, API, ClickHouse (needs the stack)
 ```
 
-Step 9 verification: **676 tests passed** including all 50 integrations; both images rebuilt
-and six health-checked services were healthy. Step 10's latest provider-free suite passes
-**680 tests** (`pytest -m 'not integration'`), with ruff/format clean on **206 files** and
-mypy `--strict` clean on **99 source files**. Final step 10 `make check` passed **680 tests
-and skipped 50 integration tests** because Docker services were unreachable (70.81 seconds).
-`make up` stalled at the unavailable engine and was cancelled; its chained migrate/integration
-commands did not execute. Docker Desktop was subsequently force-restarted with user approval,
-but its daemon remained unreachable; stack recheck remains pending. Do not describe skipped
-database tests as integration verification. `make typecheck` and CI discover all Python
-source packages; `make setup` installs every workspace package, including Starlette TestClient's
-`httpx2` dev dependency.
+Destination verification on 2026-09-09 used the equivalent Python commands in Docker (host
+Python 3.13 is unavailable). At baseline `de77742`: **730 passed, zero skips**, plus **50
+integration passes**. Step 11 `97c4d60`: ruff check/format **219 files**, mypy `--strict`
+**105 source files**, pytest **806 passed, zero skips** in 14.43s, dedicated integration
+**50 passed, 756 deselected** in 5.76s. Risk-only coverage: **76 passed, 94%**. Float-money AST
+guard passed on 105 source files. Both Compose images rebuilt, health checks passed and
+Alembic upgrade succeeded. Exact commands are in MACHINE_HANDOFF.md; local log files in
+`.local/` are ignored and do not transfer. Hosted CI and independent review are separate.
+
+Historical source results remain in PROGRESS.md: step 10's 680 passes/50 skips did not verify
+its databases; step 9's 676 passes included integrations. `make typecheck` and CI discover
+all source packages; `make setup` installs every workspace package and the `httpx2` dev dependency.
 
 Integration tests **skip cleanly** when Postgres or ClickHouse is unreachable, so `make test`
 works with nothing but Python. They must never require an external provider key — the CI
@@ -409,13 +443,21 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task — step 11, deterministic risk
+## 10. Your next task — step 12, paper broker
 
-Implement deterministic policy evaluation and reason codes, then prove with property tests:
-rejected intents cannot reach execution, limits cannot be exceeded, stale data rejects, and
-idempotent duplicates cannot produce another submission. Inspect `RiskPolicy`, `RiskLimits`,
-`RiskEvaluation`, `OrderIntent`, `ApprovedOrderIntent`, portfolio and freshness contracts first.
-Risk owns approval; no runtime/model field may grant it or increase the requested notional.
+Implement canonical paper order state, fills, cash/positions, fees, P&L and replay, following
+the master specification and the existing order/portfolio contracts. Read ADR 0025 and the
+risk behavior/threat model first. Risk owns approval; no model/runtime field grants execution.
+Consume authenticated recorded risk issuance through `PaperRiskPermit`, enforcing its exact
+quantity/cash ceilings, expiry, workspace/account, client-order idempotency and fencing.
+
+Choose and document the authoritative ledger/reconciliation boundary before wiring broker
+state back into risk. Do not reset a session from a stale portfolio to regain capacity or
+release on an ambiguous timeout. Replays must cover duplicates, partial/out-of-order fills,
+reconnect, rejection, stale data, lease expiry, crash after submission, and an unknown fill
+found by reconciliation. Keep step 13 durable workflow work explicit. The first meaningful
+BTC/ETH backtest still requires Nautilus strategy/data wiring; flat zero-decision runs do not
+satisfy it. Commit this next slice separately and retain all §5 deferrals.
 
 Step 10 is in `services/agent-runtime`. `EvaluationResult` contains server-bound AgentDecision
 objects, actual model-call records (including cancellation), policy/input hashes and inert

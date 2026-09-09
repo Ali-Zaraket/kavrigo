@@ -21,27 +21,28 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 ## Where things stand
 
-Implementation was paused on 2026-09-08 to move machines. Steps 1–10 have committed slices;
-steps 8–10 are local/mock only. Read all deferrals in `HANDOFF.md` §5 before calling a step
-complete. Latest implementation commits are `a77d1db` (gateway), `3abe65d` (news) and `c46b315`
-(runtime). No step 11 code exists. The GitHub repository is `Ali-Zaraket/kavrigo`; the
-progress/handoff update uses `codex/progress-handoff`. Verify the checked-out branch and commit
-before continuing, using the transfer instructions in `MACHINE_HANDOFF.md`.
+The Windows destination baseline `de77742` was restored and verified before step 11.
+Latest implementation is `97c4d60` on `codex/deterministic-risk`: local deterministic risk
+evaluation, exact sizing, shared reservations, reason codes and one-time paper permit handoff.
+Read ADR 0025 and all deferrals in HANDOFF.md §5. Steps 8–11 remain local/mock only; there is
+no deployed risk service, paper broker or live execution. Independent security review is pending.
 
-**First restore and verify the development environment using `MACHINE_HANDOFF.md`.** Docker
-images, volumes, databases and the old Python virtualenv are not transferred by Git. Rebuild
-images and start fresh local databases unless a separate data migration is explicitly arranged.
-The old machine's Docker daemon became unreachable after a host disk-space incident; do not
-carry that local failure over as an application defect or claim its integration tests passed.
+Docker Python 3.13.11 checks passed: **806 tests, zero skips**, ruff check/format on 219 files,
+mypy `--strict` on 105 sources; dedicated integrations **50 passed / 756 deselected**.
+Both service images rebuilt, stack health and Alembic upgrade passed. Risk-only coverage is
+94% across 76 tests. See MACHINE_HANDOFF.md for exact commands and current Docker status.
+No host Python 3.13 venv or tool installation was performed. Verify branch/commit and the
+current stack before work; preserve existing destination volumes rather than reinitializing them.
 
-Latest step 10 `make check`: **680 passed, 50 integration tests skipped**, ruff/format clean on
-206 files and `mypy --strict` clean on 99 source files. Separately, all 680 non-integration tests
-passed. Step 9 had a verified full stack/migration run and all 50 integration tests passed, but
-that does not verify the final step 10 code. Run the full checks below on this machine first.
+**Implement step 12: paper broker**, following HANDOFF.md §10. Define canonical order/fill,
+cash/position, fee and P&L state with idempotency and reconciliation. Authenticate risk issuance
+and enforce permit ceilings, expiry and fencing. Never release reservations after an ambiguous
+handoff or rebuild a risk session from a stale portfolio. Test duplicates, partial/out-of-order
+fills, reconnect and crashes. Keep durable workflow work explicit for step 13 and retain the
+pending meaningful Nautilus BTC/ETH strategy/data wiring.
 
-**Then implement step 11: deterministic risk**, as described in `HANDOFF.md` §10. Continue the
-sequence in order and commit each completed step separately. Step 14 has a specific frontend
-skill requirement recorded in `HANDOFF.md` §7. Do not restart steps 8–10 from scratch.
+Continue in order, commit each slice separately and use a PR for `main`. Do not restart
+steps 8–11. Step 14's frontend skill requirement remains in HANDOFF.md §7.
 
 ## How to work
 
