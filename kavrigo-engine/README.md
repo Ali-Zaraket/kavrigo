@@ -16,6 +16,7 @@ services/market-ingestion/ pipeline, envelopes, ClickHouse sink
 services/news-intelligence/ synthetic extraction and frozen evidence
 services/agent-runtime/    bounded analysis and inert portfolio allocations
 services/risk-engine/      deterministic local evaluation, reservations and paper permit
+services/paper-broker/     local exact ledger, synthetic IOC fills and replay reconciliation
 services/engine-worker/    worker skeleton; remaining services land here
 tests/property/            Hypothesis invariants for money, risk and identity
 ```
@@ -131,8 +132,12 @@ binding and conservative portfolio allocation. It constructs no order or risk ap
 
 Step 11 adds [deterministic risk](../docs/product/deterministic-risk.md): independently checked
 policies/evidence/state, fixed-point sizing, shared local reservations, idempotent evaluation
-and one paper handoff after freshness/kill/lease rechecks. No order is submitted. Durable
-account ownership, broker reconciliation and service deployment remain pending.
+and one paper handoff after freshness/kill/lease rechecks. Risk itself never submits an order.
+
+Step 12 adds the [local paper broker](../docs/product/paper-broker.md): actual risk issuance,
+synthetic finite-depth IOC matching, exact fees/cash/basis/P&L, receipt idempotency and journal
+reconciliation of missed fills. It is a bounded single-generation batch; durable account
+ownership, process-restart recovery and continuous service deployment remain pending.
 
 `libs/domain` encodes the non-negotiable domain rules structurally rather than by convention:
 
@@ -153,10 +158,10 @@ response cannot enter the domain unnoticed.
 ## Services not yet built
 
 `portfolio-engine` (deployed service),
-`risk-engine` (deployed service), `backtest-service`, `paper-broker`, `reconciliation`
+`risk-engine` (deployed service), `backtest-service`, `paper-broker` (deployed service), `reconciliation`
 (`MASTER_BUILD_SPEC.md` §17). They are added in the order given by `AGENTS.md` § First build
 sequence, each behind the contracts above.
 
-Nothing in this repository holds an exchange credential or reaches a venue. Paper execution will
-be simulated by the paper broker; live execution belongs to the separate
+Nothing in this repository holds an exchange credential or reaches a private venue. Paper execution
+is simulated locally by the paper broker; live execution belongs to the separate
 `kavrigo-execution-security` boundary.

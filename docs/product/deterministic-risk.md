@@ -57,8 +57,15 @@ are refused. Concurrent requests share the same lock and reservations.
 Call `handoff(workspace_id=..., order_intent_id=..., fencing_token=...)` to obtain at most one
 `PaperRiskPermit`. It rechecks freshness and supervisor state, including revocation/kill and
 lease validity. The permit contains `ApprovedOrderIntent`, `max_quantity` and `max_cash_debit`.
-These ceilings are jointly binding on the future paper broker. A type or hash does not
+These ceilings are jointly binding on the local paper broker. The permit also carries its
+issuer's immutable `RiskExecutionPolicy` (required internal field added in step 12). A type or hash does not
 authenticate its issuer across a service boundary.
+
+Step 12 records the actual issued permit and adds `execution_allowed()` and
+`execution_guard()`. Only an already-issued command can pass the recheck. The guard holds
+the risk lock through a local paper commit, serializing it with supervisor changes and new
+reservations. Rechecking uses the frozen inputs at their original freshness deadlines.
+It does not issue another permit, refresh a portfolio or release any reservation.
 
 If the caller crashes after handoff, risk cannot know whether the consumer received it. It
 retains the reservation and never issues a second permit. Expiry also retains reservations.
@@ -78,8 +85,9 @@ model rationale, workspace IDs, amounts or exception bodies. No hosted exporter 
 
 ## Remaining integration
 
-Step 12 owns canonical paper orders/fills/cash/positions, acknowledgements and reconciliation;
-step 13 owns durable workflow and serialized account ownership. Partial fills, process restarts,
-unknown fills and cancellation/release need those services. HTTP authorization/RLS, durable
+Step 12's [local paper broker](paper-broker.md) now owns canonical orders/fills/cash/positions,
+acknowledgements and replay reconciliation within one batch generation. Step 13 owns durable
+workflow and serialized account ownership. Process restarts and safe reservation release need
+those deployed stores. HTTP authorization/RLS, durable
 audit/outbox, risk stream publishing, provider observation authentication and restricted review
 are still required. No production or live execution readiness is implied by local tests.

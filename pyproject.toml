@@ -21,6 +21,7 @@ members = [
   "kavrigo-engine/services/news-intelligence",
   "kavrigo-engine/services/agent-runtime",
   "kavrigo-engine/services/risk-engine",
+  "kavrigo-engine/services/paper-broker",
   "kavrigo-platform/services/api",
 ]
 
@@ -35,6 +36,7 @@ kavrigo-market-ingestion = { workspace = true }
 kavrigo-news = { workspace = true }
 kavrigo-runtime = { workspace = true }
 kavrigo-risk = { workspace = true }
+kavrigo-paper = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -100,6 +102,7 @@ known-first-party = [
   "kavrigo_news",
   "kavrigo_runtime",
   "kavrigo_risk",
+  "kavrigo_paper",
   "kavrigo_api",
   "kavrigo_engine_worker",
 ]
@@ -148,6 +151,7 @@ testpaths = [
   "kavrigo-engine/services/news-intelligence/tests",
   "kavrigo-engine/services/agent-runtime/tests",
   "kavrigo-engine/services/risk-engine/tests",
+  "kavrigo-engine/services/paper-broker/tests",
   "kavrigo-engine/tests",
   "kavrigo-platform/services/api/tests",
 ]

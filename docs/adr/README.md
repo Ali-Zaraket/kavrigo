@@ -38,3 +38,4 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0023](0023-local-news-evidence.md) | Local news extraction with service-owned provenance | Accepted |
 | [0024](0024-local-agent-runtime.md) | Bounded local runtime and unapproved portfolio allocations | Accepted |
 | [0025](0025-local-deterministic-risk.md) | Local deterministic risk reservations and paper handoff | Accepted |
+| [0026](0026-local-paper-broker.md) | Deterministic local paper ledger and reconciled projections | Accepted for local simulation |

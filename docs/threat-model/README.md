@@ -7,6 +7,7 @@ component that handles credentials, untrusted content, tenant data, or execution
 |---|---|---|
 | Untrusted content → decision agent | [untrusted-content.md](untrusted-content.md) | Draft |
 | Decision / allocation → risk / paper handoff | [deterministic-risk.md](deterministic-risk.md) | Local; independent review pending |
+| Risk issuance → paper ledger / broker projection | [paper-broker.md](paper-broker.md) | Local; independent review pending |
 | Execution and credentials | *not started — blocked on the restricted repository* | — |
 | Tenant isolation | *not started* | — |
 | Supply chain | *not started* | — |

@@ -168,6 +168,7 @@ class PaperRiskPermit(DomainModel):
     account_id: Name
     approval: ApprovedOrderIntent
     record: RiskRecord
+    execution: RiskExecutionPolicy
 
 
 class RiskAuditEvent(DomainModel):

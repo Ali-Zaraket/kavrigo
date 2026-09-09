@@ -129,7 +129,7 @@ services:
       REDPANDA_BOOTSTRAP_SERVERS: redpanda:9092
       VALKEY_URL: redis://valkey:6379/0
       TEMPORAL_ADDRESS: temporal:7233
-    ports: ["58000:8000"]
+    ports: ["${KAVRIGO_API_HOST_PORT:-58000}:8000"]
     depends_on:
       postgres: { condition: service_healthy }
       redpanda: { condition: service_healthy }

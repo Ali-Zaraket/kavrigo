@@ -20,6 +20,20 @@ already runs a PostgreSQL on 5432 or a Redis on 6379 for another project.
 | Temporal | `localhost:57233`, UI `localhost:58233` | Temporal Cloud (ADR 0009) |
 | Control-plane API | `localhost:58000`, docs `/docs` | EKS Auto Mode (ADR 0015) |
 
+If the API port is occupied or falls inside a Windows excluded TCP range, set
+`KAVRIGO_API_HOST_PORT` to an available port before running Compose. The default remains
+58000; container-to-container traffic stays on 8000. For the 2026-09-09 Windows destination,
+58000 was excluded and 58300 was verified:
+
+```powershell
+$env:KAVRIGO_API_HOST_PORT='58300'
+docker compose -f kavrigo-infra/local/docker-compose.yml up -d --wait
+```
+
+Use `http://localhost:58300/healthz` for that override and set it again for subsequent Compose
+commands in a new shell. This uses official [Compose interpolation](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
+(verified 2026-09-09); no Windows reserved ranges or unrelated services need changing.
+
 ## Database roles
 
 Two roles, and the split is what makes row-level security meaningful:

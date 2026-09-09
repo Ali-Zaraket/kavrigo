@@ -5,7 +5,8 @@ only a future broker with authoritative reconciliation can safely release them. 
 recreating this object does not preserve state, so non-local startup is refused.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from threading import RLock
@@ -54,6 +55,7 @@ class _Entry:
     reservation: Reservation | None
     fencing_token: int
     terminal_handoff: bool = False
+    issued_permit: PaperRiskPermit | None = None
 
 
 class LocalRiskSession:
@@ -339,9 +341,71 @@ class LocalRiskSession:
                 expires_at=record.expires_at,
             )
             permit = PaperRiskPermit(
-                account_id=record.account_id, approval=approval, record=_copy(record)
+                account_id=record.account_id,
+                approval=approval,
+                record=_copy(record),
+                execution=_copy(self._registrations[intent.agent_version_id].execution),
             )
             self._audit_event("handoff", "handed_off", content_hash(permit), now)
             entry.terminal_handoff = True
+            entry.issued_permit = _copy(permit)
             self._telemetry.handed_off("approved")
             return permit
+
+    def execution_allowed(
+        self, *, workspace_id: str, order_intent_id: str, fencing_token: int
+    ) -> bool:
+        """Recheck a recorded local issuance before the paper simulator can produce a fill.
+
+        This read does not issue another permit or release a reservation. The consumer must
+        obtain its original permit directly from this session and enforce its cash/quantity
+        bounds. No caller-supplied approval is accepted here.
+        """
+        with self._lock:
+            if workspace_id != self._portfolio.workspace_id:
+                raise RiskGateError("workspace_mismatch")
+            entry = self._entries.get(order_intent_id)
+            if entry is None or entry.issued_permit is None:
+                return False
+            now = self._now()
+            if (
+                type(fencing_token) is not int
+                or fencing_token != self._controls.fencing_token
+                or fencing_token != entry.fencing_token
+                or now >= entry.record.expires_at
+            ):
+                return False
+            checked, _ = evaluate(
+                entry.request,
+                self._registrations[entry.request.intent.agent_version_id],
+                self._portfolio,
+                self._controls,
+                self._networks,
+                self._reservations(excluding=order_intent_id),
+                now,
+            )
+            return (
+                checked.evaluation.is_approved
+                and checked.evaluation.approved_notional.amount
+                >= entry.record.evaluation.approved_notional.amount
+            )
+
+    @contextmanager
+    def execution_guard(
+        self, *, workspace_id: str, commands: tuple[tuple[str, int], ...]
+    ) -> Iterator[tuple[str, ...]]:
+        """Serialize a local paper commit with supervisor changes and new risk reservations.
+
+        The consumer holds its account lock first. No network/venue I/O belongs in this local
+        critical section. Remote execution needs durable fencing, not a Python mutex.
+        """
+        with self._lock:
+            if workspace_id != self._portfolio.workspace_id:
+                raise RiskGateError("workspace_mismatch")
+            yield tuple(
+                intent_id
+                for intent_id, token in commands
+                if not self.execution_allowed(
+                    workspace_id=workspace_id, order_intent_id=intent_id, fencing_token=token
+                )
+            )

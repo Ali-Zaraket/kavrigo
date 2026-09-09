@@ -19,8 +19,7 @@ repos:
       - id: detect-private-key
       - id: mixed-line-ending
         args: ["--fix=lf"]
-      - id: no-commit-to-branch
-        args: ["--branch", "main"]
+      # The user-directed bootstrap workflow commits on main (CONTRIBUTING.md).
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.6
