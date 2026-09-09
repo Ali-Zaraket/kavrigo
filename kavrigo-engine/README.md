@@ -13,6 +13,9 @@ libs/backtest/             dataset manifests, cost models, metrics, reproducibil
 libs/model-gateway/        bounded local model calls, schema validation, replay and tracing
 libs/nautilus-adapter/     NautilusTrader implementation of the engine contract
 services/market-ingestion/ pipeline, envelopes, ClickHouse sink
+services/news-intelligence/ synthetic extraction and frozen evidence
+services/agent-runtime/    bounded analysis and inert portfolio allocations
+services/risk-engine/      deterministic local evaluation, reservations and paper permit
 services/engine-worker/    worker skeleton; remaining services land here
 tests/property/            Hypothesis invariants for money, risk and identity
 ```
@@ -126,6 +129,11 @@ Step 10 adds [the local agent runtime](../docs/product/agent-runtime.md): a dete
 scanner, frozen network interface, evidence-checked asset analysis, authoritative decision
 binding and conservative portfolio allocation. It constructs no order or risk approval.
 
+Step 11 adds [deterministic risk](../docs/product/deterministic-risk.md): independently checked
+policies/evidence/state, fixed-point sizing, shared local reservations, idempotent evaluation
+and one paper handoff after freshness/kill/lease rechecks. No order is submitted. Durable
+account ownership, broker reconciliation and service deployment remain pending.
+
 `libs/domain` encodes the non-negotiable domain rules structurally rather than by convention:
 
 | Rule (`AGENTS.md`) | Where it lives |
@@ -145,7 +153,7 @@ response cannot enter the domain unnoticed.
 ## Services not yet built
 
 `portfolio-engine` (deployed service),
-`risk-engine`, `backtest-service`, `paper-broker`, `reconciliation`
+`risk-engine` (deployed service), `backtest-service`, `paper-broker`, `reconciliation`
 (`MASTER_BUILD_SPEC.md` §17). They are added in the order given by `AGENTS.md` § First build
 sequence, each behind the contracts above.
 

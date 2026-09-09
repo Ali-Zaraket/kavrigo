@@ -177,8 +177,10 @@ class OrderIntent(DomainModel):
 class ApprovedOrderIntent(DomainModel):
     """A risk-approved intent — the only thing an execution adapter accepts.
 
-    Constructing one requires a risk evaluation id and an approved notional. There is no code
-    path from an ``AgentDecision`` to this type that does not pass through the risk engine.
+    Constructing one validates its fields, not the authority of its issuer. Consumers must
+    authenticate the risk service and resolve the recorded evaluation before accepting it.
+    The local risk session issues this within a paper permit carrying additional quantity and
+    cash ceilings. A model has no tool for issuing an approval.
     """
 
     order_intent_id: OrderIntentId

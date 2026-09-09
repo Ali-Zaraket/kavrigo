@@ -20,6 +20,7 @@ members = [
   "kavrigo-engine/services/market-ingestion",
   "kavrigo-engine/services/news-intelligence",
   "kavrigo-engine/services/agent-runtime",
+  "kavrigo-engine/services/risk-engine",
   "kavrigo-platform/services/api",
 ]
 
@@ -33,6 +34,7 @@ kavrigo-nautilus-adapter = { workspace = true }
 kavrigo-market-ingestion = { workspace = true }
 kavrigo-news = { workspace = true }
 kavrigo-runtime = { workspace = true }
+kavrigo-risk = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -97,6 +99,7 @@ known-first-party = [
   "kavrigo_market_ingestion",
   "kavrigo_news",
   "kavrigo_runtime",
+  "kavrigo_risk",
   "kavrigo_api",
   "kavrigo_engine_worker",
 ]
@@ -144,6 +147,7 @@ testpaths = [
   "kavrigo-engine/services/market-ingestion/tests",
   "kavrigo-engine/services/news-intelligence/tests",
   "kavrigo-engine/services/agent-runtime/tests",
+  "kavrigo-engine/services/risk-engine/tests",
   "kavrigo-engine/tests",
   "kavrigo-platform/services/api/tests",
 ]

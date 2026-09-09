@@ -86,6 +86,12 @@ class RiskReasonCode(StrEnum):
     EVIDENCE_REQUIREMENTS_NOT_MET = "evidence_requirements_not_met"
     DUPLICATE_INTENT = "duplicate_intent"
     POLICY_VERSION_MISMATCH = "policy_version_mismatch"
+    INTENT_EXPIRED = "intent_expired"
+    CONTEXT_MISMATCH = "context_mismatch"
+    UNSUPPORTED_ORDER_TYPE = "unsupported_order_type"
+    EXECUTION_LEASE_EXPIRED = "execution_lease_expired"
+    UNSUPPORTED_PRECISION = "unsupported_precision"
+    MAX_ORDER_EXCEEDED = "max_order_exceeded"
 
 
 class RiskScope(StrEnum):
