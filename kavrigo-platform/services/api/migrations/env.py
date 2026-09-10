@@ -40,6 +40,10 @@ def _database_url() -> str:
 def _include_object(obj: object, name: str | None, type_: str, *_: object) -> bool:
     """Autogenerate only within our schema, so extensions and system objects are left alone."""
     if type_ == "table":
+        # Engine tables use explicit engine-owned migrations in this bootstrap repository.
+        # They are not API ORM models; API autogenerate must never propose dropping them.
+        if name is not None and name.startswith("engine_"):
+            return False
         return getattr(obj, "schema", None) == SCHEMA
     return True
 

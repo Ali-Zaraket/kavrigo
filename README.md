@@ -56,7 +56,7 @@ make setup             # create the virtualenv and install workspace packages
 make up                # start Postgres, Redpanda, ClickHouse, Temporal, Valkey, API, worker
 make migrate           # apply database migrations
 make test              # unit + property tests (no docker stack, no provider keys required)
-make test-integration  # RLS, immutability and end-to-end API tests (needs `up` + `migrate`)
+make test-integration  # configure a separate migrated test DB first; see local stack README
 make check             # format check, lint, typecheck, tests
 make down              # stop the local stack
 ```
@@ -66,14 +66,15 @@ No external data provider, exchange credential, or model API key is required to 
 
 ## Current status
 
-Committed slices cover steps 1–12 of `AGENTS.md`, through the local/mock model gateway,
-synthetic news intelligence, agent runtime, deterministic risk and paper broker. The broker
-models exact IOC fills, fees, cash/positions and P&L, with idempotent receipts and journal
-reconciliation. It is a bounded local batch; process-restart durability, continuous operation,
-Temporal workflows and the product UI remain pending. The end-to-end paper milestone is not complete.
-The backtest engine still needs strategy/data wiring and a meaningful BTC/ETH fixture run.
+Implemented slices cover steps 1-13 of `AGENTS.md`, including the local/mock model gateway,
+synthetic news intelligence, agent runtime, deterministic risk, paper broker and durable workflows.
+PostgreSQL now owns account commands, receipts and run artifacts, with workspace RLS and fenced
+ownership. Four Temporal workflows coordinate evaluation, backtests, data health and paper
+supervision; the default model explicitly abstains. The end-to-end product milestone still needs
+UI, meaningful Nautilus strategy/data wiring and earlier provider/deployment carry-overs.
 
-The destination checkpoint passed 847 tests with zero skips, plus a dedicated run of all 50
-database integrations. Lint, strict typing, image rebuilds and migrations passed. Step 13 is
-next; independent risk/security review and durable operation remain pending. See
-[`PROGRESS.md`](PROGRESS.md) for commit references, recorded validation and remaining work.
+The step 13 regression passed **885 tests with zero skips**, including 82 integrations, plus
+strict typing across 120 sources. Migration rollback passed in a separate test database.
+See [`PROGRESS.md`](PROGRESS.md) for final commit references and runtime verification, and
+[durable workflow operations](docs/product/durable-workflows.md) for recovery and limitations.
+Independent security review, hosted deployment and continuous production operation remain pending.

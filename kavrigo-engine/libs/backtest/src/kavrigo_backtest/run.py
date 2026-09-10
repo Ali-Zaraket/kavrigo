@@ -217,7 +217,7 @@ class BacktestEngine(Protocol):
     name: str
     version: str
 
-    def run(self, config: BacktestRunConfig) -> BacktestResult: ...
+    def run(self, config: BacktestRunConfig, *, bundle: ReproducibilityBundle) -> BacktestResult: ...
 
 
 def refuse(

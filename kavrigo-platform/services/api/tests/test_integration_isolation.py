@@ -128,7 +128,7 @@ class TestSchemaInvariants:
 
     async def test_the_declared_list_matches_the_database(self, database: Database) -> None:
         """``TENANT_SCOPED_TABLES`` in db/models.py is documentation unless it is checked."""
-        from kavrigo_api.db.models import SELF_POLICIED_TABLES, TENANT_SCOPED_TABLES
+        from kavrigo_api.db.models import ENGINE_TABLES, SELF_POLICIED_TABLES, TENANT_SCOPED_TABLES
 
         async with database.global_session() as session:
             rows = (
@@ -145,7 +145,9 @@ class TestSchemaInvariants:
                 .scalars()
                 .all()
             )
-        assert set(rows) == set(TENANT_SCOPED_TABLES) | set(SELF_POLICIED_TABLES)
+        assert set(rows) == set(TENANT_SCOPED_TABLES) | set(SELF_POLICIED_TABLES) | set(
+            ENGINE_TABLES
+        )
 
     async def test_append_only_tables_have_their_trigger(self, database: Database) -> None:
         from kavrigo_api.db.models import APPEND_ONLY_TABLES
@@ -158,7 +160,9 @@ class TestSchemaInvariants:
                             "SELECT c.relname FROM pg_trigger t "
                             "JOIN pg_class c ON c.oid = t.tgrelid "
                             "JOIN pg_namespace n ON n.oid = c.relnamespace "
-                            "WHERE n.nspname = 'kavrigo' AND NOT t.tgisinternal"
+                            "JOIN pg_proc p ON p.oid = t.tgfoid "
+                            "WHERE n.nspname = 'kavrigo' AND NOT t.tgisinternal "
+                            "AND p.proname = 'refuse_mutation'"
                         )
                     )
                 )
@@ -166,6 +170,27 @@ class TestSchemaInvariants:
                 .all()
             )
         assert set(rows) == set(APPEND_ONLY_TABLES)
+
+    async def test_engine_record_guards_cover_every_mutable_projection(
+        self, database: Database
+    ) -> None:
+        from kavrigo_api.db.models import ENGINE_PROTECTED_RECORD_TABLES
+
+        async with database.global_session() as session:
+            rows = (
+                (
+                    await session.execute(
+                        text(
+                            "SELECT c.relname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
+                            "JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_proc p ON p.oid=t.tgfoid "
+                            "WHERE n.nspname='kavrigo' AND NOT t.tgisinternal AND p.proname='protect_engine_record'"
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        assert set(rows) == set(ENGINE_PROTECTED_RECORD_TABLES)
 
 
 class TestTenantIsolation:

@@ -25,11 +25,11 @@ from kavrigo_api.db.session import Database
 
 APP_DSN = os.getenv(
     "TEST_POSTGRES_DSN",
-    "postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:55432/kavrigo",
+    "postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:55432/kavrigo_test",
 )
 OWNER_DSN = os.getenv(
     "TEST_POSTGRES_OWNER_DSN",
-    "postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:55432/kavrigo",
+    "postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:55432/kavrigo_test",
 )
 
 _TABLES = (

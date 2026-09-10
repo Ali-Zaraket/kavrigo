@@ -219,6 +219,25 @@ class Ledger:
             next_state.peak = units(snapshot.portfolio.peak_equity.amount)
         return next_state
 
+    def begin_generation(self, at: datetime) -> "Ledger":
+        """Carry exact accounting forward after a durable coordinator settles every receipt.
+
+        This kernel method grants no authorization. The caller must serialize the account,
+        retain prior command dedupe, and prove there are no outstanding risk-only issuances.
+        LocalPaperVenue deliberately does not expose a reset or call this method.
+        """
+        if at < self.as_of or any(item.order.status.is_open for item in self.orders.values()):
+            raise PaperError("generation_has_unsettled_orders")
+        next_state = deepcopy(self)
+        next_state.as_of = at
+        state = next_state.snapshot()
+        if not state.portfolio.is_reconciled:
+            raise PaperError("generation_requires_fresh_reconciliation")
+        next_state.initial = state.portfolio
+        next_state.orders = {}
+        next_state.sealed = False
+        return next_state
+
     def _status(
         self, item: WorkingOrder, status: OrderStatus, at: datetime, reason: str | None = None
     ) -> None:

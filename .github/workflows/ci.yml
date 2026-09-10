@@ -66,7 +66,7 @@ jobs:
         run: uv run pytest -q
 
   integration:
-    name: integration (postgres)
+    name: integration (postgres, clickhouse, temporal)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -97,6 +97,7 @@ jobs:
       TEST_POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:5432/kavrigo
       TEST_POSTGRES_OWNER_DSN: postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:5432/kavrigo
       TEST_CLICKHOUSE_URL: http://localhost:8123
+      TEST_TEMPORAL_ADDRESS: localhost:57233
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -136,6 +137,9 @@ jobs:
               urllib.request.urlopen(request).read()
           print("ClickHouse schema applied")
           PY
+
+      - name: Start local Temporal for real workflow and history replay tests
+        run: docker compose -f kavrigo-infra/local/docker-compose.yml up -d --wait temporal
 
       - name: Integration tests
         run: uv run pytest -m integration -v

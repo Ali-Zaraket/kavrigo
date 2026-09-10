@@ -68,7 +68,22 @@ TENANT_SCOPED_TABLES: tuple[str, ...] = (
 SELF_POLICIED_TABLES: tuple[str, ...] = ("workspaces",)
 
 #: Tables that may never be updated or deleted from.
-APPEND_ONLY_TABLES: tuple[str, ...] = ("agent_versions", "audit_events")
+APPEND_ONLY_TABLES: tuple[str, ...] = ("agent_versions", "audit_events", "engine_commands")
+
+# Explicit migrations own these engine tables; the API ORM must not autogenerate/drop them.
+ENGINE_TABLES: tuple[str, ...] = (
+    "engine_accounts",
+    "engine_commands",
+    "engine_runs",
+    "engine_steps",
+    "engine_outbox",
+)
+ENGINE_PROTECTED_RECORD_TABLES: tuple[str, ...] = (
+    "engine_accounts",
+    "engine_runs",
+    "engine_steps",
+    "engine_outbox",
+)
 
 _NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",

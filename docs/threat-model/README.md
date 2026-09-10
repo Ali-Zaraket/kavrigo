@@ -13,3 +13,6 @@ component that handles credentials, untrusted content, tenant data, or execution
 | Supply chain | *not started* | — |
 
 Baselines: OWASP Top 10 for LLM Applications, NIST AI RMF and its generative-AI profile.
+
+- [Durable paper workflows](durable-workflows.md): transactional recovery, account ownership,
+  retry uncertainty and workflow-history privacy (ADR 0027; independent review pending).

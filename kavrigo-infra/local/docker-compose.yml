@@ -100,7 +100,9 @@ services:
     # not exist. CLI Docker usage: https://github.com/temporalio/cli/blob/main/README.md
     image: temporalio/temporal@sha256:cea463d98a8d6def4420f903ea5c3fcd0d85c8d10fbcc2770a50c12fff2eb26d
     container_name: kavrigo-temporal
-    command: ["server", "start-dev", "--ip", "0.0.0.0", "--ui-ip", "0.0.0.0"]
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--ui-ip", "0.0.0.0", "--db-filename", "/home/temporal/temporal.db"]
+    volumes:
+      - temporal-data:/home/temporal
     ports:
       - "57233:7233"   # gRPC
       - "58233:8233"   # Web UI
@@ -151,13 +153,20 @@ services:
       LIVE_TRADING_ENABLED: "false"
       DEFAULT_TRADING_MODE: paper
       KAVRIGO_ENV: local
+      POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@postgres:5432/kavrigo
+      KAVRIGO_WORKER_WORKSPACES: "${KAVRIGO_WORKER_WORKSPACES:-}"
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: kavrigo-paper-v1
       REDPANDA_BOOTSTRAP_SERVERS: redpanda:9092
       CLICKHOUSE_URL: http://clickhouse:8123
       TEMPORAL_ADDRESS: temporal:7233
     depends_on:
+      postgres: { condition: service_healthy }
+      temporal: { condition: service_healthy }
       redpanda: { condition: service_healthy }
       clickhouse: { condition: service_healthy }
 
 volumes:
   postgres-data:
   clickhouse-data:
+  temporal-data:

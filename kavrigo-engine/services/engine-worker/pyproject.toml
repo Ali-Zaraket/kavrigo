@@ -1,15 +1,19 @@
 [project]
 name = "kavrigo-engine-worker"
 version = "0.1.0"
-description = "Kavrigo engine worker (placeholder: ingestion, features, agent runtime land here)"
+description = "Kavrigo local paper Temporal worker and durable run dispatcher"
 requires-python = ">=3.13"
 dependencies = [
   "kavrigo-domain",
+  "kavrigo-workflows",
+  "kavrigo-nautilus-adapter",
   "structlog>=24.4",
 ]
 
 [tool.uv.sources]
 kavrigo-domain = { workspace = true }
+kavrigo-workflows = { workspace = true }
+kavrigo-nautilus-adapter = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

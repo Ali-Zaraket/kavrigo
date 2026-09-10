@@ -165,3 +165,13 @@ sequence, each behind the contracts above.
 Nothing in this repository holds an exchange credential or reaches a private venue. Paper execution
 is simulated locally by the paper broker; live execution belongs to the separate
 `kavrigo-execution-security` boundary.
+
+## Durable workflows (step 13)
+
+`services/workflows` owns PostgreSQL account/run receipts, fenced account commands and four
+Temporal workflows. `services/engine-worker` now runs the local worker and a workspace-scoped
+outbox dispatcher. The default model is an abstaining mock. See
+[durable workflows](../docs/product/durable-workflows.md) for internal interfaces, recovery,
+observability and production limitations. This supersedes the in-memory-only restriction for
+accounts explicitly created through the durable repository; the step 12 local broker remains
+an independent bounded simulation interface.

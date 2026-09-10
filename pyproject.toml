@@ -22,6 +22,7 @@ members = [
   "kavrigo-engine/services/agent-runtime",
   "kavrigo-engine/services/risk-engine",
   "kavrigo-engine/services/paper-broker",
+  "kavrigo-engine/services/workflows",
   "kavrigo-platform/services/api",
 ]
 
@@ -37,6 +38,7 @@ kavrigo-news = { workspace = true }
 kavrigo-runtime = { workspace = true }
 kavrigo-risk = { workspace = true }
 kavrigo-paper = { workspace = true }
+kavrigo-workflows = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -103,6 +105,7 @@ known-first-party = [
   "kavrigo_runtime",
   "kavrigo_risk",
   "kavrigo_paper",
+  "kavrigo_workflows",
   "kavrigo_api",
   "kavrigo_engine_worker",
 ]
@@ -152,6 +155,7 @@ testpaths = [
   "kavrigo-engine/services/agent-runtime/tests",
   "kavrigo-engine/services/risk-engine/tests",
   "kavrigo-engine/services/paper-broker/tests",
+  "kavrigo-engine/services/workflows/tests",
   "kavrigo-engine/tests",
   "kavrigo-platform/services/api/tests",
 ]
