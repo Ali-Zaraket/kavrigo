@@ -416,6 +416,10 @@ or construct a venue order.
 
 ## 7. Step 14 has a specific tooling instruction
 
+**Checked 2026-09-10 after pushing step 13:** the skill and `uipro` command are not installed
+in the searched user/project locations. Await human installation or an explicit waiver of
+this requirement before frontend implementation. Step 13 is pushed and verified on main.
+
 The user asked, on 2026-09-07, that **all frontend/UI work use the `ui-ux-pro-max` skill**
 (<https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>).
 
