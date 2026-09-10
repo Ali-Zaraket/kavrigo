@@ -1,6 +1,11 @@
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-09 · **Latest implementation:** `5fc9234` · **Position:** slices through step 12 (steps 8–12 local/mock only) · **Next:** step 13 durable workflows/account recovery
+**Updated:** 2026-09-10 · **Latest implementation:** `400e179` (step 13) · **Position:** local slices through step 13 · **Next:** step 14 Product UI
+
+Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
+Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
+service image builds passed. The final worker smoke passed; its prior identical 23-event history/result survived a Temporal
+server restart. See PROGRESS.md for the verification ledger and next slice.
 
 You are picking up an in-progress build. Read `AGENTS.md` and `MASTER_BUILD_SPEC.md` first —
 they are the authority. This document is the *state of play*: what exists, what was deliberately
@@ -35,8 +40,8 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 10 | Agent runtime | local decision/allocation slice; destination stack verified — see §5 |
 | 11 | Risk engine | local deterministic session, retained reservations and one-time handoff — see §5 |
 | 12 | Paper broker | local single-generation ledger, IOC fills and reconciliation/replay — see §5 |
-| 13 | Temporal workflows | **← next**, with durable account recovery |
-| 14 | Product UI | not started — has a **specific tooling instruction**, see §7 |
+| 13 | Temporal workflows | local PostgreSQL authority, four workflows and real worker implemented |
+| 14 | Product UI | **next**; not started — has a **specific tooling instruction**, see §7 |
 | 15 | Observability / evals | not started |
 
 The milestone all of this is aimed at (`AGENTS.md`, last line):
@@ -51,6 +56,7 @@ The milestone all of this is aimed at (`AGENTS.md`, last line):
 ## 2. Commits so far
 
 ```text
+400e179  Durable paper workflows: persist account authority and recover Temporal runs (step 13)
 5fc9234  Paper broker: simulate exact IOC fills and reconcile recorded receipts (step 12)
 97c4d60  Risk engine: enforce deterministic paper limits and reserve approvals (step 11)
 c46b315  Agent runtime: freeze analysis, bind decisions and bound portfolio proposals (step 10)
@@ -91,7 +97,7 @@ kavrigo-engine/
   services/agent-runtime/    scanner, frozen contexts, analysis, unapproved portfolio allocations
   services/risk-engine/      deterministic policy, exact sizing, local reservations and paper permit
   services/paper-broker/     local exact ledger, synthetic fills and replay reconciliation
-  services/engine-worker/   skeleton; remaining services land here
+  services/engine-worker/   local Temporal worker and run dispatcher
 kavrigo-platform/
   services/api/             FastAPI control plane + Alembic migrations
   apps/web/                 empty — step 14
@@ -148,8 +154,8 @@ are scoped-out work with a reason.
   out; the cache/timeout/concurrency fix then completed successfully. Step 9 repeated
   `make up && make migrate && make test-integration`: both images built, services started,
   migrations succeeded and all 50 integration tests passed. API, PostgreSQL, ClickHouse,
-  Redpanda, Temporal and Valkey were healthy; the engine worker is a running skeleton,
-  not a configured collector or Temporal workflow worker.
+  Redpanda, Temporal and Valkey were healthy; step 13 replaces the skeleton with a real Temporal worker.
+  It is still not a live market collector or hosted service.
 - **Hosted CI results are unverified at this checkpoint.** `.github/workflows/ci.yml` has six
   jobs including a Postgres + ClickHouse integration job. The remote now exists; inspect GitHub
   Actions for the commit being resumed. The workflow triggers on pull requests and pushes to
@@ -246,7 +252,8 @@ are scoped-out work with a reason.
 ### From step 10 — agent runtime
 
 - **Local library, not a deployed agent worker.** Snapshot/evidence loading, authenticated
-  evaluation HTTP endpoint, durable run storage and Temporal scheduling remain unwired.
+  evaluation HTTP endpoint remain unwired. Step 13 adds durable run storage and Temporal
+  orchestration for frozen inputs with a local mock backend.
   The runtime receives authorized immutable registrations and frozen inputs in process.
 - **USD-quoted spot valuation only.** No stablecoin parity or FX is assumed. Portfolio overlap
   groups are explicit configuration, not empirical correlations. Pending orders and unknown
@@ -301,7 +308,7 @@ are scoped-out work with a reason.
 - **Reservations never release here.** Expiry, handed-off commands, unknown acknowledgement
   and capacity pressure retain reservations. No unfilled sale proceeds fund a buy. Partial
   fills, unknown fills and broker-view recovery are tested locally in step 12. Process restart
-  and safe risk release still require the durable ledger and ownership in step 13.
+  and safe generation advance are now provided by the separate step 13 durable wrapper.
 - **Independent review is pending.** Author threat review and local property/replay tests
   passed; independent security/CODEOWNERS and human approval are required before deployment.
   No provider adapter, private credential, live order or execution-security code was added.
@@ -326,9 +333,9 @@ are scoped-out work with a reason.
   states. Up to 1,000 commands and 10 MB per artifact, checked before commit; no dedupe eviction.
   Imports only replay history; they never authenticate execution. Workspace checks and Python
   locks protect trusted local operations, not remote tenants or competing service processes.
-- **Durable work remains.** Step 13 needs transactional PostgreSQL receipts/idempotency,
+- **Durable wrapper added in step 13.** Transactional PostgreSQL receipts/idempotency,
   audit/outbox, serialized account fencing, safe risk generation transitions and Temporal
-  recovery/supervision. RLS/API authorization, persistent event publishing and independent review
+  recovery/supervision are implemented. Product API authorization, broader event publishing and review
   precede deployment. Existing Nautilus strategy/data and UI deferrals remain unchanged.
   Details: [ADR 0026](docs/adr/0026-local-paper-broker.md),
   [behavior](docs/product/paper-broker.md), [threat model](docs/threat-model/paper-broker.md).
@@ -343,6 +350,30 @@ are scoped-out work with a reason.
   against current release notes at scaffold time, not from recollection.
 
 ---
+
+### From step 13 - durable workflows
+
+- PostgreSQL is authoritative for accounts created with `AccountRepository`; the original step
+  12 `LocalPaperVenue` still has its documented in-memory boundary. Four Temporal workflows and
+  the real worker use durable run/stage receipts, forced RLS, DB-clock leases and an outbox.
+- Replay is bounded at 1,000 commands / 10 MB of serialized account artifacts. Generation
+  advance is explicit and requires terminal orders plus fresh reconciliation. No compaction,
+  automatic continuous controller, daily rollover or authenticated account/run HTTP API exists yet.
+  New orders, matching and advance refuse across the initial UTC day; cancellation/reconciliation remain.
+- Default model backend is a zero-cost abstaining mock. Uncertain dispatch records `uncertain`
+  and does not issue another model call. Shared model billing and paid provider adapters remain open.
+- Data health consumes frozen observations and emits an outbox event. Supervision runs 1-20
+  reconciliation cycles. Live provider reconnect, incident delivery and automatic rescheduling
+  are not implemented. Only run creation events have an outbox consumer in this slice.
+- Backtest workflow invokes Nautilus but refuses its current zero-decision result. Meaningful
+  BTC/ETH strategy/data/benchmark wiring is still pending; it has not been silently completed.
+- Temporal Cloud auth, deployment identity/separation, encryption/retention, hosted exporters,
+  production performance and independent security review remain. The local worker is trusted
+  internal code; references and hashes do not replace tenant authentication.
+- The engine schema is managed by explicit migration 0002. API ORM autogeneration excludes
+  engine tables; shared schema-inventory tests still enforce their RLS and mutation guards.
+- Read [operations](docs/product/durable-workflows.md), [ADR 0027](docs/adr/0027-durable-paper-workflows.md)
+  and [threat review](docs/threat-model/durable-workflows.md). No private exchange path was added.
 
 ## 6. Rules you must not break
 
@@ -474,7 +505,7 @@ works with nothing but Python. They must never require an external provider key 
   producing a bar at the same `(venue, instrument, interval, open_time)` are the same bar to the
   engine, and the newer `ingested_at` wins. Correct for a bar reissued as it forms; it means
   tests must use distinct `open_time` values or they silently overwrite each other.
-- **Integration tests isolate by tagging rows, not by truncating tables.** Truncation isolates a
+- **ClickHouse integration tests isolate by tagging rows, not by truncating tables.** Truncation isolates a
   test from its predecessors but not from a concurrent run — two pytest processes against one
   ClickHouse deleted each other's rows. Every assertion filters on a per-test `provider` tag, so
   concurrent runs are safe and nothing is deleted.
@@ -483,54 +514,22 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task — step 13, durable workflows and account recovery
+## 10. Your next task - step 14, Product UI
 
-Implement AgentEvaluationWorkflow, BacktestWorkflow, DataHealthWorkflow and paper
-reconciliation/supervision. Read ADRs 0025–0026 and the risk/paper behavior and threat models.
-Inspect current Temporal official SDK documentation; use the local dev server for tests and
-keep Temporal Cloud provisioning separate. Do not put every market tick into Temporal.
+First resolve the explicit frontend skill requirement in §7. Read the current master spec,
+existing platform contracts and brand tokens. Build the smallest paper-only product vertical
+slice: dashboard, Agent Studio, research/backtest artifacts, decisions with supporting and
+contradicting evidence, risk controls, paper portfolio and provider freshness. Do not invent
+successful strategy results or label historical/synthetic data as fresh/live.
 
-Define durable PostgreSQL account ownership/fencing, receipts/idempotency and audit/outbox
-contracts before wiring continuous paper operation. Preserve the pure deterministic ledger
-kernel while replacing in-memory authority with transactional state. Risk refresh/release
-must use reconciled canonical state and durable receipts. A workflow retry must retrieve a
-recorded outcome, never duplicate issuance or reset an ambiguous command's reservation.
+Step 13 provides internal typed account/run repositories and workflows, not product API routes.
+Add authenticated workspace-scoped control-plane interfaces before wiring UI actions. Preserve
+immutable AgentVersion/prompt/risk/data bindings and command idempotency. Keep all risk controls
+outside model access. A default mock abstention is a valid outcome, not a reason to fabricate trades.
 
-Cover workflow replay/retry, worker/process crash after submit before acknowledgement,
-expired leadership, duplicate commands, unknown fills and recovery with database-backed
-integration tests. Broker-view recovery over an existing Python object does not establish
-process-restart durability. Register versioned inputs and retain freeze/freshness semantics.
-The first meaningful BTC/ETH backtest still needs Nautilus strategy/data wiring; flat
-zero-decision runs do not satisfy it. Commit the slice separately and retain all §5 deferrals.
-
-Step 10 is in `services/agent-runtime`. `EvaluationResult` contains server-bound AgentDecision
-objects, actual model-call records (including cancellation), policy/input hashes and inert
-PortfolioDecision allocations. Register immutable versions and explicit runtime policy; API
-versions now pin shared prompt v2. See [runtime behavior](docs/product/agent-runtime.md) and
-[ADR 0024](docs/adr/0024-local-agent-runtime.md). No order/execution classes are imported there.
-
-Step 9 is in `services/news-intelligence`. Reuse frozen `NewsRecord.evidence`, selecting by actual
-structured availability through `available_evidence()`, and preserve supporting/contradicting
-provenance. Register `NEWS_PROMPT` only for separately authorized EXTRACT_FAST extraction scopes.
-See [news behavior](docs/product/news-intelligence.md) and [ADR 0023](docs/adr/0023-local-news-evidence.md).
-
-The step 8 gateway is in `libs/model-gateway`. Register trusted prompt/input/output types and
-use `ModelRequest`/`ModelGateway`; no domain or service may import a provider SDK. Output cannot
-own workspace identity, model-call records or risk approval. `DecisionProposal` is the shared
-model-owned portion of `AgentDecision`; the runtime binds authoritative context in step 10.
-
-`AgentAccess.from_version` binds the AgentSpec cost, output-token, profile and timeout policy.
-Persist `registered_prompt_hash()` on the AgentVersion. Successful responses carry the existing
-`ModelCallRecord`; failures after dispatch also carry one. Unknown usage is explicitly reserved,
-not reported as zero cost. Reuse an idempotency key to retrieve a result, not to submit again.
-
-`RecordedResponse` replay checks scope, request/prompt/schema/route/output hashes and resolved
-model, then revalidates the schema without a provider call. Backtests require a model pin.
-`ReproducibilityBundle.with_model_calls()` binds actual call records; the zero-decision Nautilus
-run remains unchanged until the strategy/runtime/risk work is implemented.
-
-See [gateway behavior](docs/product/model-gateway.md) and [ADR 0022](docs/adr/0022-local-model-gateway-reservations.md)
-for security limits, exact budget semantics and official documentation references.
+Read ADRs 0024-0027, `docs/product/durable-workflows.md` and the risk/paper threat models. Continue
+on main, commit the slice separately and retain §5 carry-overs. Step 15 follows the product UI.
+Independent security review and hosted deployment remain separate release gates.
 
 ---
 

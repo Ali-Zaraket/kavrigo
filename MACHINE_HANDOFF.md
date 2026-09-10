@@ -1,12 +1,12 @@
 # Resume Kavrigo on another machine
 
-Updated 2026-09-09 after destination verification and the step 12 local paper slice.
+Updated 2026-09-10 after the step 13 durable workflow slice.
 This file, `PROGRESS.md`, `HANDOFF.md`, `HANDOFF_PROMPT.md` and Git history are the portable project memory.
 No account memory or previous chat is required. No background build is intended to continue.
 
 ## Checkpoint
 
-- Latest implementation: `5fc9234` (step 12); starting destination checkpoint: `de77742`.
+- Latest implementation: `400e179` (step 13); starting destination checkpoint: `de77742`.
 - GitHub repository: [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo).
   Current branch: `main`, fast-forwarded through `a1e0ecf` at the user's 2026-09-09 request.
   Continue directly on main with separate slice commits and ordinary non-force pushes.
@@ -20,9 +20,11 @@ No account memory or previous chat is required. No background build is intended 
   handoff. No deployed risk endpoint or durable account ledger; independent review pending.
 - Step 12: `5fc9234`, exact local paper orders/fills/accounting, risk guard, bounded journal and
   replay reconciliation. Single-generation batch; no continuous operation or process-restart durability.
-- Next: step 13 durable workflows/account recovery, following HANDOFF.md §10.
+- Step 13: PostgreSQL account/run authority, four Temporal workflows, real worker and bounded
+  paper supervision; local/mock only, independent review pending.
+- Next: step 14 Product UI, after resolving HANDOFF.md §7 frontend tooling.
 - Existing carry-overs include real market transport, durable stores, meaningful Nautilus strategy
-  and BTC/ETH backtest wiring, provider rights, hosted integrations, and steps 13–15. See
+  and BTC/ETH backtest wiring, provider rights, hosted integrations, and steps 14-15. See
   `HANDOFF.md` §5 for scope and reasons; the product milestone is not yet complete.
 
 ## Transfer and restore
@@ -212,10 +214,10 @@ The Compose project is `kavrigo`, defined in `kavrigo-infra/local/docker-compose
 | PostgreSQL 18 | 55432 | Named `postgres-data`, mounted at `/var/lib/postgresql` |
 | ClickHouse | 58123 HTTP, 59000 native | Named `clickhouse-data` |
 | Redpanda | 59092 Kafka, 58081 schema registry, 58082 proxy | No persistent volume configured |
-| Temporal dev | 57233 gRPC, 58233 UI | No persistent volume configured |
+| Temporal dev | 57233 gRPC, 58233 UI | Named `temporal-data`, mounted at `/home/temporal`; restart/history replay verified |
 | Valkey | 56379 | Persistence deliberately disabled |
-| API | 58000 default; 58300 on this destination | Control-plane authority resides in PostgreSQL; paper simulator is separate and in memory |
-| Engine worker | None | Skeleton; no durable workflow or collector is configured |
+| API | 58000 default; 58300 on this destination | Control-plane and durable paper authority reside in PostgreSQL |
+| Engine worker | None | Four Temporal workflows; PostgreSQL receipts; empty workspace dispatcher allowlist by default |
 
 Compose normally prefixes the named volumes with `kavrigo_`; inspect actual names before any
 backup or restore. These volumes remain on the source machine and are **not** in this transfer.
@@ -227,7 +229,9 @@ Do not erase the source volumes until any required data has been recovered.
 Use `make down` to stop/remove this stack while retaining named database volumes. Do not use
 `make clean-volumes`, `down -v` or volume pruning as a transfer step. Do not treat Docker's VM
 disk file as a verified portable database backup. Database volume preservation does not preserve
-ephemeral Redpanda/Temporal state or make the in-memory gateway/news/runtime/risk/paper ledgers durable.
+ephemeral Redpanda state or make standalone in-memory gateway/news/runtime/risk/paper objects
+restart-safe. Durable accounts must use the step 13 PostgreSQL wrapper; Temporal history now
+has its own named volume. Back up both authorities with an explicitly verified procedure.
 
 ## Historical source verification at the transfer pause
 
@@ -271,3 +275,38 @@ Command behavior verified against installed CLI help and official documentation 
 [Compose down](https://docs.docker.com/reference/cli/docker/compose/down/),
 [system prune](https://docs.docker.com/reference/cli/docker/system/prune/), and
 [Git bundle](https://git-scm.com/docs/git-bundle).
+
+### Docker startup recovery on 2026-09-10
+
+Desktop failed before its engine pipe became available: the backend could not remove the
+stale `AppData/Local/Docker/run/dockerInference` Windows socket (error 1920). Normal CLI
+start/stop failed. After verifying Docker-only executable paths, their failed processes were
+stopped and the exact runtime directory was renamed to
+`C:/Users/User/AppData/Local/Docker/run.stale-kavrigo-20260910-1010`. A fresh `run` directory
+was created and Desktop launched normally. Docker 28.4.0 responded and existing Kavrigo
+volumes restarted successfully. No settings, images, volumes or secrets-engine directory
+were reset/deleted. Keep the preserved directory; do not prune or factory-reset to repeat this.
+The failure matches [Docker desktop-feedback #554](https://github.com/docker/desktop-feedback/issues/554).
+
+Step 13 migration upgrade/rollback/re-upgrade was verified only in the newly created
+`kavrigo_step13_test` database. Full-suite API fixtures truncate their configured database,
+including dependent engine tables. Both test DSNs must target disposable data; the updated
+host defaults use `kavrigo_test` rather than the running application's `kavrigo` database.
+
+
+### Final step 13 verification - 400e179
+
+Full `python -m pytest --tb=short --junitxml=/tmp/step13-full.xml`: **885 passed, zero skips**
+in 28.98s, including 82 integrations. Ruff check and format passed on 255 Python files;
+strict mypy passed 120 source files. The monetary AST guard is part of the full suite.
+Both final images rebuilt; all configured health checks passed, API `/healthz` returned ok,
+and the actual worker completed a fresh synthetic health job with no container restart.
+A completed result and identical 23-event history survived a Temporal server restart and SDK replay.
+SDK sandbox emitted pydantic_core late-import warnings during standalone replay; replay completed.
+Hosted CI, gitleaks/protoc/buf and independent review are not claimed as passed.
+
+The retained `.local/step13-full.log` and XML are local evidence, not Git-transfer artifacts.
+The helper container `kavrigo-verification` holds Python 3.13 dependencies and copies of source;
+it is not a live mount. Sync changes before testing. TEST_POSTGRES_DSN and owner DSN must point
+to `kavrigo_step13_test` for full-suite runs, and TEST_TEMPORAL_ADDRESS to `temporal:7233`
+inside the helper. No host tool installation was performed.

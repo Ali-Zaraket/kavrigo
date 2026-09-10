@@ -1,8 +1,24 @@
 # Kavrigo progress
 
-**Updated:** 2026-09-09. **Latest implementation:** `5fc9234` (step 12 local paper broker).
+**Updated:** 2026-09-10. **Latest implementation:** `400e179` (step 13).
+**Remote publication pending:** automatic approval review rejected the direct push to
+`Ali-Zaraket/kavrigo` on `main`. Implementation `400e179` and the handoff are committed locally;
+the push did not execute. Obtain explicit user approval for this exact direct main push before retrying.
+
 **Starting checkpoint:** `de77742`. **Current branch:** `main` (user-directed workflow).
-**Next:** step 13 durable workflows/account recovery; independent security review remains pending.
+**Position:** step 13 local durable workflows implemented and verified; next step 14 Product UI.
+
+### Completed local checkpoint - step 13
+
+ADR 0027, typed contracts, migration 0002, PostgreSQL command/run receipts, fenced replay,
+safe generation transitions, four Temporal workflows, outbox dispatch and the real worker are
+implemented. Full regression: **885 passed, zero skips (28.98s)**, including **82 integrations**.
+Ruff covers 255 files; strict typing passes 120 sources. Upgrade -> downgrade base -> upgrade
+head passed in the isolated `kavrigo_step13_test` database. Both service images rebuilt.
+Actual-worker health job and identical 23-event history survived a Temporal server restart.
+Final daily-risk guard passed the full suite. Both final images rebuilt and the actual worker
+completed another health job; API health passed. Implementation is committed as `400e179`.
+Docker 28.4.0 recovered after preserving a stale runtime-socket directory; details in MACHINE_HANDOFF.
 
 [MASTER_BUILD_SPEC.md](MASTER_BUILD_SPEC.md) and [AGENTS.md](AGENTS.md) are authoritative.
 [HANDOFF.md](HANDOFF.md) records detailed limits; [MACHINE_HANDOFF.md](MACHINE_HANDOFF.md)
@@ -10,19 +26,17 @@ covers setup/persistence; [HANDOFF_PROMPT.md](HANDOFF_PROMPT.md) is the continua
 
 ## Current outcome
 
-Slices through step 12 are implemented, with steps 8–12 local/mock only. The Windows
-destination was rebuilt with fresh local databases and the baseline passed before new work.
-Deterministic risk now binds frozen decisions/allocations, checks policy independently, sizes
-with exact fixed point, reserves resources across agents and permits one-time paper handoff
-after freshness/control/fencing rechecks. The local paper broker now receives actual risk
-issuance, simulates finite-depth IOC fills, accounts for cash/basis/fees/P&L, and reconciles
-missed fills by replaying a bounded journal. The mock model → runtime → risk → paper path is tested.
+Slices through step 13 are implemented locally. The durable repository reconstructs risk and
+paper state from immutable PostgreSQL commands, checks hashes, and commits simulated issuance,
+submission and receipts atomically. Leases fence competing writers. Reconciled terminal orders
+allow generation advance with exact basis/cash/fees retained. Historical decision IDs stay deduped.
+Temporal histories carry references; uncertain model dispatch stops without retrying the model.
 
-The full paper product milestone is **not achieved**. Risk and paper authority are in memory,
-limited to one batch generation with retained risk reservations. Durable reservations/audit,
-process-restart recovery, continuous operation, workflows,
-meaningful backtest strategy/data wiring and UI remain open. See
-[ADR 0026](docs/adr/0026-local-paper-broker.md) and [paper behavior](docs/product/paper-broker.md).
+The full paper product milestone is **not achieved**. UI, meaningful Nautilus strategy/data and
+benchmark wiring, live data transport, paid providers, shared billing, continuous production
+operation, hosted security/retention and independent review remain open. See
+[ADR 0027](docs/adr/0027-durable-paper-workflows.md),
+[workflow operations](docs/product/durable-workflows.md) and HANDOFF.md's earlier carry-overs.
 
 ## Build sequence
 
@@ -37,10 +51,10 @@ meaningful backtest strategy/data wiring and UI remain open. See
 | 7. Backtest | Contracts/engine configuration | No strategy/data wiring or meaningful BTC/ETH run |
 | 8. Model gateway | Local/mock | No paid provider or durable ledger |
 | 9. News intelligence | Local synthetic feed | No live/durable collector |
-| 10. Agent runtime | Local decisions/allocations | No deployed worker |
-| 11. Risk engine | Local deterministic session | Shared reservations, exact sizing, one-time permit; durable operation/review pending |
-| 12. Paper broker | Local batch implemented | Exact orders/fills/accounting, missed-fill reconciliation/replay; no process-restart durability |
-| 13. Temporal | Next | Durable workflows, account ownership, receipts/outbox and paper supervision |
+| 10. Agent runtime | Local decisions/allocations | Mock workflow backend wired; hosted/authenticated routes pending |
+| 11. Risk engine | Local deterministic session + durable wrapper | Shared reservations, exact sizing, fenced paper issuance; independent review pending |
+| 12. Paper broker | Local broker + durable account wrapper | Exact IOC accounting/replay; generation control and capacity remain explicit |
+| 13. Temporal | Implemented locally | Four workflows, PostgreSQL receipts/RLS/fencing, bounded supervision; hosted/continuous operation pending |
 | 14. UI | Not started | Frontend skill requirement in HANDOFF.md §7 |
 | 15. Observability/evals | Dedicated step pending | Existing OTel/local audit; hosted export and broader golden evals pending |
 
@@ -65,6 +79,10 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | Step 12 | Paper/risk tests with paper coverage | 117 passed (41 paper + 76 risk), 94% paper coverage (559 statements, 33 missed) |
 | Step 12 | Float-money AST guard; `git diff --check` | 110 sources passed; no whitespace errors |
 | Step 12 | Compose config, both image rebuilds, health wait, Alembic upgrade, API health | Passed; API uses host 58300 because Windows excluded 58000 |
+| Step 13, 2026-09-10 | `python -m pytest --tb=short --junitxml=/tmp/step13-full.xml` | 885 passed, zero skips (28.98s), including 82 integrations |
+| Step 13 | Ruff check/format; strict mypy across all source roots | 255 files; 120 typed sources passed |
+| Step 13 | Real worker health job, Temporal restart and SDK history replay | Completed result unchanged; 23 events retained; API health ok |
+| Step 13 | Alembic upgrade, downgrade base, upgrade head | Passed in newly created `kavrigo_step13_test`; application DB preserved |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -74,16 +92,14 @@ pull-request workflow lookup for `de77742` returned no runs, which was not a CI 
 
 ## Next slice and safety
 
-Follow [HANDOFF.md §10](HANDOFF.md#10-your-next-task--step-13-durable-workflows-and-account-recovery).
-Define durable PostgreSQL ownership, receipts/idempotency, audit/outbox and safe risk generation
-transitions before continuous operation. Implement Temporal evaluation/backtest/data-health and
-paper supervision workflows. Preserve unknown acknowledgement handling; never reset risk from
-a stale portfolio. Existing replay restores a broker view over the same live simulator only.
-Retain all earlier deferrals.
+Next is **step 14: Product UI**, following [HANDOFF.md §7](HANDOFF.md#7-frontend--explicit-user-instruction)
+and §10. Preserve all earlier carry-overs and the step 13 limits. The frontend skill requirement
+must be resolved before implementing UI. Step 15 observability/evals follows it.
 
 Keep `LIVE_TRADING_ENABLED=false` and `DEFAULT_TRADING_MODE=paper`; no exchange credentials
 or execution-security code. Risk supports USD spot MARKET/IOC paper/backtest, 12 fractional
-places, a conservative account-wide policy union and no reservation release/reset API.
+places and a conservative account-wide policy union. Durable generation advance requires terminal
+orders and fresh reconciliation; no prompt can release risk reservations.
 Git transfers tracked source, not volumes, databases, venvs, ignored data or credentials.
 Provider rights, hosted accounts, jurisdiction, domain and trademark decisions remain open.
 

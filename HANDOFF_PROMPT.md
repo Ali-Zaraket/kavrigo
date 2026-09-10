@@ -21,34 +21,41 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 ## Where things stand
 
-The Windows destination baseline `de77742` was restored and verified before step 11.
-Latest implementation is `5fc9234`, on `main`: local paper orders/fills, exact cash/basis/fees/P&L,
-issued-risk guards, idempotent receipts and replay reconciliation. Read ADRs 0025–0026 and all
-deferrals in HANDOFF.md §5. Steps 8–12 remain local/mock only. Paper is a single-generation
-batch; there is no deployed risk/paper service, continuous operation or process-restart
-durability. Independent security review is pending; no live execution exists.
+Latest implementation is `400e179` (step 13) on `main`. Final checks: 885 tests, zero skips,
+82 integrations; ruff on 255 files and strict typing on 120 sources. See PROGRESS.md.
+PostgreSQL now owns durable paper account commands, receipts, run inputs/stages and an outbox.
+The real worker registers four Temporal workflows for evaluation, backtests, health and bounded
+paper supervision. Forced RLS, account row locks, DB-clock leases, immutable receipts and exact
+replay protect process recovery. The default model explicitly abstains with a zero-cost mock.
+Read ADRs 0025-0027 and retain every carry-over in HANDOFF.md §5.
 
-Docker Python 3.13.11 checks passed: **847 tests, zero skips**, ruff check/format on 232 files,
-mypy `--strict` on 110 sources; dedicated integrations **50 passed / 797 deselected**.
-Both service images rebuilt, stack/API health and Alembic upgrade passed. Paper/risk tests
-passed 117 (41 paper + 76 risk), with 94% paper coverage. Docker recovered after the user's
-restart; use `$env:KAVRIGO_API_HOST_PORT='58300'` in PowerShell because Windows reserved 58000.
-See MACHINE_HANDOFF.md for exact commands and current Docker status.
-No host Python 3.13 venv or tool installation was performed. Verify branch/commit and the
-current stack before work; preserve existing destination volumes rather than reinitializing them.
+Workflows carry references, not frozen financial/evidence bodies. Unknown model dispatch becomes
+`uncertain` without another provider call. Risk issuance, simulated submission and stage receipt
+commit together. Generation advance requires terminal orders and fresh reconciliation with exact
+basis retained. Accounts stop accepting orders/matching/advance across the initial UTC day;
+reviewed daily rollover, compaction and continuous production operation are still deferred.
+Nautilus strategy/data/benchmark wiring remains incomplete; its empty result is refused.
 
-**Implement step 13: durable workflows and account recovery**, following HANDOFF.md §10.
-Define PostgreSQL ownership/fencing, receipts/idempotency, audit/outbox and safe risk generation
-transitions before enabling continuous operation. Add Temporal evaluation, backtest, data-health
-and paper supervision workflows using the local dev server. Never release reservations after
-an ambiguous handoff or rebuild a risk session from a stale portfolio. Test actual durable
-worker/process recovery; existing replay only restores broker views over the same live venue.
-Retain the pending meaningful Nautilus BTC/ETH strategy/data wiring and all earlier deferrals.
+Docker Python 3.13.11 is the verification environment; the host has no Python 3.13 venv.
+Use `$env:KAVRIGO_API_HOST_PORT='58300'` for Compose because Windows reserved 58000.
+API integration tests truncate their configured database: use separate disposable test DSNs,
+never the application's `kavrigo` database. This machine has `kavrigo_step13_test`; defaults target
+`kavrigo_test`. Apply migration 0002 independently to application and test databases.
 
-Continue in order and commit each slice separately on `main`, as the user requested on
-2026-09-09. Use ordinary non-force pushes; the prior work-branch/PR requirement is superseded.
-Independent risk/security review remains required before deployment. Do not restart
-steps 8–12. Step 14's frontend skill requirement remains in HANDOFF.md §7.
+Docker recovered on 2026-09-10 by preserving a stuck runtime-socket directory; see
+MACHINE_HANDOFF.md. Do not factory-reset, delete volumes, or reinstall tools to resume.
+Temporal now persists history in `temporal-data`; the actual worker's completed result and history
+survived a server restart. Check current Docker/Git state rather than assuming services stayed up.
+
+**Next: step 14 Product UI**, following HANDOFF.md §§7 and 10. Resolve the explicit frontend
+skill requirement before implementation. Add authenticated, workspace-scoped API interfaces
+for the internal repositories before exposing mutations in the UI. Preserve paper/live distinction,
+immutable version bindings, idempotency, freshness and evidence provenance. Do not fabricate P&L
+or meaningful backtest results to fill the interface. Step 15 observability/evals follows.
+
+Continue on `main` with separate slice commits and ordinary non-force pushes, as the user directed.
+No PR is required for the bootstrap workflow. Independent security review remains a deployment gate.
+Do not repeat completed steps 8-13 or treat local integration as production readiness.
 
 ## How to work
 
@@ -63,7 +70,7 @@ Verify with:
 ```bash
 make check                        # ruff + mypy --strict + pytest
 make up && make migrate           # local stack (ports are in a 5xxxx range — see HANDOFF.md §4)
-make test-integration             # needs the stack; skips cleanly without it
+make test-integration             # configure a separate migrated test database first
 ```
 
 Commit each completed step separately on `main`, with a message that explains
