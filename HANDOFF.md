@@ -1,6 +1,13 @@
+> **2026-09-16 checkpoint:** Step 14 local product inspection is implemented. The user explicitly
+> authorized installing ui-ux-pro-max; installation succeeded at upstream revision
+> `7f69fed6a2717900085f1bc3b263721f8ba025e2`. Earlier missing-skill/human-install notes below are
+> historical and superseded. See PROGRESS.md and docs/adr/0028-paper-product-inspection.md.
+> Browser tests pass after the explicit origin and focus fixes. Full Python regression:
+> 892 passed, zero skips. Work directly on main; ordinary pushes are authorized.
+
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-10 · **Latest implementation:** `400e179` (step 13) · **Position:** local slices through step 13 · **Next:** step 14 Product UI
+**Updated:** 2026-09-16 · **Position:** local slices through step 14 · **Next:** step 15 observability/evals
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -41,7 +48,7 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 11 | Risk engine | local deterministic session, retained reservations and one-time handoff — see §5 |
 | 12 | Paper broker | local single-generation ledger, IOC fills and reconciliation/replay — see §5 |
 | 13 | Temporal workflows | local PostgreSQL authority, four workflows and real worker implemented |
-| 14 | Product UI | **next**; not started — has a **specific tooling instruction**, see §7 |
+| 14 | Product UI | local paper drafts and stored receipt inspection; browser/a11y verified |
 | 15 | Observability / evals | not started |
 
 The milestone all of this is aimed at (`AGENTS.md`, last line):
@@ -518,21 +525,21 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task - step 14, Product UI
+## 10. Your next task - step 15, observability/evals
 
-First resolve the explicit frontend skill requirement in §7. Read the current master spec,
-existing platform contracts and brand tokens. Build the smallest paper-only product vertical
-slice: dashboard, Agent Studio, research/backtest artifacts, decisions with supporting and
-contradicting evidence, risk controls, paper portfolio and provider freshness. Do not invent
-successful strategy results or label historical/synthetic data as fresh/live.
+Step 14 now provides a Next.js paper workspace with immutable draft/version editing, stored
+run/decision/evidence inspection, risk requirements, historical portfolio receipts, honest
+unavailable provider states and permission-gated audit. See ADR 0028 and the web README.
+Hosted Clerk, product run-launch/account commands, policy editing and real chart/freshness
+feeds remain pending. No fabricated results are shown. Skill installation is complete.
 
-Step 13 provides internal typed account/run repositories and workflows, not product API routes.
-Add authenticated workspace-scoped control-plane interfaces before wiring UI actions. Preserve
-immutable AgentVersion/prompt/risk/data bindings and command idempotency. Keep all risk controls
-outside model access. A default mock abstention is a valid outcome, not a reason to fabricate trades.
+Step 15 should connect existing OTel instrumentation to a redacted local export path and add
+versioned synthetic golden evals for news extraction, injection defense and structured decision
+reliability. Inspect existing model gateway/news/runtime telemetry first. Langfuse is diagnostics,
+never the authoritative audit ledger. Hosted accounts and paid model credentials are absent.
 
-Read ADRs 0024-0027, `docs/product/durable-workflows.md` and the risk/paper threat models. Continue
-on main, commit the slice separately and retain §5 carry-overs. Step 15 follows the product UI.
+Read MASTER_BUILD_SPEC sections 13.4 and 26 and existing threat models. Continue on main,
+commit the slice separately and retain §5 carry-overs.
 Independent security review and hosted deployment remain separate release gates.
 
 ---

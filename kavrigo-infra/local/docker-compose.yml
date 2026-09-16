@@ -105,7 +105,7 @@ services:
       - temporal-data:/home/temporal
     ports:
       - "57233:7233"   # gRPC
-      - "58233:8233"   # Web UI
+      - "${KAVRIGO_TEMPORAL_UI_HOST_PORT:-58233}:8233"   # Web UI; Windows may reserve default
     healthcheck:
       test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
       interval: 10s

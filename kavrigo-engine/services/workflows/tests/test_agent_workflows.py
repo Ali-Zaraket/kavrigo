@@ -15,7 +15,7 @@ from kavrigo_workflows.mock_runtime import MockRuntimeBackend
 from kavrigo_workflows.runs import RunRepository
 
 from .agent_fixtures import agent_setup as agent_setup
-from .conftest import WS, observation
+from .conftest import WS, change, observation, seal
 from .test_workflows_integration import replay, worker
 from .test_workflows_integration import temporal_client as temporal_client
 
@@ -39,6 +39,33 @@ async def test_agent_workflow_recovery(
     engine_database, temporal_client, agent_setup, clock, backend_kind
 ):
     definition, job, backend, provider = agent_setup
+    # This tests durable retry/ack recovery, not a two-second market-data deadline.
+    # Allow the bounded 30-second workflow wait while retaining real DB-time checks.
+    registration = definition.registrations[0]
+    registration = change(
+        registration,
+        policies=tuple(
+            seal(
+                change(
+                    policy,
+                    freshness=change(
+                        policy.freshness,
+                        max_age_ms=dict.fromkeys(policy.freshness.max_age_ms, 60000),
+                    ),
+                )
+            )
+            for policy in registration.policies
+        ),
+        execution=change(
+            registration.execution,
+            max_snapshot_age_ms=60000,
+            max_portfolio_age_ms=60000,
+            max_reconciliation_age_ms=60000,
+            max_market_age_ms=60000,
+            max_approval_age_ms=60000,
+        ),
+    )
+    definition = change(definition, registrations=(registration,))
     if backend_kind == "default_mock":
         backend = MockRuntimeBackend()
     if backend_kind == "unconfigured":

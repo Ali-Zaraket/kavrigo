@@ -10,3 +10,8 @@
 **/*.key
 **/_generated
 kavrigo-execution-security
+**/node_modules
+**/.next
+.local
+**/test-results
+**/playwright-report

@@ -310,3 +310,22 @@ The helper container `kavrigo-verification` holds Python 3.13 dependencies and c
 it is not a live mount. Sync changes before testing. TEST_POSTGRES_DSN and owner DSN must point
 to `kavrigo_step13_test` for full-suite runs, and TEST_TEMPORAL_ADDRESS to `temporal:7233`
 inside the helper. No host tool installation was performed.
+
+### Step 14 verification - 2026-09-16
+
+Docker Desktop started normally with existing volumes intact. Compose uses API host 58300
+and Temporal UI host 58250 (configurable to avoid Windows reserved ports). The helper container
+contains copied source, not a live mount. Full pytest against `kavrigo_step13_test`: **892 passed,
+zero skips (32.87s)**. Ruff: 263 files; strict mypy: 122 sources. OpenAPI snapshot checked.
+The recovery test fixture now has a 60-second freshness budget for its bounded 30-second
+Temporal retry scenario; production freshness checks are unchanged. Its former two-second
+fixture correctly cancelled fills on a slower run.
+
+The separate `kavrigo-web-test-api` container uses that disposable database on 127.0.0.1:58301.
+Never run browser tests concurrently with Python fixtures that truncate it. Application API
+remains on 58300. Frontend build, lint, formatting, typecheck and generated-client checks pass;
+three boundary tests and three Playwright/Edge browser tests pass. Browser screenshots under
+`apps/web/test-results` are ignored. No hosted CI or security scanner pass is claimed.
+
+Bundled Node/pnpm were used; no uv/protoc/buf/gitleaks host installation was performed.
+See apps/web/README.md for exact web commands and the two configured origin variables.

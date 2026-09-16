@@ -1,0 +1,3474 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kavrigo Control Plane",
+    "description": "\nKavrigo control plane.\n\nKavrigo is a platform for building, testing and governing AI trading agents. Agents produce\nstructured, evidence-backed decisions; a deterministic risk engine outside the model decides\nwhether an order intent is permitted.\n\n**This release is paper and research only.** Live execution is disabled and gated on the\nreadiness checklist in the master specification. Backtest and paper results are simulations, not\nlive results, and nothing here is investment advice.\n",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Liveness probe",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Readiness probe",
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/platform/mode": {
+      "get": {
+        "tags": [
+          "platform"
+        ],
+        "summary": "Authoritative trading-mode state",
+        "operationId": "platform_mode_v1_platform_mode_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformModeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "The calling user and their workspaces",
+        "operationId": "me_v1_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/workspaces": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "List the caller's workspaces",
+        "operationId": "list_workspaces_v1_workspaces_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Workspaces V1 Workspaces Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Create a workspace",
+        "description": "Create a workspace with the caller as its owner.\n\nNot idempotency-keyed: idempotency records are themselves tenant-scoped, and there is no\ntenant yet. The unique slug constraint is what makes a retry safe here.",
+        "operationId": "create_workspace_v1_workspaces_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/workspaces/{workspace_id}": {
+      "get": {
+        "tags": [
+          "workspaces"
+        ],
+        "summary": "Get one workspace",
+        "description": "Read a workspace the caller belongs to.\n\nMembership is already proven by resolving the context; a non-member never reaches this body.",
+        "operationId": "get_workspace_v1_workspaces__workspace_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/agents": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "List agents",
+        "operationId": "list_agents_v1_workspaces__workspace_id__agents_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AgentResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Create an agent and its first version",
+        "operationId": "create_agent_v1_workspaces__workspace_id__agents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/agents/{agent_id}": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get an agent",
+        "operationId": "get_agent_v1_workspaces__workspace_id__agents__agent_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Archive an agent",
+        "description": "Archive, never delete: the agent's versions explain its historical decisions.",
+        "operationId": "archive_agent_v1_workspaces__workspace_id__agents__agent_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "default": "",
+              "title": "Reason"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "List agent versions, newest first",
+        "operationId": "list_versions_v1_workspaces__workspace_id__agents__agent_id__versions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AgentVersionSummary_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Create a new immutable version",
+        "description": "Append a version. The previous version is untouched and remains readable.",
+        "operationId": "create_version_v1_workspaces__workspace_id__agents__agent_id__versions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentVersionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentVersionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get one version with its full specification",
+        "operationId": "get_version_v1_workspaces__workspace_id__agents__agent_id__versions__version__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Version"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentVersionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/runs": {
+      "get": {
+        "tags": [
+          "inspection"
+        ],
+        "summary": "Runs",
+        "operationId": "runs_v1_workspaces__workspace_id__runs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RunSummary_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "inspection"
+        ],
+        "summary": "Run Detail",
+        "operationId": "run_detail_v1_workspaces__workspace_id__runs__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^run_[0-9a-f]{32}$",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunInspection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/paper/accounts": {
+      "get": {
+        "tags": [
+          "inspection"
+        ],
+        "summary": "Accounts",
+        "operationId": "accounts_v1_workspaces__workspace_id__paper_accounts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PaperAccountView_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/audit": {
+      "get": {
+        "tags": [
+          "inspection"
+        ],
+        "summary": "Audit",
+        "operationId": "audit_v1_workspaces__workspace_id__audit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AuditSummary_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Description",
+            "default": ""
+          },
+          "spec": {
+            "$ref": "#/components/schemas/AgentSpec"
+          },
+          "change_summary": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Change Summary",
+            "default": "Initial version."
+          },
+          "author_kind": {
+            "$ref": "#/components/schemas/AuthorKind",
+            "default": "human"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "spec"
+        ],
+        "title": "AgentCreate",
+        "description": "Create an agent and its first version.\n\nThe spec is validated as a full :class:`kavrigo_domain.AgentSpec` before anything is\nwritten, so an invalid configuration never reaches the database or a run."
+      },
+      "AgentDecision": {
+        "properties": {
+          "market_regime": {
+            "$ref": "#/components/schemas/MarketRegime"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DecisionState"
+          },
+          "signals": {
+            "$ref": "#/components/schemas/SignalScores"
+          },
+          "prediction": {
+            "$ref": "#/components/schemas/Prediction"
+          },
+          "proposed_action": {
+            "$ref": "#/components/schemas/ProposedAction"
+          },
+          "proposed_notional": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Rationale",
+            "default": ""
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string",
+              "pattern": "^ev_[0-9a-f]{32}$",
+              "description": "ev_ id"
+            },
+            "type": "array",
+            "maxItems": 256,
+            "title": "Evidence Refs",
+            "default": []
+          },
+          "contradicting_evidence_refs": {
+            "items": {
+              "type": "string",
+              "pattern": "^ev_[0-9a-f]{32}$",
+              "description": "ev_ id"
+            },
+            "type": "array",
+            "maxItems": 256,
+            "title": "Contradicting Evidence Refs",
+            "default": []
+          },
+          "risk_flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Risk Flags",
+            "default": []
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Reason Codes",
+            "default": []
+          },
+          "estimated_cost_bps": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Bps"
+          },
+          "decision_id": {
+            "type": "string",
+            "pattern": "^dec_[0-9a-f]{32}$",
+            "title": "Decision Id",
+            "description": "dec_ id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id",
+            "description": "ws_ id"
+          },
+          "agent_version_id": {
+            "type": "string",
+            "pattern": "^av_[0-9a-f]{32}$",
+            "title": "Agent Version Id",
+            "description": "av_ id"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "pattern": "^snap_[0-9a-f]{32}$",
+            "title": "Snapshot Id",
+            "description": "snap_ id"
+          },
+          "instrument_id": {
+            "$ref": "#/components/schemas/InstrumentId"
+          },
+          "decided_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Decided At"
+          },
+          "model_calls": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCallRecord"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "title": "Model Calls",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "market_regime",
+          "state",
+          "signals",
+          "prediction",
+          "proposed_action",
+          "decision_id",
+          "workspace_id",
+          "agent_version_id",
+          "snapshot_id",
+          "instrument_id",
+          "decided_at"
+        ],
+        "title": "AgentDecision",
+        "description": "A validated proposal bound to server-owned context by the agent runtime. Not an order."
+      },
+      "AgentResponse": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "current_version": {
+            "type": "integer",
+            "title": "Current Version"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_id",
+          "workspace_id",
+          "name",
+          "description",
+          "current_version",
+          "created_at",
+          "created_by"
+        ],
+        "title": "AgentResponse"
+      },
+      "AgentSpec": {
+        "properties": {
+          "api_version": {
+            "type": "string",
+            "pattern": "^agents\\.kavrigo/v\\d+$",
+            "title": "Api Version",
+            "default": "agents.kavrigo/v1"
+          },
+          "kind": {
+            "type": "string",
+            "pattern": "^TradingAgent$",
+            "title": "Kind",
+            "default": "TradingAgent"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Description",
+            "default": ""
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TradingMode",
+            "default": "paper"
+          },
+          "universe": {
+            "$ref": "#/components/schemas/UniverseConfig"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ScheduleConfig"
+          },
+          "data_packs": {
+            "items": {
+              "$ref": "#/components/schemas/DataPack"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Data Packs"
+          },
+          "analysis": {
+            "$ref": "#/components/schemas/AnalysisConfig",
+            "default": {
+              "market_scanner": true,
+              "network_context": true,
+              "asset_analyzer": true,
+              "portfolio_layer": true,
+              "horizons_minutes": [
+                60
+              ],
+              "allow_abstain": true
+            }
+          },
+          "model_policy": {
+            "$ref": "#/components/schemas/ModelPolicy"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceRequirements",
+            "default": {
+              "min_source_quality": 0.65,
+              "require_timestamps": true,
+              "require_contradicting_evidence": true,
+              "min_evidence_items": 2
+            }
+          },
+          "risk_policy_ref": {
+            "type": "string",
+            "pattern": "^rp_[0-9a-f]{32}$",
+            "title": "Risk Policy Ref"
+          },
+          "execution_policy_ref": {
+            "type": "string",
+            "pattern": "^ep_[0-9a-f]{32}$",
+            "title": "Execution Policy Ref"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "universe",
+          "schedule",
+          "data_packs",
+          "model_policy",
+          "risk_policy_ref",
+          "execution_policy_ref"
+        ],
+        "title": "AgentSpec",
+        "description": "The declarative agent specification a user reviews and approves."
+      },
+      "AgentVersionCreate": {
+        "properties": {
+          "spec": {
+            "$ref": "#/components/schemas/AgentSpec"
+          },
+          "change_summary": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Change Summary"
+          },
+          "author_kind": {
+            "$ref": "#/components/schemas/AuthorKind",
+            "default": "human"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "spec",
+          "change_summary"
+        ],
+        "title": "AgentVersionCreate",
+        "description": "Create a new version of an existing agent.\n\nThere is no update endpoint by design: editing an agent creates a version, it does not mutate\nthe configuration that produced historical decisions (``MASTER_BUILD_SPEC.md`` \u00a73, \u00a738)."
+      },
+      "AgentVersionResponse": {
+        "properties": {
+          "agent_version_id": {
+            "type": "string",
+            "title": "Agent Version Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "spec_hash": {
+            "type": "string",
+            "title": "Spec Hash"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          },
+          "feature_set_version": {
+            "type": "string",
+            "title": "Feature Set Version"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/PromotionStage"
+          },
+          "approval_status": {
+            "$ref": "#/components/schemas/ApprovalStatus"
+          },
+          "approved_environments": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Approved Environments"
+          },
+          "author_kind": {
+            "$ref": "#/components/schemas/AuthorKind"
+          },
+          "change_summary": {
+            "type": "string",
+            "title": "Change Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Spec"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_version_id",
+          "agent_id",
+          "version",
+          "spec_hash",
+          "prompt_hash",
+          "feature_set_version",
+          "stage",
+          "approval_status",
+          "approved_environments",
+          "author_kind",
+          "change_summary",
+          "created_at",
+          "created_by",
+          "spec"
+        ],
+        "title": "AgentVersionResponse",
+        "description": "A version with its full specification."
+      },
+      "AgentVersionSummary": {
+        "properties": {
+          "agent_version_id": {
+            "type": "string",
+            "title": "Agent Version Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "spec_hash": {
+            "type": "string",
+            "title": "Spec Hash"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          },
+          "feature_set_version": {
+            "type": "string",
+            "title": "Feature Set Version"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/PromotionStage"
+          },
+          "approval_status": {
+            "$ref": "#/components/schemas/ApprovalStatus"
+          },
+          "approved_environments": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Approved Environments"
+          },
+          "author_kind": {
+            "$ref": "#/components/schemas/AuthorKind"
+          },
+          "change_summary": {
+            "type": "string",
+            "title": "Change Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "agent_version_id",
+          "agent_id",
+          "version",
+          "spec_hash",
+          "prompt_hash",
+          "feature_set_version",
+          "stage",
+          "approval_status",
+          "approved_environments",
+          "author_kind",
+          "change_summary",
+          "created_at",
+          "created_by"
+        ],
+        "title": "AgentVersionSummary"
+      },
+      "AnalysisConfig": {
+        "properties": {
+          "market_scanner": {
+            "type": "boolean",
+            "title": "Market Scanner",
+            "default": true
+          },
+          "network_context": {
+            "type": "boolean",
+            "title": "Network Context",
+            "default": true
+          },
+          "asset_analyzer": {
+            "type": "boolean",
+            "title": "Asset Analyzer",
+            "default": true
+          },
+          "portfolio_layer": {
+            "type": "boolean",
+            "title": "Portfolio Layer",
+            "default": true
+          },
+          "horizons_minutes": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Horizons Minutes",
+            "default": [
+              60
+            ]
+          },
+          "allow_abstain": {
+            "type": "boolean",
+            "title": "Allow Abstain",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AnalysisConfig"
+      },
+      "ApprovalStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "withdrawn"
+        ],
+        "title": "ApprovalStatus"
+      },
+      "AuditSummary": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "resource_type": {
+            "type": "string",
+            "title": "Resource Type"
+          },
+          "resource_id": {
+            "type": "string",
+            "title": "Resource Id"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "action",
+          "resource_type",
+          "resource_id",
+          "occurred_at"
+        ],
+        "title": "AuditSummary"
+      },
+      "AuthorKind": {
+        "type": "string",
+        "enum": [
+          "human",
+          "ai_assisted",
+          "ai_generated"
+        ],
+        "title": "AuthorKind",
+        "description": "Whether a version's changes were written by a human or generated (\u00a738)."
+      },
+      "DataPack": {
+        "type": "string",
+        "enum": [
+          "market_microstructure",
+          "price_technical",
+          "derivatives",
+          "onchain_core",
+          "stablecoins",
+          "etf_flows",
+          "tokenomics",
+          "defi",
+          "news",
+          "macro",
+          "security_events",
+          "social_attention",
+          "relative_strength"
+        ],
+        "title": "DataPack",
+        "description": "Explicitly enabled data families (``MASTER_BUILD_SPEC.md`` \u00a77).\n\nPacks are opt-in per agent because they carry both cost and licence entitlement (\u00a78.3)."
+      },
+      "DecisionState": {
+        "type": "string",
+        "enum": [
+          "bullish",
+          "bearish",
+          "neutral",
+          "high_risk",
+          "unknown"
+        ],
+        "title": "DecisionState",
+        "description": "The agent's read of the situation (``MASTER_BUILD_SPEC.md`` \u00a76.7)."
+      },
+      "EvidenceItem": {
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "pattern": "^ev_[0-9a-f]{32}$",
+            "title": "Evidence Id",
+            "description": "ev_ id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "source_class": {
+            "$ref": "#/components/schemas/SourceClass"
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Provider"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentId"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "title": "Instruments",
+            "default": []
+          },
+          "assets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 64,
+            "title": "Assets",
+            "default": []
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "ingested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ingested At"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Content Hash"
+          },
+          "quality": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Quality"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "is_contradictory_candidate": {
+            "type": "boolean",
+            "title": "Is Contradictory Candidate",
+            "default": false
+          },
+          "news_event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewsEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "injection_signals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Injection Signals",
+            "default": []
+          },
+          "license_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Ref"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "kind",
+          "source_class",
+          "provider",
+          "summary",
+          "observed_at",
+          "ingested_at",
+          "content_hash",
+          "quality",
+          "confidence"
+        ],
+        "title": "EvidenceItem",
+        "description": "One immutable, attributable piece of evidence available to a decision.\n\n``content_hash`` makes the item verifiable after the fact: a stored decision can be replayed\nagainst exactly the evidence that produced it."
+      },
+      "EvidenceKind": {
+        "type": "string",
+        "enum": [
+          "price_technical",
+          "order_flow",
+          "derivatives",
+          "onchain",
+          "stablecoin",
+          "etf_flow",
+          "tokenomics",
+          "defi",
+          "network_event",
+          "exchange_event",
+          "security_event",
+          "news",
+          "macro",
+          "regulation",
+          "geopolitical",
+          "social_attention",
+          "relative_strength"
+        ],
+        "title": "EvidenceKind",
+        "description": "What family of evidence this is, matching the signal families in \u00a77."
+      },
+      "EvidenceRequirements": {
+        "properties": {
+          "min_source_quality": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Source Quality",
+            "default": 0.65
+          },
+          "require_timestamps": {
+            "type": "boolean",
+            "title": "Require Timestamps",
+            "default": true
+          },
+          "require_contradicting_evidence": {
+            "type": "boolean",
+            "title": "Require Contradicting Evidence",
+            "default": true
+          },
+          "min_evidence_items": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 1.0,
+            "title": "Min Evidence Items",
+            "default": 2
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EvidenceRequirements",
+        "description": "What an agent must have before it is permitted to act (``MASTER_BUILD_SPEC.md`` \u00a79)."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version"
+        ],
+        "title": "HealthResponse"
+      },
+      "InstrumentClass": {
+        "type": "string",
+        "enum": [
+          "spot",
+          "perpetual",
+          "future",
+          "option",
+          "index"
+        ],
+        "title": "InstrumentClass",
+        "description": "What kind of contract an instrument is.\n\nOnly ``SPOT`` is executable in V1 (ADR 0002). Derivatives appear here because their *data*\nis a first-class signal source (``MASTER_BUILD_SPEC.md`` \u00a77.3) even though the platform does\nnot trade them."
+      },
+      "InstrumentId": {
+        "properties": {
+          "base": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{2,16}$",
+            "title": "Base"
+          },
+          "quote": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{2,16}$",
+            "title": "Quote"
+          },
+          "venue": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 2,
+            "pattern": "^[A-Z0-9_]{2,32}$",
+            "title": "Venue",
+            "description": "Uppercase venue or data-source identifier, e.g. BINANCE, COINBASE, SIM."
+          },
+          "instrument_class": {
+            "$ref": "#/components/schemas/InstrumentClass",
+            "default": "spot"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "base",
+          "quote",
+          "venue"
+        ],
+        "title": "InstrumentId",
+        "description": "A tradable or observable instrument, unambiguous across venues and contract types.\n\nCanonical string form is ``BASE-QUOTE.VENUE`` for spot, and ``BASE-QUOTE.VENUE:CLASS`` for\neverything else \u2014 for example ``BTC-USDT.BINANCE`` and ``BTC-USDT.BINANCE:perpetual``."
+      },
+      "MarketRegime": {
+        "type": "string",
+        "enum": [
+          "trend_up",
+          "trend_down",
+          "range",
+          "high_volatility",
+          "low_liquidity",
+          "deleveraging",
+          "crowded_long",
+          "crowded_short",
+          "event_risk",
+          "unknown"
+        ],
+        "title": "MarketRegime",
+        "description": "Regime labels from ``MASTER_BUILD_SPEC.md`` \u00a744.\n\nThe label set is closed on purpose: a model may interpret regime context, but it may not\ninvent unbounded regime labels during execution, because downstream policy keys off them."
+      },
+      "MeResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "mfa_verified": {
+            "type": "boolean",
+            "title": "Mfa Verified"
+          },
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceSummary"
+            },
+            "type": "array",
+            "title": "Workspaces"
+          },
+          "permissions": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Permissions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "email",
+          "mfa_verified",
+          "workspaces",
+          "permissions"
+        ],
+        "title": "MeResponse",
+        "description": "Who the caller is, and what they can reach.\n\n``permissions`` is returned per workspace so the client can hide actions it cannot perform.\nThe server re-checks every one of them \u2014 a hidden button is a usability feature, never a\nsecurity control."
+      },
+      "ModelCallRecord": {
+        "properties": {
+          "model_call_id": {
+            "type": "string",
+            "pattern": "^mc_[0-9a-f]{32}$",
+            "title": "Model Call Id"
+          },
+          "profile": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Profile"
+          },
+          "resolved_model_identifier": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Resolved Model Identifier"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Prompt Hash"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Output Tokens"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Latency Ms"
+          },
+          "tool_calls": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tool Calls",
+            "default": 0
+          },
+          "schema_validation_failed": {
+            "type": "boolean",
+            "title": "Schema Validation Failed",
+            "default": false
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ws_[0-9a-f]{32}$",
+                "description": "ws_ id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ag_[0-9a-f]{32}$",
+                "description": "ag_ id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^av_[0-9a-f]{32}$",
+                "description": "av_ id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "decision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^dec_[0-9a-f]{32}$",
+                "description": "dec_ id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Id"
+          },
+          "request_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Hash"
+          },
+          "output_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Hash"
+          },
+          "schema_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Hash"
+          },
+          "route_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route Hash"
+          },
+          "outcome": {
+            "type": "string",
+            "pattern": "^[a-z_]{1,48}$",
+            "title": "Outcome",
+            "default": "success"
+          },
+          "usage_known": {
+            "type": "boolean",
+            "title": "Usage Known",
+            "default": true
+          },
+          "cost_is_reservation": {
+            "type": "boolean",
+            "title": "Cost Is Reservation",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "model_call_id",
+          "profile",
+          "resolved_model_identifier",
+          "prompt_hash",
+          "input_tokens",
+          "output_tokens",
+          "cost",
+          "latency_ms"
+        ],
+        "title": "ModelCallRecord",
+        "description": "What the model gateway actually did, for cost accounting and reproducibility.\n\n``resolved_model_identifier`` is recorded rather than the profile alone: a routing fallback\nmust never silently change which model produced a reproducible result (ADR 0010)."
+      },
+      "ModelPolicy": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ModelProfile",
+            "default": "reason_balanced"
+          },
+          "max_cost_per_decision_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Max Cost Per Decision Usd"
+          },
+          "max_tool_calls": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 0.0,
+            "title": "Max Tool Calls",
+            "default": 12
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "maximum": 32768.0,
+            "minimum": 64.0,
+            "title": "Max Output Tokens",
+            "default": 4096
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "maximum": 600.0,
+            "minimum": 1.0,
+            "title": "Timeout Seconds",
+            "default": 60
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "max_cost_per_decision_usd"
+        ],
+        "title": "ModelPolicy"
+      },
+      "ModelProfile": {
+        "type": "string",
+        "enum": [
+          "extract_fast",
+          "classify_fast",
+          "reason_balanced",
+          "reason_deep",
+          "embed"
+        ],
+        "title": "ModelProfile",
+        "description": "Routing profiles, not model names (``MASTER_BUILD_SPEC.md`` \u00a713.5).\n\nProduct behaviour must not be hard-coded to a current model name; the gateway resolves a\nprofile to a concrete model, and the resolved identifier is recorded on the decision."
+      },
+      "Money": {
+        "properties": {
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "pattern": "^[A-Z0-9]{2,16}$",
+            "title": "Currency",
+            "description": "Uppercase asset or currency code, e.g. BTC, ETH, USDT, USD."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "Money",
+        "description": "An amount in a specific currency.\n\nArithmetic is deliberately restrictive: adding USD to USDT is a bug, not a conversion, and\nthis type will not quietly perform one."
+      },
+      "NewsEvent": {
+        "properties": {
+          "event_type": {
+            "$ref": "#/components/schemas/NewsEventType"
+          },
+          "assets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "minItems": 0,
+            "title": "Assets",
+            "default": []
+          },
+          "importance": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Importance"
+          },
+          "sentiment": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Sentiment"
+          },
+          "certainty": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Certainty"
+          },
+          "novelty": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Novelty"
+          },
+          "source_quality": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Source Quality"
+          },
+          "expected_horizon": {
+            "type": "string",
+            "pattern": "^(minutes|hours|days|weeks|unknown)$",
+            "title": "Expected Horizon"
+          },
+          "already_priced_in_likelihood": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Already Priced In Likelihood"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "first_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "First Seen At"
+          },
+          "primary_source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Source Ref"
+          },
+          "corroborating_source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Corroborating Source Refs",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_type",
+          "importance",
+          "sentiment",
+          "certainty",
+          "novelty",
+          "source_quality",
+          "expected_horizon",
+          "published_at",
+          "first_seen_at"
+        ],
+        "title": "NewsEvent",
+        "description": "A structured news event extracted from untrusted text (``MASTER_BUILD_SPEC.md`` \u00a77.12).\n\nThe extraction step is where an article stops being text and becomes data. Sentiment alone\nis close to useless; credibility, novelty, certainty and expected horizon are what make an\nevent actionable or not."
+      },
+      "NewsEventType": {
+        "type": "string",
+        "enum": [
+          "regulation",
+          "enforcement",
+          "listing",
+          "delisting",
+          "partnership",
+          "funding",
+          "protocol_upgrade",
+          "outage",
+          "exploit",
+          "governance",
+          "token_unlock",
+          "macro_release",
+          "market_structure",
+          "other"
+        ],
+        "title": "NewsEventType"
+      },
+      "Page_AgentResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "Page[AgentResponse]"
+      },
+      "Page_AgentVersionSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AgentVersionSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "Page[AgentVersionSummary]"
+      },
+      "Page_AuditSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "Page[AuditSummary]"
+      },
+      "Page_PaperAccountView_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PaperAccountView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "Page[PaperAccountView]"
+      },
+      "Page_RunSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "Page[RunSummary]"
+      },
+      "PaperAccountView": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "title": "Sequence"
+          },
+          "state_hash": {
+            "type": "string",
+            "title": "State Hash"
+          },
+          "committed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Committed At"
+          },
+          "portfolio": {
+            "$ref": "#/components/schemas/PortfolioSnapshot"
+          },
+          "fees_paid": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "account_id",
+          "sequence",
+          "state_hash",
+          "committed_at",
+          "portfolio",
+          "fees_paid"
+        ],
+        "title": "PaperAccountView"
+      },
+      "Permission": {
+        "type": "string",
+        "enum": [
+          "workspace:read",
+          "workspace:update",
+          "workspace:delete",
+          "member:read",
+          "member:invite",
+          "member:remove",
+          "agent:read",
+          "agent:create",
+          "agent:update",
+          "agent:archive",
+          "agent:promote",
+          "risk_policy:read",
+          "risk_policy:write",
+          "run:read",
+          "run:start",
+          "run:stop",
+          "audit:read",
+          "exchange_connection:read",
+          "exchange_connection:write"
+        ],
+        "title": "Permission",
+        "description": "Discrete capabilities. Add, never repurpose."
+      },
+      "PlatformModeResponse": {
+        "properties": {
+          "live_trading_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Live Trading Enabled",
+            "description": "Always false in this release. Live execution is gated on MASTER_BUILD_SPEC.md \u00a747 and ADR 0001.",
+            "default": false
+          },
+          "default_trading_mode": {
+            "type": "string",
+            "title": "Default Trading Mode"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "disclosure": {
+            "type": "string",
+            "title": "Disclosure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "default_trading_mode",
+          "environment",
+          "disclosure"
+        ],
+        "title": "PlatformModeResponse",
+        "description": "The authoritative trading-mode state for the whole platform."
+      },
+      "PortfolioSnapshot": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id",
+            "description": "ws_ id"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TradingMode"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "base_currency": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{2,16}$",
+            "title": "Base Currency"
+          },
+          "cash": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "reserved_cash": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "type": "array",
+            "maxItems": 512,
+            "title": "Positions",
+            "default": []
+          },
+          "realized_pnl_today": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "unrealized_pnl": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "equity": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "gross_exposure": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "net_exposure": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "peak_equity": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "open_order_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Open Order Count",
+            "default": 0
+          },
+          "is_reconciled": {
+            "type": "boolean",
+            "title": "Is Reconciled",
+            "default": true
+          },
+          "reconciled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reconciled At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "mode",
+          "as_of",
+          "base_currency",
+          "cash",
+          "reserved_cash",
+          "realized_pnl_today",
+          "unrealized_pnl",
+          "equity",
+          "gross_exposure",
+          "net_exposure",
+          "peak_equity"
+        ],
+        "title": "PortfolioSnapshot",
+        "description": "Point-in-time portfolio state used by the portfolio and risk layers."
+      },
+      "Position": {
+        "properties": {
+          "instrument_id": {
+            "$ref": "#/components/schemas/InstrumentId"
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "average_entry_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mark_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "realized_pnl": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "unrealized_pnl": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "opened_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened At"
+          },
+          "network": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "instrument_id",
+          "quantity",
+          "realized_pnl",
+          "unrealized_pnl"
+        ],
+        "title": "Position",
+        "description": "A held position. Negative quantity represents short exposure (not executable in V1)."
+      },
+      "Prediction": {
+        "properties": {
+          "expected_return_bps": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": -10000.0,
+            "title": "Expected Return Bps"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "uncertainty": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Uncertainty"
+          },
+          "horizon_minutes": {
+            "type": "integer",
+            "maximum": 100800.0,
+            "minimum": 1.0,
+            "title": "Horizon Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected_return_bps",
+          "confidence",
+          "uncertainty",
+          "horizon_minutes"
+        ],
+        "title": "Prediction",
+        "description": "A quantified expectation with explicit uncertainty."
+      },
+      "Price": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value"
+          },
+          "base": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "pattern": "^[A-Z0-9]{2,16}$",
+            "title": "Base",
+            "description": "Uppercase asset or currency code, e.g. BTC, ETH, USDT, USD."
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "pattern": "^[A-Z0-9]{2,16}$",
+            "title": "Quote",
+            "description": "Uppercase asset or currency code, e.g. BTC, ETH, USDT, USD."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "base",
+          "quote"
+        ],
+        "title": "Price",
+        "description": "A price expressed as quote currency per one unit of the base asset."
+      },
+      "PromotionStage": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "historical_backtest",
+          "out_of_sample",
+          "paper_candidate",
+          "paper_observation",
+          "live_eligible",
+          "live_limited",
+          "live_expanded"
+        ],
+        "title": "PromotionStage",
+        "description": "Promotion pipeline stages (``MASTER_BUILD_SPEC.md`` \u00a712.6).\n\nA failed gate produces a new version; it never rewrites history."
+      },
+      "ProposedAction": {
+        "type": "string",
+        "enum": [
+          "buy",
+          "sell",
+          "reduce",
+          "close",
+          "hold",
+          "no_trade"
+        ],
+        "title": "ProposedAction",
+        "description": "The only actions a model may propose (``MASTER_BUILD_SPEC.md`` \u00a76.6).\n\nThis is a closed set on purpose. A model cannot propose \"withdraw\", \"transfer\", \"change\nrisk policy\", or any free-form instruction, because those words have no representation here."
+      },
+      "Quantity": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value"
+          },
+          "asset": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "pattern": "^[A-Z0-9]{2,16}$",
+            "title": "Asset",
+            "description": "Uppercase asset or currency code, e.g. BTC, ETH, USDT, USD."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "value",
+          "asset"
+        ],
+        "title": "Quantity",
+        "description": "A quantity of an asset. Negative values represent short exposure."
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "checks": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "unavailable",
+                "not_configured"
+              ]
+            },
+            "type": "object",
+            "title": "Checks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "checks"
+        ],
+        "title": "ReadinessResponse"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "admin",
+          "member",
+          "viewer"
+        ],
+        "title": "Role",
+        "description": "Workspace roles, least privileged last.\n\n``OWNER`` and ``ADMIN`` are distinguished because deleting a workspace, or removing its last\nowner, should not be available to everyone who can administer agents."
+      },
+      "RunInspection": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "backtest",
+              "health",
+              "supervision"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "refused",
+              "uncertain"
+            ],
+            "title": "Status"
+          },
+          "input_hash": {
+            "type": "string",
+            "title": "Input Hash"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StageSummary"
+            },
+            "type": "array",
+            "title": "Stages"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/AgentDecision"
+            },
+            "type": "array",
+            "title": "Decisions"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "kind",
+          "status",
+          "input_hash",
+          "created_at",
+          "stages",
+          "decisions",
+          "evidence",
+          "reason_codes"
+        ],
+        "title": "RunInspection"
+      },
+      "RunSummary": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "backtest",
+              "health",
+              "supervision"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "refused",
+              "uncertain"
+            ],
+            "title": "Status"
+          },
+          "input_hash": {
+            "type": "string",
+            "title": "Input Hash"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "kind",
+          "status",
+          "input_hash",
+          "created_at"
+        ],
+        "title": "RunSummary"
+      },
+      "ScheduleConfig": {
+        "properties": {
+          "decision_interval_seconds": {
+            "type": "integer",
+            "maximum": 86400.0,
+            "minimum": 60.0,
+            "title": "Decision Interval Seconds"
+          },
+          "event_triggers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Event Triggers",
+            "default": []
+          },
+          "max_decisions_per_day": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Max Decisions Per Day",
+            "default": 96
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision_interval_seconds"
+        ],
+        "title": "ScheduleConfig"
+      },
+      "SignalScores": {
+        "properties": {
+          "price": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Price",
+            "default": 0.0
+          },
+          "order_flow": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Order Flow",
+            "default": 0.0
+          },
+          "derivatives": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Derivatives",
+            "default": 0.0
+          },
+          "liquidity": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Liquidity",
+            "default": 0.0
+          },
+          "onchain": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Onchain",
+            "default": 0.0
+          },
+          "tokenomics": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Tokenomics",
+            "default": 0.0
+          },
+          "defi": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Defi",
+            "default": 0.0
+          },
+          "events": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Events",
+            "default": 0.0
+          },
+          "news": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "News",
+            "default": 0.0
+          },
+          "macro": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Macro",
+            "default": 0.0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SignalScores",
+        "description": "Per-family signal contributions, each in [-1, 1].\n\nSignal families rather than raw indicators: dumping hundreds of indicators into a model\nproduces confident noise (``MASTER_BUILD_SPEC.md`` \u00a77)."
+      },
+      "SourceClass": {
+        "type": "string",
+        "enum": [
+          "official_primary",
+          "major_wire",
+          "specialist_publication",
+          "project_social",
+          "unverified_social",
+          "market_data",
+          "onchain_data",
+          "derived_feature",
+          "internal_model"
+        ],
+        "title": "SourceClass",
+        "description": "Source classes from ``MASTER_BUILD_SPEC.md`` \u00a742.\n\nSource class informs confidence. It never establishes truth: an official account can be\ncompromised, and a wire service can be wrong."
+      },
+      "StageSummary": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "started",
+              "completed",
+              "refused",
+              "uncertain"
+            ],
+            "title": "Status"
+          },
+          "output_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Hash"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stage",
+          "status",
+          "output_hash",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "StageSummary"
+      },
+      "TradingMode": {
+        "type": "string",
+        "enum": [
+          "research",
+          "backtest",
+          "paper",
+          "live"
+        ],
+        "title": "TradingMode",
+        "description": "The four product modes (``MASTER_BUILD_SPEC.md`` \u00a75).\n\n``LIVE`` exists in the type system so that code can reason about it, and is refused at\nruntime unless the live gate is open (ADR 0001)."
+      },
+      "UniverseConfig": {
+        "properties": {
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentId"
+            },
+            "type": "array",
+            "maxItems": 256,
+            "minItems": 1,
+            "title": "Instruments"
+          },
+          "market_type": {
+            "$ref": "#/components/schemas/InstrumentClass",
+            "default": "spot"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "instruments"
+        ],
+        "title": "UniverseConfig"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkspaceCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 3,
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+            "title": "Slug"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "WorkspaceCreate"
+      },
+      "WorkspaceResponse": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "name",
+          "slug",
+          "created_at",
+          "role"
+        ],
+        "title": "WorkspaceResponse"
+      },
+      "WorkspaceSummary": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "title": "Workspace Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "name",
+          "slug",
+          "role"
+        ],
+        "title": "WorkspaceSummary"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "Identity provider session token",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

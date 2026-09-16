@@ -3,7 +3,7 @@
 Product and control plane.
 
 ```text
-apps/web/          Next.js application (not yet scaffolded)
+apps/web/          Next.js paper workspace and stored receipt inspection
 services/api/      FastAPI control plane
 ```
 
@@ -73,24 +73,19 @@ Conventions for every future endpoint are in [`docs/api/conventions.md`](../docs
 
 ## Web application
 
-Not yet scaffolded. Per ADR 0013 it will use Next.js on the current Active LTS with React 19.x,
-strict TypeScript, Tailwind, shadcn/ui on Base UI, TanStack Query/Table and TradingView
-Lightweight Charts, with a generated OpenAPI client. Exact versions are resolved against current
-release notes at scaffold time rather than from recollection.
+The local paper UI uses Next.js 16.3.4, React 19.2, Tailwind 4.3, adapted shadcn/Base UI
+primitives, TanStack Query/Table and a generated OpenAPI client. See
+[apps/web/README.md](apps/web/README.md) for startup and verification. It supports immutable
+paper drafts, run/evidence inspection, stored portfolio receipts and audit. Hosted sign-in,
+run launch and real market charts remain pending.
+
+Read-only inspection routes: `GET .../runs`, `GET .../runs/{run_id}`,
+`GET .../paper/accounts`, `GET .../audit`, all under authenticated workspace scope.
 
 ## Design system
 
-UI and UX work uses the **`ui-ux-pro-max` skill**
-(<https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>) for style selection, palettes, font
-pairings, component craft and accessibility checklists. Installing it is a developer action:
-
-```bash
-# in Claude Code
-/plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
-# or
-npm install -g ui-ux-pro-max-cli && uipro init --ai claude
-```
-
+The user-authorized **ui-ux-pro-max** skill is installed at upstream commit
+`7f69fed6a2717900085f1bc3b263721f8ba025e2`. Use its accessibility and craft guidance.
 **Kavrigo's brand invariants override the skill's recommendations where they conflict.** The
 skill proposes a design system from a product description; Kavrigo already has one, and it is
 mandated in `AGENTS.md` § "UI / brand design directive" and `MASTER_BUILD_SPEC.md` §30.8:

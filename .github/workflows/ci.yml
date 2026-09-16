@@ -25,6 +25,32 @@ env:
   DEFAULT_TRADING_MODE: paper
 
 jobs:
+  web:
+    name: web contracts, lint, typecheck, test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: kavrigo-platform/apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install pinned package manager
+        run: npm install --global pnpm@11.19.0
+      - run: pnpm install --frozen-lockfile
+      - name: Verify generated client
+        run: |
+          pnpm generate:api
+          pnpm exec prettier --write src/lib/schema.ts
+          git diff --exit-code -- src/lib/schema.ts
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
   quality:
     name: lint, typecheck, test
     runs-on: ubuntu-latest
@@ -47,6 +73,9 @@ jobs:
         run: |
           uv run ruff check --output-format=github .
           uv run ruff format --check .
+
+      - name: Verify OpenAPI snapshot
+        run: uv run python scripts/export_openapi.py --check
 
       - name: Typecheck
         run: make typecheck PY='uv run python'

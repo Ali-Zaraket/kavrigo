@@ -1,18 +1,20 @@
 # Kavrigo progress
 
-**Updated:** 2026-09-10. **Latest implementation:** `400e179` (step 13).
+**Updated:** 2026-09-16. **Latest implementation:** step 14 local product inspection.
 **Remote publication:** the user explicitly approved the direct main push on 2026-09-10.
 Implementation `400e179` and handoff `d564107` were pushed successfully; `git ls-remote`
 confirmed GitHub main matched local HEAD at `d564107e316311298fd80fd37133025096a63ff6`.
 
-**Step 14 prerequisite:** `ui-ux-pro-max` was not found in the installed skill catalog,
-Codex skill/plugin directories, user/project Claude and agent skill directories, or the
-`uipro` command. HANDOFF.md §7 requires this skill for all frontend work and reserves
-installation to the human. UI implementation awaits installation or an explicit waiver;
-no frontend scaffolding or dependency installation has been performed.
+**Active checkpoint (2026-09-16):** `ui-ux-pro-max` was installed with explicit user
+approval from upstream commit `7f69fed6a2717900085f1bc3b263721f8ba025e2`.
+Step 14's local paper UI, generated OpenAPI client, and workspace inspection routes are
+implemented. Full regression: **892 passed, zero skips (32.87s)**. Frontend lint, formatting,
+types, build, three boundary tests and three real API browser tests passed, including axe,
+mobile keyboard focus, workspace isolation and immutable versions. The explicit browser-origin
+fix is verified. Step 15 observability/evals is next. See the web README for local startup.
 
 **Starting checkpoint:** `de77742`. **Current branch:** `main` (user-directed workflow).
-**Position:** step 13 local durable workflows implemented and verified; next step 14 Product UI.
+**Position:** local slices through step 14; next step 15 observability/evals.
 
 ### Completed local checkpoint - step 13
 
@@ -38,7 +40,9 @@ submission and receipts atomically. Leases fence competing writers. Reconciled t
 allow generation advance with exact basis/cash/fees retained. Historical decision IDs stay deduped.
 Temporal histories carry references; uncertain model dispatch stops without retrying the model.
 
-The full paper product milestone is **not achieved**. UI, meaningful Nautilus strategy/data and
+The UI now supports versioned paper drafts and inspection of stored runs/evidence/accounts.
+The full paper product milestone is **not achieved**. Product run-launch/account commands,
+hosted sign-in, meaningful Nautilus strategy/data and
 benchmark wiring, live data transport, paid providers, shared billing, continuous production
 operation, hosted security/retention and independent review remain open. See
 [ADR 0027](docs/adr/0027-durable-paper-workflows.md),
@@ -61,7 +65,7 @@ operation, hosted security/retention and independent review remain open. See
 | 11. Risk engine | Local deterministic session + durable wrapper | Shared reservations, exact sizing, fenced paper issuance; independent review pending |
 | 12. Paper broker | Local broker + durable account wrapper | Exact IOC accounting/replay; generation control and capacity remain explicit |
 | 13. Temporal | Implemented locally | Four workflows, PostgreSQL receipts/RLS/fencing, bounded supervision; hosted/continuous operation pending |
-| 14. UI | Not started | Frontend skill requirement in HANDOFF.md §7 |
+| 14. UI | Local product inspection implemented | Hosted auth, run launch, real chart/freshness feeds and policy editing pending |
 | 15. Observability/evals | Dedicated step pending | Existing OTel/local audit; hosted export and broader golden evals pending |
 
 All carry-overs and reasons remain in [HANDOFF.md §5](HANDOFF.md#5-deferred-work--read-this-before-starting-anything).
@@ -89,6 +93,10 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | Step 13 | Ruff check/format; strict mypy across all source roots | 255 files; 120 typed sources passed |
 | Step 13 | Real worker health job, Temporal restart and SDK history replay | Completed result unchanged; 23 events retained; API health ok |
 | Step 13 | Alembic upgrade, downgrade base, upgrade head | Passed in newly created `kavrigo_step13_test`; application DB preserved |
+| Step 14, 2026-09-16 | Full pytest with real PostgreSQL/ClickHouse/Temporal | 892 passed, zero skips (32.87s), including 89 integrations |
+| Step 14 | Ruff check/format; strict mypy; OpenAPI drift | 263 Python files, 122 typed sources; snapshot matches API |
+| Step 14 | Web lint/format/typecheck/test/build/generated client | Passed; three boundary tests; no generated drift |
+| Step 14 | Playwright with Edge and isolated API | Three passed (19.5s): versioning, tenant switching, logout, accessibility, mobile/failure and proxy boundary |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -98,9 +106,10 @@ pull-request workflow lookup for `de77742` returned no runs, which was not a CI 
 
 ## Next slice and safety
 
-Next is **step 14: Product UI**, following [HANDOFF.md §7](HANDOFF.md#7-frontend--explicit-user-instruction)
-and §10. Preserve all earlier carry-overs and the step 13 limits. The frontend skill requirement
-must be resolved before implementing UI. Step 15 observability/evals follows it.
+Next is **step 15: observability/evals**. Preserve earlier carry-overs and local-only limits.
+The UI is an inspection/draft slice, not the complete end-to-end trading milestone. Hosted
+telemetry credentials and paid model routing are absent; start with redacted local exports
+and versioned synthetic golden evaluations.
 
 Keep `LIVE_TRADING_ENABLED=false` and `DEFAULT_TRADING_MODE=paper`; no exchange credentials
 or execution-security code. Risk supports USD spot MARKET/IOC paper/backtest, 12 fractional

@@ -25,7 +25,7 @@ from kavrigo_api.settings import Settings
 
 APP_DSN = os.getenv(
     "TEST_POSTGRES_DSN",
-    "postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:55432/kavrigo",
+    "postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:55432/kavrigo_test",
 )
 
 pytestmark = pytest.mark.integration
@@ -465,3 +465,149 @@ class TestAuditTrail:
         assert [e.action for e in events] == ["agent_version_created"]
         assert events[0].payload["version"] == 1
         assert events[0].actor.startswith("usr_")
+
+
+class TestProductInspection:
+    @pytest.mark.parametrize("suffix", ["runs", "paper/accounts", "audit"])
+    def test_tenant_boundary_and_no_store(self, client: TestClient, suffix: str) -> None:
+        ws = _create_workspace(client, "alice", "inspection-alice")
+        path = f"/v1/workspaces/{ws}/{suffix}"
+        assert client.get(path).status_code == 401
+        assert client.get(path, headers=_auth("bob")).status_code == 404
+        response = client.get(path, headers=_auth("alice"))
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "private, no-store"
+        assert "items" in response.json()
+
+    def test_runs_paginate_and_do_not_expose_frozen_inputs(self, client: TestClient) -> None:
+        import json
+
+        ws = _create_workspace(client, "alice", "inspection-runs")
+        other = _create_workspace(client, "bob", "inspection-other")
+        for tenant, ids in ((ws, (1, 2)), (other, (3,))):
+            for number in ids:
+                run_sql(
+                    """INSERT INTO kavrigo.engine_runs
+                    (workspace_id,run_id,definition,input_hash,created_at)
+                    VALUES (:ws,:run,:definition,:hash,clock_timestamp())""",
+                    {
+                        "ws": tenant,
+                        "run": f"run_{number:032x}",
+                        "hash": "sha256:" + "ab" * 32,
+                        "definition": json.dumps(
+                            {
+                                "workspace_id": tenant,
+                                "job": {"kind": "health", "internal": "private-input"},
+                            }
+                        ),
+                    },
+                    workspace_id=tenant,
+                )
+        path = f"/v1/workspaces/{ws}/runs"
+        first = client.get(path, params={"limit": 1}, headers=_auth("alice"))
+        assert first.status_code == 200
+        assert first.json()["has_more"]
+        assert "private-input" not in first.text
+        second = client.get(
+            path, params={"limit": 1, "cursor": first.json()["next_cursor"]}, headers=_auth("alice")
+        )
+        assert second.json()["items"][0]["run_id"] == f"run_{2:032x}"
+        assert not second.json()["has_more"]
+        assert client.get(f"{path}/run_{3:032x}", headers=_auth("alice")).status_code == 404
+        detail = client.get(f"{path}/run_{1:032x}", headers=_auth("alice"))
+        assert detail.status_code == 200
+        assert detail.json()["decisions"] == []
+        assert "private-input" not in detail.text
+        assert client.post(path, json={}, headers=_auth("alice")).status_code == 405
+
+    def test_corrupt_stage_receipt_is_refused(self, client: TestClient) -> None:
+        import json
+
+        ws = _create_workspace(client, "alice", "corrupt-stage")
+        run = f"run_{1:032x}"
+        run_sql(
+            """INSERT INTO kavrigo.engine_runs
+            (workspace_id,run_id,definition,input_hash,created_at)
+            VALUES (:ws,:run,:definition,:hash,clock_timestamp())""",
+            {
+                "ws": ws,
+                "run": run,
+                "hash": "sha256:" + "ab" * 32,
+                "definition": json.dumps({"workspace_id": ws, "job": {"kind": "agent"}}),
+            },
+            workspace_id=ws,
+        )
+        run_sql(
+            """INSERT INTO kavrigo.engine_steps
+            (workspace_id,run_id,stage,status,attempt_id,input_hash,output,output_hash,started_at)
+            VALUES (:ws,:run,'evaluate','completed','test',:hash,:output,:hash,clock_timestamp())""",
+            {
+                "ws": ws,
+                "run": run,
+                "hash": "sha256:" + "ab" * 32,
+                "output": json.dumps({"decisions": []}),
+            },
+            workspace_id=ws,
+        )
+        response = client.get(f"/v1/workspaces/{ws}/runs/{run}", headers=_auth("alice"))
+        assert response.status_code == 500
+        assert response.json()["message"] == "Run receipt is inconsistent."
+
+    def test_viewer_can_inspect_but_cannot_read_audit(self, client: TestClient) -> None:
+        ws = _create_workspace(client, "alice", "inspection-role")
+        user = client.get("/v1/me", headers=_auth("viewer")).json()["user_id"]
+        run_sql(
+            """INSERT INTO kavrigo.memberships (workspace_id,user_id,role)
+            VALUES (:ws,:user,'viewer')""",
+            {"ws": ws, "user": user},
+            workspace_id=ws,
+        )
+        root = f"/v1/workspaces/{ws}"
+        assert client.get(root + "/runs", headers=_auth("viewer")).status_code == 200
+        assert client.get(root + "/audit", headers=_auth("viewer")).status_code == 403
+
+    def test_paper_projection_preserves_exact_amounts(self, client: TestClient) -> None:
+        import json
+
+        ws = _create_workspace(client, "alice", "inspection-money")
+        amount = "9007199254740993.123456789012"
+        cash = {"amount": amount, "currency": "USD"}
+        zero = {"amount": "0", "currency": "USD"}
+        stamp = "2026-09-10T00:00:00Z"
+        portfolio = {
+            "workspace_id": ws,
+            "mode": "paper",
+            "as_of": stamp,
+            "base_currency": "USD",
+            "cash": cash,
+            "equity": cash,
+            "peak_equity": cash,
+            "reserved_cash": zero,
+            "realized_pnl_today": zero,
+            "unrealized_pnl": zero,
+            "gross_exposure": zero,
+            "net_exposure": zero,
+        }
+        digest = "sha256:" + "ab" * 32
+        receipt = {
+            "sequence": 0,
+            "state_hash": digest,
+            "committed_at": stamp,
+            "state": {
+                "account_id": "paper-test",
+                "portfolio": portfolio,
+                "fees_paid": zero,
+                "orders": [{"internal": "never-exposed"}],
+            },
+        }
+        run_sql(
+            """INSERT INTO kavrigo.engine_accounts
+            (workspace_id,account_id,definition,definition_hash,head_sequence,head_hash,head_receipt,bytes_used)
+            VALUES (:ws,'paper-test','{}',:hash,0,:hash,:receipt,0)""",
+            {"ws": ws, "hash": digest, "receipt": json.dumps(receipt)},
+            workspace_id=ws,
+        )
+        response = client.get(f"/v1/workspaces/{ws}/paper/accounts", headers=_auth("alice"))
+        assert response.status_code == 200, response.text
+        assert response.json()["items"][0]["portfolio"]["cash"]["amount"] == amount
+        assert "never-exposed" not in response.text

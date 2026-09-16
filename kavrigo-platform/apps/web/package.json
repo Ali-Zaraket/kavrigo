@@ -1,0 +1,42 @@
+{
+  "name": "@kavrigo/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "generate:api": "openapi-typescript contracts/openapi.json -o src/lib/schema.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "format:check": "prettier --check src e2e tests playwright.config.ts next.config.ts"
+  },
+  "dependencies": {
+    "@base-ui/react": "1.8.0",
+    "@tanstack/react-query": "5.102.8",
+    "@tanstack/react-table": "8.21.3",
+    "geist": "1.7.2",
+    "lucide-react": "1.43.0",
+    "next": "16.3.4",
+    "openapi-fetch": "0.17.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.4",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@11.19.0"
+}
