@@ -1,3 +1,6 @@
+> **Paused by user (2026-09-16): Do not start step 15.** Step 14 is pushed as `65998b4`.
+> Initial uncommitted step 15 changes were removed. Await explicit permission to resume it.
+>
 > **2026-09-16 checkpoint:** Step 14 local product inspection is implemented. The user explicitly
 > authorized installing ui-ux-pro-max; installation succeeded at upstream revision
 > `7f69fed6a2717900085f1bc3b263721f8ba025e2`. Earlier missing-skill/human-install notes below are

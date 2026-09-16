@@ -1,6 +1,10 @@
 # Kavrigo progress
 
 **Updated:** 2026-09-16. **Latest implementation:** step 14 local product inspection.
+**Paused by user:** Do not start step 15. Step 14 is committed and pushed as `65998b4`;
+GitHub main was verified at `65998b4e91e5dded35758572ac7213cee1598853`.
+Initial uncommitted step 15 telemetry edits were removed. Wait for an explicit instruction
+before resuming step 15.
 **Remote publication:** the user explicitly approved the direct main push on 2026-09-10.
 Implementation `400e179` and handoff `d564107` were pushed successfully; `git ls-remote`
 confirmed GitHub main matched local HEAD at `d564107e316311298fd80fd37133025096a63ff6`.
