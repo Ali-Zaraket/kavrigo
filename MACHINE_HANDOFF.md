@@ -1,12 +1,15 @@
 # Resume Kavrigo on another machine
 
-Updated 2026-09-10 after the step 13 durable workflow slice.
+Updated 2026-09-18 after ADR 0030's local synthetic rehearsal slice. The detailed transfer
+instructions below retain their original step-13 checkpoint; use PROGRESS.md and git log for
+current implementation and test counts.
 This file, `PROGRESS.md`, `HANDOFF.md`, `HANDOFF_PROMPT.md` and Git history are the portable project memory.
 No account memory or previous chat is required. No background build is intended to continue.
 
 ## Checkpoint
 
-- Latest implementation: `400e179` (step 13); starting destination checkpoint: `de77742`.
+- Historical transfer implementation: `400e179` (step 13); starting destination checkpoint:
+  `de77742`. Current main includes steps 14-15 and ADR 0030; see `git log`.
 - GitHub repository: [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo).
   Current branch: `main`, fast-forwarded through `a1e0ecf` at the user's 2026-09-09 request.
   Continue directly on main with separate slice commits and ordinary non-force pushes.
@@ -22,7 +25,9 @@ No account memory or previous chat is required. No background build is intended 
   replay reconciliation. Single-generation batch; no continuous operation or process-restart durability.
 - Step 13: PostgreSQL account/run authority, four Temporal workflows, real worker and bounded
   paper supervision; local/mock only, independent review pending.
-- Next: step 14 Product UI, after resolving HANDOFF.md §7 frontend tooling.
+- Steps 14-15 and ADR 0030's local execution-disabled rehearsal are now implemented on main.
+  Studio creates paper drafts and launches a synthetic Temporal run; Pulse labels the receipts.
+  Real-data policy-approved paper activation remains open.
 - Existing carry-overs include real market transport, durable stores, meaningful Nautilus strategy
   and BTC/ETH backtest wiring, provider rights, hosted integrations, and steps 14-15. See
   `HANDOFF.md` §5 for scope and reasons; the product milestone is not yet complete.

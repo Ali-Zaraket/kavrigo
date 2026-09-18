@@ -21,10 +21,12 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 ## Where things stand
 
-Local slices through step 15 are implemented on `main`. Latest regression: 935 tests, zero skips,
-89 stack integrations; Ruff on 277 files and strict typing on 130 sources. See PROGRESS.md and
-git log for the current published commit. The step 15 pause was explicitly lifted by the user.
-The web UI supports drafts and receipt inspection, not run launch. Optional content-free OTel
+Local slices through step 15 and ADR 0030's synthetic rehearsal are implemented on `main`.
+The latest regression is 941 passing tests, zero skips; Ruff covers 282 Python files and strict
+typing covers 133 sources. See PROGRESS.md and git log for the published commit. The step 15 pause was
+explicitly lifted by the user. Studio can create paper drafts with clearly labeled local policy
+placeholders and launch an execution-disabled synthetic Temporal rehearsal; Pulse labels its
+receipts. This is not an approved real-data paper strategy run. Optional content-free OTel
 and Langfuse exporters and 31 synthetic golden boundary cases are implemented. No hosted
 telemetry account or paid model quality evaluation is claimed.
 PostgreSQL now owns durable paper account commands, receipts, run inputs/stages and an outbox.
@@ -51,9 +53,9 @@ MACHINE_HANDOFF.md. Do not factory-reset, delete volumes, or reinstall tools to 
 Temporal now persists history in `temporal-data`; the actual worker's completed result and history
 survived a server restart. Check current Docker/Git state rather than assuming services stayed up.
 
-**Next: close the product setup/run/results gap**, following HANDOFF.md §10. The frontend
-skill is installed. Add authenticated, workspace-scoped policy provisioning and run-launch
-interfaces before exposing mutations in the UI. Preserve paper/live distinction, immutable
+**Next: close the real-data paper setup/run/results gap**, following HANDOFF.md §10. The frontend
+skill is installed. Add authenticated, workspace-scoped policy provisioning and approved paper
+run-launch interfaces. Preserve paper/live distinction, immutable
 version bindings, idempotency, freshness and evidence provenance. Do not fabricate P&L
 or meaningful backtest results to fill the interface. Retain the observability carry-overs.
 

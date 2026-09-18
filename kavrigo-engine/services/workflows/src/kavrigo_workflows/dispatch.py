@@ -42,6 +42,19 @@ async def start_run(client: Client, runs: RunRepository, ref: RunRef, queue: str
     return identity
 
 
+async def dispatch_run(client: Client, runs: RunRepository, ref: RunRef, queue: str) -> str:
+    """Start one authorized frozen run, then acknowledge its durable outbox event."""
+    identity = await start_run(client, runs, ref, queue)
+    async with runs.db.transaction(ref.workspace_id) as connection:
+        await connection.execute(
+            text("""UPDATE kavrigo.engine_outbox SET delivered_at=clock_timestamp()
+            WHERE workspace_id=:ws AND event_id=:event AND topic='run.queued'
+            AND delivered_at IS NULL"""),
+            {"ws": ref.workspace_id, "event": ref.run_id},
+        )
+    return identity
+
+
 async def dispatch_pending(client: Client, runs: RunRepository, workspace: str, queue: str) -> int:
     async with runs.db.transaction(workspace) as connection:
         pending = (
@@ -61,13 +74,8 @@ async def dispatch_pending(client: Client, runs: RunRepository, workspace: str, 
         ref = RunRef.model_validate_json(event["payload"])
         if ref.workspace_id != workspace:
             raise ValueError("outbox_scope_mismatch")
-        await start_run(client, runs, ref, queue)
-        # A crash before this commit leaves the event pending; starting the same ID is safe.
-        async with runs.db.transaction(workspace) as connection:
-            await connection.execute(
-                text("""UPDATE kavrigo.engine_outbox SET delivered_at=clock_timestamp()
-                WHERE workspace_id=:ws AND event_id=:event AND delivered_at IS NULL"""),
-                {"ws": workspace, "event": event["event_id"]},
-            )
+        # A crash before this acknowledgement leaves the event pending; starting
+        # the same workflow ID again is safe.
+        await dispatch_run(client, runs, ref, queue)
         delivered += 1
     return delivered

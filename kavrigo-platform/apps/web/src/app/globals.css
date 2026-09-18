@@ -793,6 +793,24 @@ legend {
 .editor .notice {
   margin: 16px 0;
 }
+.rehearsal-launch {
+  margin-top: 28px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.rehearsal-launch h3 {
+  margin: 0 0 8px;
+}
+.rehearsal-launch > p {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+.rehearsal-launch .notice {
+  margin: 12px 0;
+}
 details {
   margin: 16px 0;
   font-size: 13px;

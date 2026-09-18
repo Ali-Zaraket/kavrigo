@@ -1,5 +1,10 @@
 > **Step 15 resumed explicitly by user (2026-09-16).** The earlier pause is superseded.
-> Local telemetry exports and 31 synthetic golden cases are implemented; 935 tests pass.
+
+> **Post-step-15 local rehearsal (2026-09-18):** ADR 0030 adds a synthetic, execution-disabled
+> Studio launch and durable inspection flow. This is not approved paper strategy activation.
+> Local telemetry exports and 31 synthetic golden cases are implemented; the latest regression
+> is 941 passing tests, zero skips. Browser smoke completed a real Temporal run with two
+> NO_TRADE decisions and no paper positions.
 > Hosted monitoring/model evaluation and the full product run-launch flow remain incomplete.
 >
 > **2026-09-16 checkpoint:** Step 14 local product inspection is implemented. The user explicitly
@@ -11,7 +16,7 @@
 
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-16 · **Position:** local slices through step 15 · **Next:** close product-flow carry-overs
+**Updated:** 2026-09-18 · **Position:** local slices through step 15 plus synthetic rehearsal · **Next:** close real-data product-flow carry-overs
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -547,7 +552,7 @@ works with nothing but Python. They must never require an external provider key 
 Step 14 now provides a Next.js paper workspace with immutable draft/version editing, stored
 run/decision/evidence inspection, risk requirements, historical portfolio receipts, honest
 unavailable provider states and permission-gated audit. See ADR 0028 and the web README.
-Hosted Clerk, product run-launch/account commands, policy editing and real chart/freshness
+Hosted Clerk, approved real-data paper run-launch/account commands, policy editing and real chart/freshness
 feeds remain pending. No fabricated results are shown. Skill installation is complete.
 
 Step 15 connects existing OTel instrumentation to optional console/OTLP providers at API/worker
@@ -561,9 +566,10 @@ Carry-overs: hosted telemetry accounts/retention/access control, dashboards/aler
 web trace export/correlation, transport/pool/queue metrics, held-out provider quality and online
 evals. These passes prove boundary regressions, not model quality or investment performance.
 
-The user found the UI's missing functionality limiting: sign-in/workspace creation work, but
-manual provisioned policy IDs and absent run-launch wiring prevent a complete first-agent flow.
-Prioritize an authenticated paper-only setup/run/results slice next; do not claim the product
+The user found the UI's missing functionality limiting. ADR 0030 now permits a first draft
+with explicitly unprovisioned policy placeholders and an execution-disabled synthetic run.
+Prioritize reviewed policy provisioning and an approved real-data paper setup/run/results slice
+next; do not claim the product
 milestone merely because every numbered step has a local implementation.
 
 Read MASTER_BUILD_SPEC sections 13.4 and 26 and existing threat models. Continue on main,

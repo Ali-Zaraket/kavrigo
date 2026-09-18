@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { allowedRoute, controlPlaneOrigin } from "@/lib/proxy-policy";
+import {
+  allowedRoute,
+  bodylessPostRoute,
+  controlPlaneOrigin,
+} from "@/lib/proxy-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,28 +32,47 @@ async function handle(
   if (key && /^[\w.-]{1,128}$/.test(key)) headers.set("Idempotency-Key", key);
   let body: string | undefined;
   if (request.method === "POST") {
-    if (!request.headers.get("content-type")?.startsWith("application/json"))
-      return NextResponse.json({ message: "JSON required." }, { status: 415 });
-    // Bound streaming input before buffering; Content-Length alone is untrusted.
-    const reader = request.body?.getReader();
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    if (reader)
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > 65_536) {
-          await reader.cancel();
-          return NextResponse.json(
-            { message: "Specification is too large." },
-            { status: 413 },
-          );
+    if (bodylessPostRoute(path)) {
+      const reader = request.body?.getReader();
+      if (reader)
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value.byteLength > 0) {
+            await reader.cancel();
+            return NextResponse.json(
+              { message: "Rehearsal body is not accepted." },
+              { status: 400 },
+            );
+          }
         }
-        chunks.push(value);
-      }
-    body = Buffer.concat(chunks).toString("utf8");
-    headers.set("Content-Type", "application/json");
+    } else {
+      if (!request.headers.get("content-type")?.startsWith("application/json"))
+        return NextResponse.json(
+          { message: "JSON required." },
+          { status: 415 },
+        );
+      // Bound streaming input before buffering; Content-Length alone is untrusted.
+      const reader = request.body?.getReader();
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      if (reader)
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > 65_536) {
+            await reader.cancel();
+            return NextResponse.json(
+              { message: "Specification is too large." },
+              { status: 413 },
+            );
+          }
+          chunks.push(value);
+        }
+      body = Buffer.concat(chunks).toString("utf8");
+      headers.set("Content-Type", "application/json");
+    }
   }
   const started = Date.now();
   try {

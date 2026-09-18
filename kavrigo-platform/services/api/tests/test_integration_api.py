@@ -11,6 +11,7 @@ import asyncio
 import os
 from collections.abc import Iterator
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -41,7 +42,9 @@ def client(clean_database: None) -> Iterator[TestClient]:
     """
     database = Database(APP_DSN)
     app = create_app(
-        Settings(kavrigo_env="local", auth_provider="dev", log_format="console"),
+        Settings(
+            kavrigo_env="local", auth_provider="dev", log_format="console", postgres_dsn=APP_DSN
+        ),
         database=database,
         identity_provider=DevIdentityProvider(),
     )
@@ -611,3 +614,56 @@ class TestProductInspection:
         assert response.status_code == 200, response.text
         assert response.json()["items"][0]["portfolio"]["cash"]["amount"] == amount
         assert "never-exposed" not in response.text
+
+
+class TestLocalPaperRehearsal:
+    def test_launch_is_tenant_scoped_idempotent_and_explicitly_synthetic(
+        self, client: TestClient
+    ) -> None:
+        ws = _create_workspace(client, "alice", "rehearsal-owner")
+        spec = _spec("btc-rehearsal")
+        spec["universe"] = {"instruments": [{"base": "BTC", "quote": "USD", "venue": "SIM"}]}
+        spec["data_packs"] = ["price_technical"]
+        created = client.post(
+            f"/v1/workspaces/{ws}/agents",
+            json={"name": "btc-rehearsal", "spec": spec},
+            headers={**_auth("alice"), "Idempotency-Key": "create-rehearsal-agent"},
+        )
+        assert created.status_code == 201, created.text
+        agent_id = created.json()["agent_id"]
+        route = f"/v1/workspaces/{ws}/agents/{agent_id}/versions/1/rehearsals"
+        headers = {**_auth("alice"), "Idempotency-Key": str(uuid4())}
+        launched = client.post(route, headers=headers)
+        assert launched.status_code == 202, launched.text
+        payload = launched.json()
+        assert payload["dispatch_state"] == "queued"
+        assert payload["input_kind"] == "synthetic_rehearsal"
+        assert payload["execution_enabled"] is False
+        assert payload["replayed"] is False
+        again = client.post(route, headers=headers)
+        assert again.status_code == 202, again.text
+        assert again.json()["run_id"] == payload["run_id"]
+        assert again.json()["input_hash"] == payload["input_hash"]
+        assert again.json()["replayed"] is True
+        stored = client.get(f"/v1/workspaces/{ws}/runs/{payload['run_id']}", headers=_auth("alice"))
+        assert stored.status_code == 200, stored.text
+        assert stored.json()["kind"] == "agent"
+        assert stored.json()["input_kind"] == "synthetic_rehearsal"
+        assert all(item["provider"] == "kavrigo-synthetic" for item in stored.json()["evidence"])
+        listed = client.get(f"/v1/workspaces/{ws}/runs", headers=_auth("alice"))
+        assert listed.status_code == 200, listed.text
+        assert listed.json()["items"][0]["input_kind"] == "synthetic_rehearsal"
+        next_version = client.post(
+            f"/v1/workspaces/{ws}/agents/{agent_id}/versions",
+            json={"spec": spec, "change_summary": "Same spec, separate version"},
+            headers=_auth("alice"),
+        )
+        assert next_version.status_code == 201, next_version.text
+        conflict = client.post(route.replace("/versions/1/", "/versions/2/"), headers=headers)
+        assert conflict.status_code == 409
+        assert conflict.json()["code"] == "idempotency_key_reused"
+        assert client.post(route, headers=_auth("alice")).status_code == 400
+        assert (
+            client.post(route, headers={**_auth("mallory"), "Idempotency-Key": "x"}).status_code
+            == 404
+        )

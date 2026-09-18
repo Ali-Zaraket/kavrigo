@@ -991,6 +991,74 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/rehearsals": {
+      "post": {
+        "tags": [
+          "rehearsals"
+        ],
+        "summary": "Launch an explicitly synthetic, execution-disabled local paper rehearsal",
+        "operationId": "launch_rehearsal_v1_workspaces__workspace_id__agents__agent_id__versions__version__rehearsals_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Version"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RehearsalLaunch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2982,6 +3050,51 @@
         ],
         "title": "ReadinessResponse"
       },
+      "RehearsalLaunch": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "input_hash": {
+            "type": "string",
+            "title": "Input Hash"
+          },
+          "dispatch_state": {
+            "type": "string",
+            "enum": [
+              "dispatched",
+              "queued"
+            ],
+            "title": "Dispatch State"
+          },
+          "replayed": {
+            "type": "boolean",
+            "title": "Replayed"
+          },
+          "input_kind": {
+            "type": "string",
+            "const": "synthetic_rehearsal",
+            "title": "Input Kind",
+            "default": "synthetic_rehearsal"
+          },
+          "execution_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Execution Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "input_hash",
+          "dispatch_state",
+          "replayed"
+        ],
+        "title": "RehearsalLaunch"
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -3008,6 +3121,15 @@
               "supervision"
             ],
             "title": "Kind"
+          },
+          "input_kind": {
+            "type": "string",
+            "enum": [
+              "recorded",
+              "synthetic_rehearsal"
+            ],
+            "title": "Input Kind",
+            "default": "recorded"
           },
           "status": {
             "type": "string",
@@ -3088,6 +3210,15 @@
               "supervision"
             ],
             "title": "Kind"
+          },
+          "input_kind": {
+            "type": "string",
+            "enum": [
+              "recorded",
+              "synthetic_rehearsal"
+            ],
+            "title": "Input Kind",
+            "default": "recorded"
           },
           "status": {
             "type": "string",

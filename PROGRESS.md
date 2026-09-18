@@ -1,5 +1,14 @@
 # Kavrigo progress
 
+**2026-09-18 post-step-15 slice:** Studio now launches a local synthetic paper rehearsal for
+one or two USD.SIM instruments through authenticated, idempotent API submission and the real
+Temporal workflow. It is labeled in Pulse, uses a separate global-killed paper account, and
+cannot place an order. It is not approved policy activation or a real market-data paper run.
+See [ADR 0030](docs/adr/0030-local-paper-rehearsal.md). The prior step-15 validation below
+remains its own checkpoint. Final rehearsal regression: **941 passed, zero skips (34.63s)**;
+Ruff on 282 Python files, strict typing on 133 sources, OpenAPI/lock checks, web
+lint/format/types/tests/build, and live local Studio → Temporal → Pulse/Paper smoke all passed.
+
 **Updated:** 2026-09-16. **Latest implementation:** step 15 local observability/evals slice.
 **User direction:** Step 15 was explicitly resumed after the earlier pause. Step 14 is
 published as `65998b4`; its pause checkpoint was `530ecac`. Continue normal work on main.
@@ -50,7 +59,7 @@ allow generation advance with exact basis/cash/fees retained. Historical decisio
 Temporal histories carry references; uncertain model dispatch stops without retrying the model.
 
 The UI now supports versioned paper drafts and inspection of stored runs/evidence/accounts.
-The full paper product milestone is **not achieved**. Product run-launch/account commands,
+The full paper product milestone is **not achieved**. Order-capable paper run-launch/account commands,
 hosted sign-in, meaningful Nautilus strategy/data and
 benchmark wiring, live data transport, paid providers, shared billing, continuous production
 operation, hosted security/retention and independent review remain open. See
@@ -74,7 +83,7 @@ operation, hosted security/retention and independent review remain open. See
 | 11. Risk engine | Local deterministic session + durable wrapper | Shared reservations, exact sizing, fenced paper issuance; independent review pending |
 | 12. Paper broker | Local broker + durable account wrapper | Exact IOC accounting/replay; generation control and capacity remain explicit |
 | 13. Temporal | Implemented locally | Four workflows, PostgreSQL receipts/RLS/fencing, bounded supervision; hosted/continuous operation pending |
-| 14. UI | Local product inspection implemented | Hosted auth, run launch, real chart/freshness feeds and policy editing pending |
+| 14. UI | Local product inspection and synthetic rehearsal launch | Hosted auth, approved real-data paper launch, real chart/freshness feeds and policy editing pending |
 | 15. Observability/evals | Local service exports and synthetic golden suite implemented | Hosted project/alerts/SLOs, web traces, real-provider quality and online evals pending |
 
 All carry-overs and reasons remain in [HANDOFF.md §5](HANDOFF.md#5-deferred-work--read-this-before-starting-anything).
@@ -110,6 +119,10 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | Step 15 | Ruff check/format; strict mypy; OpenAPI | 277 Python files; 130 typed sources; API snapshot unchanged |
 | Step 15 | Golden suite and local OTLP HTTP receiver | 31 golden cases; privacy, replay cost, HTTP error and exporter-failure tests passed |
 | Step 15 | Both service builds, console telemetry smoke, actual worker/history replay | Passed; API route spans and worker stage spans observed, health workflow completed with 23 replayed events |
+| ADR 0030, 2026-09-18 | Full pytest with disposable PostgreSQL and real Temporal | 941 passed, zero skips (34.63s) |
+| ADR 0030 | Ruff check/format; strict mypy; OpenAPI and uv lock | 282 Python files; 133 typed sources; contract and lock checks passed |
+| ADR 0030 | Web lint/format/types/boundary tests/build; API image rebuild | Passed; three boundary tests; local API healthy |
+| ADR 0030 | Browser: new workspace → paper draft → rehearsal → Pulse/Paper | Completed synthetic run `run_da9f8f4de48e5b9696315e1e47fb9885`, two NO_TRADE decisions, receipt 0 and no positions |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -120,9 +133,10 @@ pull-request workflow lookup for `de77742` returned no runs, which was not a CI 
 ## Next slice and safety
 
 The numbered plan has local slices through step 15, with substantial explicit carry-overs.
-The next product slice should remove manual policy-ID prerequisites and wire authenticated
-paper run launch to stored decisions/risk/results. This is pending work, not a capability of
-the current UI. Preserve all earlier carry-overs, notably Nautilus strategy/data/benchmark
+The next product slice should provision reviewed policies and wire authenticated, approved
+real-data paper launch to stored decisions/risk/results. Local synthetic rehearsal already
+works with placeholder draft policy IDs; it is execution-disabled. Preserve all earlier
+carry-overs, notably Nautilus strategy/data/benchmark
 wiring, hosted auth, real ingestion transport and operational review. No hosted telemetry
 account or paid model is configured; synthetic eval passes do not measure model accuracy.
 

@@ -1,4 +1,4 @@
-# Kavrigo web — step 14 local paper slice
+# Kavrigo web — local paper workspace
 
 Next.js 16.3.4 App Router, React 19.2.8, strict TypeScript, Tailwind 4.3.3,
 shadcn Base UI primitives, TanStack Query/Table and generated OpenAPI types.
@@ -26,16 +26,22 @@ The API refuses development identity outside its local environment.
 ## Available behavior
 
 - Create a workspace, select a verified membership, create paper AgentSpec drafts, inspect
-  immutable versions and append a new draft version with an idempotency key.
+  immutable versions and append a new draft version with an idempotency key. The creation form
+  generates clearly labeled local rehearsal policy placeholders; these are not approvals.
 - Inspect stored runs/stage receipts and structured decisions with supporting/contradicting
   evidence, exact server monetary values, timestamps, version/hash references and reason codes.
 - Inspect paper account receipts and workspace audit summaries with backend permissions/RLS.
+- Launch an explicitly synthetic, execution-disabled local rehearsal for a saved BTC/ETH
+  USD.SIM version and inspect its durable run and abstention in Pulse. Same-key retries reuse
+  frozen input. A queued dispatch can be retried from Studio.
 - Responsive dark/light workspace shell, keyboard navigation/search, reduced motion and
   visible server-confirmed paper status. Mode lookup failure disables creation.
 
-Policies must be provisioned separately. Draft saving validates policy ID syntax, not existence
-or approval. No account command, run launch, policy mutation, live trading, or exchange secret
-is exposed. Backtest strategy/data wiring, charts, SSE/WS transports, current provider freshness,
+Policies must be provisioned separately for an order-capable paper run. Draft saving validates
+policy ID syntax, not existence or approval. Rehearsals use isolated synthetic inputs, an abstaining mock model and a global
+risk stop; they do not activate a paper strategy or permit orders. No policy mutation, live
+trading, or exchange secret is exposed. Backtest strategy/data wiring, charts, SSE/WS transports,
+current provider freshness,
 conversational compilation, and hosted identity are explicit carry-overs. Empty screens do not
 invent results; historical receipts do not claim current reconciliation or freshness.
 
@@ -74,9 +80,10 @@ is used; its marketing conversion pattern was discarded. Kavrigo's brand invaria
 
 ## Security and observability
 
-ADR 0028 documents the boundary. Proxy routes are allowlisted, fixed-upstream, no-store,
+ADRs 0028 and 0030 document the boundary. Proxy routes are allowlisted, fixed-upstream, no-store,
 10-second bounded, and limit mutation bodies to 64 KiB. Mutations require the configured
 same origin; no cookies or inbound headers other than bearer/idempotency are forwarded.
+The rehearsal POST alone accepts an empty body and rejects nonempty bodies.
 React renders evidence as text, never HTML or executable links. Backend membership/permissions
 and forced RLS remain authoritative. Monetary formatting preserves decimal strings exactly.
 Proxy telemetry includes response status and duration only; it excludes tokens, URLs,

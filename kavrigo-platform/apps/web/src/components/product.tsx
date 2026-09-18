@@ -347,6 +347,14 @@ function Runs({
             },
             { accessorKey: "kind", header: "Type" },
             {
+              accessorKey: "input_kind",
+              header: "Input",
+              cell: ({ row }) =>
+                row.original.input_kind === "synthetic_rehearsal"
+                  ? "Synthetic rehearsal"
+                  : "Recorded",
+            },
+            {
               accessorKey: "status",
               header: "State",
               cell: ({ row }) => (
@@ -418,6 +426,12 @@ function RunDetail({ id }: { id: string }) {
       <span className="chip">
         {run.kind} · {run.status}
       </span>
+      {run.input_kind === "synthetic_rehearsal" && (
+        <Notice>
+          Synthetic rehearsal only. No live market observation, approved
+          strategy, or order execution is represented here.
+        </Notice>
+      )}
       <p>Created {utc(run.created_at)}</p>
       <details>
         <summary>Immutable input hash</summary>

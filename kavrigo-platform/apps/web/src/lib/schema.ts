@@ -263,6 +263,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/rehearsals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Launch an explicitly synthetic, execution-disabled local paper rehearsal */
+    post: operations["launch_rehearsal_v1_workspaces__workspace_id__agents__agent_id__versions__version__rehearsals_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1252,6 +1269,32 @@ export interface components {
         [key: string]: "ok" | "unavailable" | "not_configured";
       };
     };
+    /** RehearsalLaunch */
+    RehearsalLaunch: {
+      /** Run Id */
+      run_id: string;
+      /** Input Hash */
+      input_hash: string;
+      /**
+       * Dispatch State
+       * @enum {string}
+       */
+      dispatch_state: "dispatched" | "queued";
+      /** Replayed */
+      replayed: boolean;
+      /**
+       * Input Kind
+       * @default synthetic_rehearsal
+       * @constant
+       */
+      input_kind: "synthetic_rehearsal";
+      /**
+       * Execution Enabled
+       * @default false
+       * @constant
+       */
+      execution_enabled: false;
+    };
     /**
      * Role
      * @description Workspace roles, least privileged last.
@@ -1270,6 +1313,12 @@ export interface components {
        * @enum {string}
        */
       kind: "agent" | "backtest" | "health" | "supervision";
+      /**
+       * Input Kind
+       * @default recorded
+       * @enum {string}
+       */
+      input_kind: "recorded" | "synthetic_rehearsal";
       /**
        * Status
        * @enum {string}
@@ -1300,6 +1349,12 @@ export interface components {
        * @enum {string}
        */
       kind: "agent" | "backtest" | "health" | "supervision";
+      /**
+       * Input Kind
+       * @default recorded
+       * @enum {string}
+       */
+      input_kind: "recorded" | "synthetic_rehearsal";
       /**
        * Status
        * @enum {string}
@@ -2017,6 +2072,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Page_AuditSummary_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  launch_rehearsal_v1_workspaces__workspace_id__agents__agent_id__versions__version__rehearsals_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        agent_id: string;
+        version: number;
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RehearsalLaunch"];
         };
       };
       /** @description Validation Error */

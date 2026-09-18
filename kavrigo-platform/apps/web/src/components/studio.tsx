@@ -1,7 +1,8 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Plus } from "lucide-react";
+import { ArrowUpRight, Play, Plus } from "lucide-react";
 import { type Schema, unwrap } from "@/lib/client";
 import { useMe, useMode, useSession } from "./session";
 import { useAgents } from "./product";
@@ -120,8 +121,12 @@ function CreateAgent({ onSaved }: { onSaved: () => void }) {
   const [btc, setBtc] = useState(true);
   const [eth, setEth] = useState(true);
   const [interval, setInterval] = useState("900");
-  const [risk, setRisk] = useState("");
-  const [execution, setExecution] = useState("");
+  const [risk, setRisk] = useState(
+    () => `rp_${crypto.randomUUID().replaceAll("-", "")}`,
+  );
+  const [execution, setExecution] = useState(
+    () => `ep_${crypto.randomUUID().replaceAll("-", "")}`,
+  );
   const [budget, setBudget] = useState("0.10");
   const [key] = useState(() => crypto.randomUUID());
   const { api, workspace } = useSession();
@@ -270,7 +275,9 @@ function CreateAgent({ onSaved }: { onSaved: () => void }) {
             />
           </div>
         </div>
-        <label htmlFor="risk-ref">Risk policy reference</label>
+        <label htmlFor="risk-ref">
+          Risk policy reference · rehearsal placeholder
+        </label>
         <input
           id="risk-ref"
           pattern="rp_[0-9a-f]{32}"
@@ -279,7 +286,9 @@ function CreateAgent({ onSaved }: { onSaved: () => void }) {
           required
           placeholder="rp_…"
         />
-        <label htmlFor="execution-ref">Execution policy reference</label>
+        <label htmlFor="execution-ref">
+          Execution policy reference · rehearsal placeholder
+        </label>
         <input
           id="execution-ref"
           pattern="ep_[0-9a-f]{32}"
@@ -289,8 +298,9 @@ function CreateAgent({ onSaved }: { onSaved: () => void }) {
           placeholder="ep_…"
         />
         <small>
-          Enter provisioned immutable policy IDs. Saving a draft validates their
-          format; it does not prove policy existence or approve execution.
+          Local placeholder IDs are generated for a synthetic rehearsal. Saving
+          a draft validates their format only. Replace them with provisioned,
+          immutable policy IDs before any separately approved paper activation.
         </small>
       </fieldset>
       <details>
@@ -318,6 +328,111 @@ function CreateAgent({ onSaved }: { onSaved: () => void }) {
             : "Save paper draft"}
       </Button>
     </form>
+  );
+}
+
+function RehearsalLauncher({
+  detail,
+  agentId,
+}: {
+  detail: Schema["AgentVersionResponse"];
+  agentId: string;
+}) {
+  const { api, workspace } = useSession();
+  const mode = useMode();
+  const me = useMe();
+  const client = useQueryClient();
+  const [key] = useState(() => crypto.randomUUID());
+  const [launched, setLaunched] = useState<Schema["RehearsalLaunch"]>();
+  const spec = detail.spec as Schema["AgentSpec"];
+  const instruments = spec.universe?.instruments ?? [];
+  const supported =
+    spec.mode === "paper" &&
+    instruments.length >= 1 &&
+    instruments.length <= 2 &&
+    instruments.every((i) => i.quote === "USD" && i.venue === "SIM");
+  const permitted = me.data?.permissions[workspace]?.includes("run:start");
+  const paperVerified =
+    !mode.isError &&
+    mode.data?.default_trading_mode === "paper" &&
+    mode.data.live_trading_enabled === false;
+  const launch = useMutation({
+    mutationFn: async () =>
+      unwrap(
+        await api.POST(
+          "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/rehearsals",
+          {
+            params: {
+              path: {
+                workspace_id: workspace,
+                agent_id: agentId,
+                version: detail.version,
+              },
+            },
+            headers: { "Idempotency-Key": key },
+          },
+        ),
+      ),
+    onSuccess: async (result) => {
+      setLaunched(result);
+      await client.invalidateQueries({ queryKey: [workspace, "runs"] });
+    },
+  });
+  return (
+    <section className="rehearsal-launch" aria-label="Local paper rehearsal">
+      <h3>Local paper rehearsal</h3>
+      <p>
+        Run this saved version through a durable workflow with clearly marked
+        synthetic evidence and an abstaining local model. The isolated account
+        has a global risk stop; no order can be submitted. This is not market
+        data, a backtest, or an approved paper agent.
+      </p>
+      {!supported && (
+        <Notice>
+          This rehearsal supports one or two USD spot instruments on SIM. The
+          saved version remains unchanged.
+        </Notice>
+      )}
+      {!permitted && (
+        <Notice>Launching requires run permission in this workspace.</Notice>
+      )}
+      {launch.isError && (
+        <Notice error>
+          {launch.error.message} Retry keeps the same request key and frozen
+          input.
+        </Notice>
+      )}
+      {launched && (
+        <Notice>
+          {launched.dispatch_state === "dispatched"
+            ? "Rehearsal dispatched."
+            : "Rehearsal saved; dispatch is pending. Retry dispatch with the same key."}{" "}
+          <span className="mono break">{launched.run_id}</span>{" "}
+          <Link className="text-link" href="/pulse">
+            Inspect in Pulse <ArrowUpRight size={14} aria-hidden="true" />
+          </Link>
+        </Notice>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => launch.mutate()}
+        disabled={
+          !supported ||
+          !permitted ||
+          !paperVerified ||
+          launch.isPending ||
+          launched?.dispatch_state === "dispatched"
+        }
+      >
+        <Play size={16} aria-hidden="true" />
+        {launch.isPending
+          ? "Submitting rehearsal…"
+          : launched?.dispatch_state === "queued"
+            ? "Retry dispatch"
+            : "Run local rehearsal"}
+      </Button>
+    </section>
   );
 }
 
@@ -514,6 +629,7 @@ function AppendVersion({
             ? "Retry same version"
             : "Save new draft version"}
       </Button>
+      <RehearsalLauncher detail={detail} agentId={id} />
     </form>
   );
 }

@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { allowedRoute, controlPlaneOrigin } from "../src/lib/proxy-policy.ts";
+import {
+  allowedRoute,
+  bodylessPostRoute,
+  controlPlaneOrigin,
+} from "../src/lib/proxy-policy.ts";
 import { decimal, money } from "../src/lib/client.ts";
 
 const ws = `v1/workspaces/ws_${"1".repeat(32)}`;
@@ -8,6 +12,18 @@ test("proxy only exposes the allowlisted control plane", () => {
   for (const suffix of ["runs", "paper/accounts", "audit", "agents"])
     assert.ok(allowedRoute(`${ws}/${suffix}`, "GET"));
   assert.ok(allowedRoute(`${ws}/agents`, "POST"));
+  assert.ok(
+    allowedRoute(
+      `${ws}/agents/ag_${"2".repeat(32)}/versions/1/rehearsals`,
+      "POST",
+    ),
+  );
+  assert.ok(
+    bodylessPostRoute(
+      `${ws}/agents/ag_${"2".repeat(32)}/versions/1/rehearsals`,
+    ),
+  );
+  assert.equal(bodylessPostRoute(`${ws}/agents`), false);
   for (const method of ["POST", "DELETE", "PATCH", "PUT"])
     assert.equal(allowedRoute(`${ws}/runs`, method), false);
   for (const path of [

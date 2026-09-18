@@ -64,7 +64,9 @@ async def runs(
     rows = (
         await session.execute(
             text("""SELECT run_id, definition::jsonb->'job'->>'kind' AS kind,
-        status, input_hash, created_at FROM kavrigo.engine_runs
+        CASE WHEN (definition::jsonb #> '{job,evaluation,snapshot,quality,notes}')
+          ? 'synthetic_rehearsal_only' THEN 'synthetic_rehearsal' ELSE 'recorded'
+        END AS input_kind, status, input_hash, created_at FROM kavrigo.engine_runs
         WHERE workspace_id=:ws AND run_id>:after ORDER BY run_id LIMIT :limit"""),
             {"ws": context.workspace_id, "after": after(cursor), "limit": limit + 1},
         )
@@ -133,9 +135,17 @@ async def run_detail(
     evidence = TypeAdapter(list[EvidenceItem]).validate_python(
         definition["job"].get("evaluation", {}).get("evidence", [])
     )
+    notes = (
+        definition["job"]
+        .get("evaluation", {})
+        .get("snapshot", {})
+        .get("quality", {})
+        .get("notes", [])
+    )
     return RunInspection(
         run_id=run_id,
         kind=definition["job"]["kind"],
+        input_kind=("synthetic_rehearsal" if "synthetic_rehearsal_only" in notes else "recorded"),
         status=found["status"],
         input_hash=found["input_hash"],
         created_at=found["created_at"],

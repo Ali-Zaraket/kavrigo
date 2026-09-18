@@ -12,6 +12,7 @@ class RunSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
     run_id: str
     kind: Literal["agent", "backtest", "health", "supervision"]
+    input_kind: Literal["recorded", "synthetic_rehearsal"] = "recorded"
     status: Literal["queued", "running", "completed", "refused", "uncertain"]
     input_hash: str
     created_at: datetime

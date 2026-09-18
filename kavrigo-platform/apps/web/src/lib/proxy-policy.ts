@@ -11,7 +11,16 @@ export function allowedRoute(path: string, method: string): boolean {
     ).test(path);
   return (
     method === "POST" &&
-    new RegExp(`^(?:${root}/agents|${agent}/versions)$`).test(path)
+    new RegExp(
+      `^(?:${root}/agents|${agent}/versions(?:/[1-9][0-9]*/rehearsals)?)$`,
+    ).test(path)
+  );
+}
+
+/** The rehearsal command is keyed by its path and header, with no request body. */
+export function bodylessPostRoute(path: string): boolean {
+  return /^v1\/workspaces\/ws_[0-9a-f]{32}\/agents\/ag_[0-9a-f]{32}\/versions\/[1-9][0-9]*\/rehearsals$/.test(
+    path,
   );
 }
 
