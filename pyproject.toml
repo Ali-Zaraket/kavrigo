@@ -11,6 +11,7 @@ package = false
 [tool.uv.workspace]
 members = [
   "kavrigo-engine/libs/domain",
+  "kavrigo-engine/libs/observability",
   "kavrigo-engine/libs/market-data",
   "kavrigo-engine/libs/signals",
   "kavrigo-engine/libs/backtest",
@@ -28,6 +29,7 @@ members = [
 
 [tool.uv.sources]
 kavrigo-domain = { workspace = true }
+kavrigo-observability = { workspace = true }
 kavrigo-marketdata = { workspace = true }
 kavrigo-signals = { workspace = true }
 kavrigo-backtest = { workspace = true }
@@ -95,6 +97,7 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = [
   "kavrigo_domain",
+  "kavrigo_observability",
   "kavrigo_marketdata",
   "kavrigo_signals",
   "kavrigo_backtest",
@@ -140,11 +143,14 @@ ignore_missing_imports = true
 # Tests
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
+pythonpath = ["kavrigo-research"]
 minversion = "8.0"
 addopts = "-q --strict-markers --strict-config --import-mode=importlib"
 testpaths = [
   "tests",
   "kavrigo-engine/libs/domain/tests",
+  "kavrigo-engine/libs/observability/tests",
+  "kavrigo-research/tests",
   "kavrigo-engine/libs/market-data/tests",
   "kavrigo-engine/libs/signals/tests",
   "kavrigo-engine/libs/backtest/tests",

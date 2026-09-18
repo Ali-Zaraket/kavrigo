@@ -78,9 +78,9 @@ def _unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     from kavrigo_api.logging import get_logger
 
-    get_logger(__name__).exception(
+    get_logger(__name__).error(
         "unhandled_exception",
-        path=request.url.path,
+        route=getattr(request.scope.get("route"), "path", "unmatched"),
         request_id=getattr(request.state, "request_id", None),
         error_type=type(exc).__name__,
     )

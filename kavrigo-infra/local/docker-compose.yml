@@ -123,7 +123,12 @@ services:
       LIVE_TRADING_ENABLED: "false"
       DEFAULT_TRADING_MODE: paper
       KAVRIGO_ENV: local
-      LOG_FORMAT: console
+      LOG_FORMAT: json
+      KAVRIGO_TELEMETRY: "${KAVRIGO_TELEMETRY:-off}"
+      KAVRIGO_OTLP_ENDPOINT: "${KAVRIGO_OTLP_ENDPOINT:-}"
+      KAVRIGO_LANGFUSE_ENDPOINT: "${KAVRIGO_LANGFUSE_ENDPOINT:-}"
+      LANGFUSE_PUBLIC_KEY: "${LANGFUSE_PUBLIC_KEY:-}"
+      LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}"
       # The API connects as the non-superuser, non-owner role so RLS actually applies to it.
       POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@postgres:5432/kavrigo
       AUTH_PROVIDER: dev
@@ -155,6 +160,11 @@ services:
       KAVRIGO_ENV: local
       POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@postgres:5432/kavrigo
       KAVRIGO_WORKER_WORKSPACES: "${KAVRIGO_WORKER_WORKSPACES:-}"
+      KAVRIGO_TELEMETRY: "${KAVRIGO_TELEMETRY:-off}"
+      KAVRIGO_OTLP_ENDPOINT: "${KAVRIGO_OTLP_ENDPOINT:-}"
+      KAVRIGO_LANGFUSE_ENDPOINT: "${KAVRIGO_LANGFUSE_ENDPOINT:-}"
+      LANGFUSE_PUBLIC_KEY: "${LANGFUSE_PUBLIC_KEY:-}"
+      LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}"
       TEMPORAL_NAMESPACE: default
       TEMPORAL_TASK_QUEUE: kavrigo-paper-v1
       REDPANDA_BOOTSTRAP_SERVERS: redpanda:9092

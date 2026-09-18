@@ -83,6 +83,19 @@ jobs:
       - name: Unit and property tests
         run: uv run pytest --cov=kavrigo_domain --cov=kavrigo_api --cov-report=term-missing
 
+      - name: Synthetic golden boundary evaluations
+        env:
+          PYTHONPATH: kavrigo-research
+        run: uv run python -m kavrigo_evals --code-revision "$GITHUB_SHA" --output .local/golden-report.json
+
+      - name: Retain content-free evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-boundary-report
+          path: .local/golden-report.json
+          if-no-files-found: ignore
+
       - name: Assert no provider credentials are required
         # The suite must pass with every external key unset. If this ever fails, a test has
         # grown a dependency on a real provider, which breaks reproducibility and CI hygiene.

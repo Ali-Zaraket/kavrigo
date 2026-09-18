@@ -6,7 +6,7 @@ PY := $(VENV)/bin/python
 COMPOSE := docker compose -f kavrigo-infra/local/docker-compose.yml
 # Cover every Python package; the original static list silently omitted steps 5-7.
 PKGS := $(patsubst %/pyproject.toml,%,$(wildcard kavrigo-engine/libs/*/pyproject.toml kavrigo-engine/services/*/pyproject.toml kavrigo-platform/services/*/pyproject.toml))
-SRC := $(addsuffix /src,$(PKGS))
+SRC := $(addsuffix /src,$(PKGS)) kavrigo-research/kavrigo_evals
 
 .PHONY: help
 help: ## Show this help

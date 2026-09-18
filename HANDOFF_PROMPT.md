@@ -21,8 +21,12 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 ## Where things stand
 
-Latest implementation is `400e179` (step 13) on `main`. Final checks: 885 tests, zero skips,
-82 integrations; ruff on 255 files and strict typing on 120 sources. See PROGRESS.md.
+Local slices through step 15 are implemented on `main`. Latest regression: 935 tests, zero skips,
+89 stack integrations; Ruff on 277 files and strict typing on 130 sources. See PROGRESS.md and
+git log for the current published commit. The step 15 pause was explicitly lifted by the user.
+The web UI supports drafts and receipt inspection, not run launch. Optional content-free OTel
+and Langfuse exporters and 31 synthetic golden boundary cases are implemented. No hosted
+telemetry account or paid model quality evaluation is claimed.
 PostgreSQL now owns durable paper account commands, receipts, run inputs/stages and an outbox.
 The real worker registers four Temporal workflows for evaluation, backtests, health and bounded
 paper supervision. Forced RLS, account row locks, DB-clock leases, immutable receipts and exact
@@ -47,11 +51,11 @@ MACHINE_HANDOFF.md. Do not factory-reset, delete volumes, or reinstall tools to 
 Temporal now persists history in `temporal-data`; the actual worker's completed result and history
 survived a server restart. Check current Docker/Git state rather than assuming services stayed up.
 
-**Next: step 14 Product UI**, following HANDOFF.md §§7 and 10. Resolve the explicit frontend
-skill requirement before implementation. Add authenticated, workspace-scoped API interfaces
-for the internal repositories before exposing mutations in the UI. Preserve paper/live distinction,
-immutable version bindings, idempotency, freshness and evidence provenance. Do not fabricate P&L
-or meaningful backtest results to fill the interface. Step 15 observability/evals follows.
+**Next: close the product setup/run/results gap**, following HANDOFF.md §10. The frontend
+skill is installed. Add authenticated, workspace-scoped policy provisioning and run-launch
+interfaces before exposing mutations in the UI. Preserve paper/live distinction, immutable
+version bindings, idempotency, freshness and evidence provenance. Do not fabricate P&L
+or meaningful backtest results to fill the interface. Retain the observability carry-overs.
 
 Continue on `main` with separate slice commits and ordinary non-force pushes, as the user directed.
 No PR is required for the bootstrap workflow. Independent security review remains a deployment gate.

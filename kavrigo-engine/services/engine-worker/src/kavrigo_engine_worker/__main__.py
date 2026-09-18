@@ -15,6 +15,7 @@ from temporalio.worker import Worker
 
 from kavrigo_domain.identifiers import WorkspaceId
 from kavrigo_nautilus import NautilusBacktestAdapter
+from kavrigo_observability import telemetry_from_env
 from kavrigo_workflows.accounts import AccountRepository
 from kavrigo_workflows.activities import EngineActivities
 from kavrigo_workflows.database import EngineDatabase
@@ -85,7 +86,8 @@ async def _run() -> None:
 
 def main() -> None:
     structlog.configure(processors=[structlog.processors.JSONRenderer()])
-    asyncio.run(_run())
+    with telemetry_from_env("kavrigo-engine-worker"):
+        asyncio.run(_run())
 
 
 if __name__ == "__main__":

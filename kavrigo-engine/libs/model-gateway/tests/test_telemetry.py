@@ -44,6 +44,8 @@ async def test_traces_and_metrics_are_content_free(build_gateway, request_model,
     assert attrs["gen_ai.response.model"] == result.record.resolved_model_identifier
     assert result.record.trace_id == f"{spans[0].context.trace_id:032x}"
     assert spans[1].attributes["kavrigo.replayed"] is True
+    assert json.loads(attrs["langfuse.observation.cost_details"])["total"] > 0
+    assert "langfuse.observation.cost_details" not in spans[1].attributes
     assert "No reliable evidence" not in json.dumps([dict(s.attributes) for s in spans])
     assert "insufficient_evidence" not in json.dumps(logs)
     data = reader.get_metrics_data()

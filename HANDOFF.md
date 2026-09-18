@@ -1,5 +1,6 @@
-> **Paused by user (2026-09-16): Do not start step 15.** Step 14 is pushed as `65998b4`.
-> Initial uncommitted step 15 changes were removed. Await explicit permission to resume it.
+> **Step 15 resumed explicitly by user (2026-09-16).** The earlier pause is superseded.
+> Local telemetry exports and 31 synthetic golden cases are implemented; 935 tests pass.
+> Hosted monitoring/model evaluation and the full product run-launch flow remain incomplete.
 >
 > **2026-09-16 checkpoint:** Step 14 local product inspection is implemented. The user explicitly
 > authorized installing ui-ux-pro-max; installation succeeded at upstream revision
@@ -10,7 +11,7 @@
 
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-16 · **Position:** local slices through step 14 · **Next:** step 15 observability/evals
+**Updated:** 2026-09-16 · **Position:** local slices through step 15 · **Next:** close product-flow carry-overs
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -52,7 +53,7 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 12 | Paper broker | local single-generation ledger, IOC fills and reconciliation/replay — see §5 |
 | 13 | Temporal workflows | local PostgreSQL authority, four workflows and real worker implemented |
 | 14 | Product UI | local paper drafts and stored receipt inspection; browser/a11y verified |
-| 15 | Observability / evals | not started |
+| 15 | Observability / evals | local OTel/filtered OTLP/Langfuse path and synthetic golden suite; hosted gates pending |
 
 The milestone all of this is aimed at (`AGENTS.md`, last line):
 
@@ -385,6 +386,19 @@ are scoped-out work with a reason.
 - Read [operations](docs/product/durable-workflows.md), [ADR 0027](docs/adr/0027-durable-paper-workflows.md)
   and [threat review](docs/threat-model/durable-workflows.md). No private exchange path was added.
 
+### From step 15 — observability and evaluations
+
+- **Opt-in diagnostics only.** API/worker console and OTLP exporters are implemented and
+  locally verified. No hosted monitoring/Langfuse account, alert routing, retention/RBAC or
+  measured SLO is configured. Telemetry is sampled/droppable and cannot replace audit receipts.
+- **Content-free export boundary.** Registered span names/scopes and metric dimensions only;
+  no bodies, raw URLs, exception details, tenant IDs or exemplars. Review allowlist changes.
+  Browser/Next tracing and cross-service propagation remain unwired; facade logs still exist.
+- **Synthetic boundary corpus, not model-quality certification.** Thirty-one authored cases
+  use scripted replies through actual validators/pipeline. Broader held-out corpora, paid-model
+  accuracy, strategy/runtime quality, online evaluation and injection-defense generalization
+  remain open. See docs/product/observability-evals.md and ADR 0029.
+
 ## 6. Rules you must not break
 
 From `AGENTS.md` § "Non-negotiable domain rules". These are enforced structurally in the code —
@@ -528,7 +542,7 @@ works with nothing but Python. They must never require an external provider key 
 
 ---
 
-## 10. Your next task - step 15, observability/evals
+## 10. Next product slice and step 15 checkpoint
 
 Step 14 now provides a Next.js paper workspace with immutable draft/version editing, stored
 run/decision/evidence inspection, risk requirements, historical portfolio receipts, honest
@@ -536,10 +550,21 @@ unavailable provider states and permission-gated audit. See ADR 0028 and the web
 Hosted Clerk, product run-launch/account commands, policy editing and real chart/freshness
 feeds remain pending. No fabricated results are shown. Skill installation is complete.
 
-Step 15 should connect existing OTel instrumentation to a redacted local export path and add
-versioned synthetic golden evals for news extraction, injection defense and structured decision
-reliability. Inspect existing model gateway/news/runtime telemetry first. Langfuse is diagnostics,
-never the authoritative audit ledger. Hosted accounts and paid model credentials are absent.
+Step 15 connects existing OTel instrumentation to optional console/OTLP providers at API/worker
+entry points. An allowlist removes private content and IDs before span export; metric views
+restrict dimensions and exemplars are disabled. Model-only Langfuse export avoids replay cost
+double-counting. Thirty-one authored golden cases run production news/gateway validators with
+scripted model replies. Full regression: 935 passed, zero skips; mypy 130 sources; Ruff 277 files.
+See ADR 0029 and docs/product/observability-evals.md. No external telemetry account was contacted.
+
+Carry-overs: hosted telemetry accounts/retention/access control, dashboards/alerts/measured SLOs,
+web trace export/correlation, transport/pool/queue metrics, held-out provider quality and online
+evals. These passes prove boundary regressions, not model quality or investment performance.
+
+The user found the UI's missing functionality limiting: sign-in/workspace creation work, but
+manual provisioned policy IDs and absent run-launch wiring prevent a complete first-agent flow.
+Prioritize an authenticated paper-only setup/run/results slice next; do not claim the product
+milestone merely because every numbered step has a local implementation.
 
 Read MASTER_BUILD_SPEC sections 13.4 and 26 and existing threat models. Continue on main,
 commit the slice separately and retain §5 carry-overs.

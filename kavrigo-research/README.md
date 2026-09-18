@@ -2,6 +2,10 @@
 
 Notebooks, experiments, feature studies, evaluation sets and leakage audits.
 
+The executable `kavrigo_evals` package runs the versioned synthetic golden boundary dataset
+through production news/gateway code. See [observability/evals](../docs/product/observability-evals.md)
+for commands, report provenance and the distinction between boundary checks and model quality.
+
 Rules:
 
 - **No production credentials, ever.** Research uses public, mock, or licensed development data.

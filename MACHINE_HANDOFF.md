@@ -329,3 +329,25 @@ three boundary tests and three Playwright/Edge browser tests pass. Browser scree
 
 Bundled Node/pnpm were used; no uv/protoc/buf/gitleaks host installation was performed.
 See apps/web/README.md for exact web commands and the two configured origin variables.
+
+### Step 15 verification — 2026-09-16
+
+The user explicitly resumed step 15 after pausing it. New `kavrigo-observability` dependencies
+were resolved with the already-installed container uv (0.9.30), not a host install. The root
+uv.lock now records the verified workspace resolution, including OpenTelemetry 1.44.0.
+Full pytest: **935 passed, zero skips (43.93s)**, including 89 stack integrations. Ruff covers
+277 Python files; strict mypy covers 130 sources, including the research evaluation package.
+OpenAPI snapshot remains unchanged. A loopback OTLP receiver verifies real Protobuf requests,
+fake-project auth, sensitive-field exclusion, exemplar exclusion and model replay cost handling.
+
+Both service images rebuilt. Console export was enabled temporarily; the actual API emitted
+route spans and the real worker emitted stage spans for a fresh synthetic health workflow.
+Its result completed and its 23-event history replayed successfully. No account/order command
+was submitted. Export is restored to the default off after the smoke check; API/worker remain
+running. No hosted telemetry project was contacted. Existing volumes and application data remain.
+
+Golden CLI: `PYTHONPATH=kavrigo-research python -m kavrigo_evals --code-revision <sha>
+--output <path>` (add `--dirty` for uncommitted source). All 31 cases passed; canonical dataset
+hash is `sha256:4020369f300a0bb79946489395e31b902b27ed5eb635a84577caaf688a4e5a46`.
+Local report/logs under `.local/` are ignored; source dataset, runner and schemas are tracked.
+CI was updated to retain a content-free report, but hosted execution is not claimed as passed.

@@ -63,6 +63,11 @@ class GatewayTelemetry:
         if record.usage_known:
             span.set_attribute("gen_ai.usage.input_tokens", record.input_tokens)
             span.set_attribute("gen_ai.usage.output_tokens", record.output_tokens)
+        if not replayed and not record.cost_is_reservation:
+            # Preserve exact decimal JSON; this is diagnostic, not authoritative billing.
+            span.set_attribute(
+                "langfuse.observation.cost_details", '{"total":' + str(record.cost.amount) + "}"
+            )
         if record.outcome != "success":
             span.set_status(StatusCode.ERROR, record.outcome)
         self._calls.add(1, labels)

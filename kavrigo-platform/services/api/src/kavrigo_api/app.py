@@ -6,6 +6,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from opentelemetry.metrics import Meter
+from opentelemetry.trace import Tracer
 
 from kavrigo_api.auth.identity import (
     DevIdentityProvider,
@@ -80,6 +82,8 @@ def create_app(
     *,
     database: Database | None = None,
     identity_provider: IdentityProvider | None = None,
+    tracer: Tracer | None = None,
+    meter: Meter | None = None,
 ) -> FastAPI:
     """Build the application.
 
@@ -110,7 +114,7 @@ def create_app(
     app.state.identity_provider = identity_provider or build_identity_provider(resolved)
     app.dependency_overrides[get_settings] = lambda: resolved
 
-    app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(RequestContextMiddleware, tracer=tracer, meter=meter)
     install_exception_handlers(app)
     app.include_router(health.router)
     app.include_router(workspaces.router)

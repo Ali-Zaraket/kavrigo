@@ -1,10 +1,15 @@
 # Kavrigo progress
 
-**Updated:** 2026-09-16. **Latest implementation:** step 14 local product inspection.
-**Paused by user:** Do not start step 15. Step 14 is committed and pushed as `65998b4`;
-GitHub main was verified at `65998b4e91e5dded35758572ac7213cee1598853`.
-Initial uncommitted step 15 telemetry edits were removed. Wait for an explicit instruction
-before resuming step 15.
+**Updated:** 2026-09-16. **Latest implementation:** step 15 local observability/evals slice.
+**User direction:** Step 15 was explicitly resumed after the earlier pause. Step 14 is
+published as `65998b4`; its pause checkpoint was `530ecac`. Continue normal work on main.
+
+Step 15 adds opt-in service OTel providers, filtered console/OTLP export and a model-only
+Langfuse OTLP path. API telemetry now excludes raw paths and exception messages. Thirty-one
+versioned synthetic golden cases exercise real news/gateway boundaries with scripted replies.
+Full regression: **935 passed, zero skips (43.93s)**. Ruff covers 277 Python files; strict
+typing covers 130 sources. Real OTLP wire tests use a loopback receiver, never a hosted project.
+See [observability/evals](docs/product/observability-evals.md) for usage and explicit limits.
 **Remote publication:** the user explicitly approved the direct main push on 2026-09-10.
 Implementation `400e179` and handoff `d564107` were pushed successfully; `git ls-remote`
 confirmed GitHub main matched local HEAD at `d564107e316311298fd80fd37133025096a63ff6`.
@@ -15,10 +20,10 @@ Step 14's local paper UI, generated OpenAPI client, and workspace inspection rou
 implemented. Full regression: **892 passed, zero skips (32.87s)**. Frontend lint, formatting,
 types, build, three boundary tests and three real API browser tests passed, including axe,
 mobile keyboard focus, workspace isolation and immutable versions. The explicit browser-origin
-fix is verified. Step 15 observability/evals is next. See the web README for local startup.
+fix is verified. See the web README for local startup; step 15's newer checks are above.
 
 **Starting checkpoint:** `de77742`. **Current branch:** `main` (user-directed workflow).
-**Position:** local slices through step 14; next step 15 observability/evals.
+**Position:** local slices through step 15; end-to-end product milestone still incomplete.
 
 ### Completed local checkpoint - step 13
 
@@ -70,7 +75,7 @@ operation, hosted security/retention and independent review remain open. See
 | 12. Paper broker | Local broker + durable account wrapper | Exact IOC accounting/replay; generation control and capacity remain explicit |
 | 13. Temporal | Implemented locally | Four workflows, PostgreSQL receipts/RLS/fencing, bounded supervision; hosted/continuous operation pending |
 | 14. UI | Local product inspection implemented | Hosted auth, run launch, real chart/freshness feeds and policy editing pending |
-| 15. Observability/evals | Dedicated step pending | Existing OTel/local audit; hosted export and broader golden evals pending |
+| 15. Observability/evals | Local service exports and synthetic golden suite implemented | Hosted project/alerts/SLOs, web traces, real-provider quality and online evals pending |
 
 All carry-overs and reasons remain in [HANDOFF.md §5](HANDOFF.md#5-deferred-work--read-this-before-starting-anything).
 
@@ -101,6 +106,10 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | Step 14 | Ruff check/format; strict mypy; OpenAPI drift | 263 Python files, 122 typed sources; snapshot matches API |
 | Step 14 | Web lint/format/typecheck/test/build/generated client | Passed; three boundary tests; no generated drift |
 | Step 14 | Playwright with Edge and isolated API | Three passed (19.5s): versioning, tenant switching, logout, accessibility, mobile/failure and proxy boundary |
+| Step 15, 2026-09-16 | Full pytest with real PostgreSQL/ClickHouse/Temporal | 935 passed, zero skips (43.93s), including 89 stack integrations |
+| Step 15 | Ruff check/format; strict mypy; OpenAPI | 277 Python files; 130 typed sources; API snapshot unchanged |
+| Step 15 | Golden suite and local OTLP HTTP receiver | 31 golden cases; privacy, replay cost, HTTP error and exporter-failure tests passed |
+| Step 15 | Both service builds, console telemetry smoke, actual worker/history replay | Passed; API route spans and worker stage spans observed, health workflow completed with 23 replayed events |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -110,10 +119,12 @@ pull-request workflow lookup for `de77742` returned no runs, which was not a CI 
 
 ## Next slice and safety
 
-Next is **step 15: observability/evals**. Preserve earlier carry-overs and local-only limits.
-The UI is an inspection/draft slice, not the complete end-to-end trading milestone. Hosted
-telemetry credentials and paid model routing are absent; start with redacted local exports
-and versioned synthetic golden evaluations.
+The numbered plan has local slices through step 15, with substantial explicit carry-overs.
+The next product slice should remove manual policy-ID prerequisites and wire authenticated
+paper run launch to stored decisions/risk/results. This is pending work, not a capability of
+the current UI. Preserve all earlier carry-overs, notably Nautilus strategy/data/benchmark
+wiring, hosted auth, real ingestion transport and operational review. No hosted telemetry
+account or paid model is configured; synthetic eval passes do not measure model accuracy.
 
 Keep `LIVE_TRADING_ENABLED=false` and `DEFAULT_TRADING_MODE=paper`; no exchange credentials
 or execution-security code. Risk supports USD spot MARKET/IOC paper/backtest, 12 fractional
