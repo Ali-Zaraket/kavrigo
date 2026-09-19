@@ -6,6 +6,7 @@ requires-python = ">=3.13"
 dependencies = [
   "kavrigo-domain",
   "structlog>=24.4",
+  "websockets>=17,<18",
 ]
 
 [tool.uv.sources]

@@ -57,6 +57,20 @@ one would pass an isolation test while providing no isolation at all.
 `LIVE_TRADING_ENABLED=false` is set on every service, and both the API and the worker refuse to
 start if it is true (ADR 0001).
 
+## Ephemeral public feed sample
+
+The market-data transport can sample the configured public BTC/ETH WebSocket feeds only when
+explicitly enabled in local mode. It counts normalized events and discards them; it does not
+write ClickHouse, Redpanda, files, or the product UI. From an installed Python workspace:
+
+```bash
+KAVRIGO_ENV=local KAVRIGO_INGESTION_SAMPLE_SECONDS=3 python -m kavrigo_market_ingestion
+```
+
+The duration must be 1–60 seconds. Without it, the entry point only reports configuration.
+Provider commercial display and retention rights remain unconfirmed, so persistent collection
+and product display are still blocked; see [ADR 0033](../../docs/adr/0033-public-market-websocket-sample.md).
+
 ## Notes
 
 - Local image tags are pinned but are development approximations of the managed services. Verify

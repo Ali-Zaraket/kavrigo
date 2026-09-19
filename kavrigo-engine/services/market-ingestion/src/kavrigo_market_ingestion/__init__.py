@@ -16,6 +16,7 @@ from kavrigo_market_ingestion.pipeline import (
 from kavrigo_market_ingestion.settings import VenueConfig, default_venues
 from kavrigo_market_ingestion.sinks import (
     ClickHouseSink,
+    CountingSink,
     EventSink,
     MemorySink,
     clickhouse_rows_for,
@@ -26,6 +27,7 @@ __version__ = "0.1.0"
 __all__ = [
     "EVENT_TYPES",
     "ClickHouseSink",
+    "CountingSink",
     "EventSink",
     "IngestionPipeline",
     "IngestionStats",

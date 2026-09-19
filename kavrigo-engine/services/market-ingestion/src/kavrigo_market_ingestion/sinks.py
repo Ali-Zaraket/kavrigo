@@ -29,7 +29,7 @@ import httpx
 from kavrigo_domain import BookTicker, Candle, MarketTrade
 from kavrigo_marketdata import MarketEvent
 
-__all__ = ["ClickHouseSink", "EventSink", "MemorySink", "clickhouse_rows_for"]
+__all__ = ["ClickHouseSink", "CountingSink", "EventSink", "MemorySink", "clickhouse_rows_for"]
 
 _TABLES = {
     MarketTrade: "market_trades",
@@ -68,6 +68,20 @@ class MemorySink:
     async def write(self, events: Sequence[MarketEvent], *, ingested_at: datetime) -> int:
         self.events.extend(events)
         self.batches.append(len(events))
+        return len(events)
+
+    async def close(self) -> None:
+        return None
+
+
+class CountingSink:
+    """Count normalized events without retaining provider data in a local feed sample."""
+
+    def __init__(self) -> None:
+        self.count = 0
+
+    async def write(self, events: Sequence[MarketEvent], *, ingested_at: datetime) -> int:
+        self.count += len(events)
         return len(events)
 
     async def close(self) -> None:

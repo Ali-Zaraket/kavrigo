@@ -9,6 +9,12 @@
 > 0004 and 944 tests pass in the disposable database. Formal approval, real-data paper launch
 > and results remain open.
 
+> **2026-09-19:** ADR 0033 adds a public WebSocket transport and an explicit, bounded local
+> BTC/ETH sample that discards feed data. Both configured venues returned normalized events
+> in a three-second sample; no provider data was persisted or shown in the product. The
+> regression is 954 passing tests. Licence-backed collection, replay datasets and approval
+> remain open.
+
 > **Post-step-15 local rehearsal (2026-09-18):** ADR 0030 adds a synthetic, execution-disabled
 > Studio launch and durable inspection flow. This is not approved paper strategy activation.
 > Local telemetry exports and 31 synthetic golden cases are implemented; the latest regression
@@ -25,7 +31,7 @@
 
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-19 · **Position:** step 15 plus synthetic rehearsal and independent policy review · **Next:** approval gate and real-data paper activation
+**Updated:** 2026-09-19 · **Position:** step 15 plus governed policy review and ephemeral market feed · **Next:** licensed data persistence and evidence-backed approval
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -57,7 +63,7 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 2 | Contracts | done |
 | 3 | Local development | full local stack boot verified; CI still pending — see §5 |
 | 4 | Auth / tenant control plane | done |
-| 5 | Market ingestion | done **except the live WebSocket transport** — see §5 |
+| 5 | Market ingestion | public WebSocket transport and ephemeral sample verified; licensed durable collection and Redpanda producer remain — see §5 |
 | 6 | Feature engine | done |
 | 7 | Backtest engine | done **except the strategy layer** — see §5 |
 | 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
@@ -204,15 +210,14 @@ are scoped-out work with a reason.
 
 ### From step 5 — market ingestion
 
-- **No live WebSocket transport.** This is the largest carry-over. Adapters, normalization,
-  health monitoring and sinks are complete and tested against recorded frames and a scripted
-  transport (`ScriptedTransport`). What is missing is a real socket with reconnect and
-  keepalive. `python -m kavrigo_market_ingestion` says so explicitly rather than pretending to
-  run.
-- **Binance's connection lifetime and ping/pong interval are unverified.** The documentation
-  pages reachable at the time did not state them. Keepalive was left configurable rather than
-  hardcoding a number that could not be cited. **Verify against official docs before writing the
-  transport.**
+- **Public WebSocket transport is implemented.** ADR 0033 verifies current official Binance,
+  Coinbase and `websockets` behavior. The local-only sample connects to both venues for 1–60
+  seconds and discards all events after counting them. Reconnect, keepalive, frame bounds,
+  malformed input and duplicate filtering are tested against a local WebSocket server. A
+  three-second public sample returned normalized events from both venues.
+- **No licensed persistent real-data collection.** Provider rights and retention windows are
+  unconfirmed; existing ClickHouse TTLs are placeholders. Do not attach the ClickHouse sink to
+  the public feeds, expose data in the UI, or treat this sample as backtest/paper evidence yet.
 - **No Redpanda producer.** The `EventSink` protocol exists and `ClickHouseSink` implements it;
   a Kafka producer is a second implementation, not a redesign.
 - **No loader that reads windows back out of ClickHouse.** The feature engine consumes an

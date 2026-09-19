@@ -43,6 +43,7 @@ from kavrigo_marketdata.replay import (
     write_recording,
 )
 from kavrigo_marketdata.transport import (
+    PublicWebSocketTransport,
     ScriptedTransport,
     Transport,
     TransportClosed,
@@ -62,6 +63,7 @@ __all__ = [
     "InstrumentMap",
     "MarketEvent",
     "ParsedFrame",
+    "PublicWebSocketTransport",
     "RecordedFrame",
     "ScriptedTransport",
     "SequenceVerdict",

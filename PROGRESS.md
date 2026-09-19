@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-09-19 public-market transport slice:** ADR 0033 adds a bounded WebSocket JSON transport
+with ping/pong keepalive, reconnect through the existing pipeline, frame limits and malformed
+input handling. The ingestion entry point now has an explicit local-only, 1–60 second
+`CountingSink` sample; it discards provider data. A three-second sample observed 175 normalized
+Binance events and 18 Coinbase events, with zero reconnects. No feed data was stored or exposed
+to the product. Full regression: **954 passed, zero skips (33.82s)**; Ruff 293 files, strict
+typing 136 sources, offline lock and OpenAPI checks pass. See
+[ADR 0033](docs/adr/0033-public-market-websocket-sample.md). Provider rights, durable licensed
+collection, frozen evaluation data, and paper approval remain open.
+
 **2026-09-19 independent-review slice:** ADR 0032 adds one immutable, MFA-gated,
 second-person review recommendation per paper-policy candidate, bound to caller-confirmed
 risk/execution hashes. It is audited and idempotent; both candidate and review remain
@@ -80,7 +90,7 @@ Temporal histories carry references; uncertain model dispatch stops without retr
 The UI now supports versioned paper drafts and inspection of stored runs/evidence/accounts.
 The full paper product milestone is **not achieved**. Order-capable paper run-launch/account commands,
 hosted sign-in, meaningful Nautilus strategy/data and
-benchmark wiring, live data transport, paid providers, shared billing, continuous production
+benchmark wiring, licensed durable data collection, paid providers, shared billing, continuous production
 operation, hosted security/retention and independent review remain open. See
 [ADR 0027](docs/adr/0027-durable-paper-workflows.md),
 [workflow operations](docs/product/durable-workflows.md) and HANDOFF.md's earlier carry-overs.
@@ -93,7 +103,7 @@ operation, hosted security/retention and independent review remain open. See
 | 2. Contracts | Pydantic and Protobuf source | Protobuf compilation/generation pending |
 | 3. Local development | Destination rebuild/migration passed | 50 integrations passed; current Docker state in machine notes |
 | 4. Auth / tenants | Implemented slice | Real Clerk config and membership mutation routes deferred |
-| 5. Market ingestion | Recorded/scripted slice | Live transport and Redpanda producer deferred |
+| 5. Market ingestion | Recorded replay and ephemeral public WebSocket sample | Licensed storage and Redpanda producer deferred |
 | 6. Features | Deterministic point-in-time slice | Stored-window loader deferred |
 | 7. Backtest | Contracts/engine configuration | No strategy/data wiring or meaningful BTC/ETH run |
 | 8. Model gateway | Local/mock | No paid provider or durable ledger |
@@ -159,7 +169,7 @@ The next product slice should add evidence-backed approval of reviewed policy ca
 real-data paper launch to stored decisions/risk/results. Local synthetic rehearsal already
 works with placeholder draft policy IDs; it is execution-disabled. Preserve all earlier
 carry-overs, notably Nautilus strategy/data/benchmark
-wiring, hosted auth, real ingestion transport and operational review. No hosted telemetry
+wiring, hosted auth, licensed market-data retention and operational review. No hosted telemetry
 account or paid model is configured; synthetic eval passes do not measure model accuracy.
 
 Keep `LIVE_TRADING_ENABLED=false` and `DEFAULT_TRADING_MODE=paper`; no exchange credentials

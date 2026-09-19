@@ -21,14 +21,15 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 ## Where things stand
 
-Local slices through step 15 and ADRs 0030-0032 are implemented on `main`.
-The latest regression is 944 passing tests, zero skips; Ruff covers 289 Python files and strict
+Local slices through step 15 and ADRs 0030-0033 are implemented on `main`.
+The latest regression is 954 passing tests, zero skips; Ruff covers 293 Python files and strict
 typing covers 136 sources. See PROGRESS.md and git log for the published commit. The step 15 pause was
 explicitly lifted by the user. Studio can create paper drafts with clearly labeled local policy
 placeholders and launch an execution-disabled synthetic Temporal rehearsal; Pulse labels its
 receipts. MFA-gated API writes now store immutable, unapproved paper policy candidates and
-independent review recommendations. This is
-not an approved real-data paper strategy run. Optional content-free OTel
+independent review recommendations. A brief local-only public BTC/ETH WebSocket sample is now
+available, but discards its data because provider rights are unconfirmed. This is not an approved
+real-data paper strategy run. Optional content-free OTel
 and Langfuse exporters and 31 synthetic golden boundary cases are implemented. No hosted
 telemetry account or paid model quality evaluation is claimed.
 PostgreSQL now owns durable paper account commands, receipts, run inputs/stages and an outbox.

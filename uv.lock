@@ -987,12 +987,14 @@ source = { editable = "kavrigo-engine/libs/market-data" }
 dependencies = [
     { name = "kavrigo-domain" },
     { name = "structlog" },
+    { name = "websockets" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "kavrigo-domain", editable = "kavrigo-engine/libs/domain" },
     { name = "structlog", specifier = ">=24.4" },
+    { name = "websockets", specifier = ">=17,<18" },
 ]
 
 [[package]]

@@ -15,8 +15,18 @@ import json
 import random
 from collections.abc import AsyncIterator, Sequence
 from typing import Any, Protocol, runtime_checkable
+from urllib.parse import urlsplit
 
-__all__ = ["ScriptedTransport", "Transport", "TransportClosed", "backoff_delays"]
+from websockets.asyncio.client import ClientConnection, connect
+from websockets.exceptions import ConnectionClosed, InvalidHandshake, InvalidURI
+
+__all__ = [
+    "PublicWebSocketTransport",
+    "ScriptedTransport",
+    "Transport",
+    "TransportClosed",
+    "backoff_delays",
+]
 
 
 class TransportClosed(Exception):
@@ -110,6 +120,100 @@ class ScriptedTransport:
 
     async def close(self) -> None:
         self._closed = True
+
+
+class PublicWebSocketTransport:
+    """Bounded JSON transport for an explicitly configured public market feed.
+
+    The library responds to venue Ping frames with matching Pongs. Its own keepalive pings
+    detect a silent connection. Reconnection/backoff belongs to ``IngestionPipeline``.
+    """
+
+    def __init__(
+        self,
+        url: str,
+        *,
+        open_timeout_seconds: float = 10.0,
+        ping_interval_seconds: float = 30.0,
+        ping_timeout_seconds: float = 20.0,
+        max_frame_bytes: int = 1_048_576,
+        max_queued_frames: int = 16,
+        allow_insecure_loopback: bool = False,
+    ) -> None:
+        parsed = urlsplit(url)
+        loopback = parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+        if (
+            (
+                parsed.scheme != "wss"
+                and not (allow_insecure_loopback and parsed.scheme == "ws" and loopback)
+            )
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("A public WSS URL without credentials is required.")
+        if (
+            open_timeout_seconds <= 0
+            or ping_interval_seconds <= 0
+            or ping_timeout_seconds <= 0
+            or max_frame_bytes <= 0
+            or max_queued_frames <= 0
+        ):
+            raise ValueError("WebSocket timeouts and size limits must be positive.")
+        self._url = url
+        self._open_timeout = open_timeout_seconds
+        self._ping_interval = ping_interval_seconds
+        self._ping_timeout = ping_timeout_seconds
+        self._max_frame_bytes = max_frame_bytes
+        self._max_queued_frames = max_queued_frames
+        self._connection: ClientConnection | None = None
+
+    async def connect(self) -> None:
+        await self.close()
+        try:
+            self._connection = await connect(
+                self._url,
+                open_timeout=self._open_timeout,
+                ping_interval=self._ping_interval,
+                ping_timeout=self._ping_timeout,
+                max_size=self._max_frame_bytes,
+                max_queue=self._max_queued_frames,
+            )
+        except (OSError, TimeoutError, InvalidHandshake, InvalidURI) as exc:
+            raise ConnectionError("Public market WebSocket connection failed.") from exc
+
+    async def send(self, payload: dict[str, Any]) -> None:
+        connection = self._connection
+        if connection is None:
+            raise TransportClosed("not connected")
+        try:
+            await connection.send(json.dumps(payload, separators=(",", ":")))
+        except ConnectionClosed as exc:
+            raise TransportClosed("market WebSocket closed while sending") from exc
+
+    async def frames(self) -> AsyncIterator[dict[str, Any]]:
+        connection = self._connection
+        if connection is None:
+            raise TransportClosed("not connected")
+        try:
+            async for raw in connection:
+                try:
+                    frame = json.loads(raw)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    yield {"_transport_error": "invalid_json"}
+                    continue
+                if not isinstance(frame, dict):
+                    yield {"_transport_error": "non_object_json"}
+                    continue
+                yield frame
+        except ConnectionClosed as exc:
+            raise TransportClosed("market WebSocket disconnected") from exc
+
+    async def close(self) -> None:
+        connection, self._connection = self._connection, None
+        if connection is not None:
+            await connection.close()
 
 
 @contextlib.asynccontextmanager

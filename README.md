@@ -66,15 +66,13 @@ No external data provider, exchange credential, or model API key is required to 
 
 ## Current status
 
-Implemented slices cover steps 1-13 of `AGENTS.md`, including the local/mock model gateway,
-synthetic news intelligence, agent runtime, deterministic risk, paper broker and durable workflows.
-PostgreSQL now owns account commands, receipts and run artifacts, with workspace RLS and fenced
-ownership. Four Temporal workflows coordinate evaluation, backtests, data health and paper
-supervision; the default model explicitly abstains. The end-to-end product milestone still needs
-UI, meaningful Nautilus strategy/data wiring and earlier provider/deployment carry-overs.
+Local slices cover steps 1-15 of `AGENTS.md`: Studio paper drafts, a synthetic execution-disabled
+rehearsal, durable Temporal receipts, deterministic risk and paper accounting, local observability,
+and immutable policy candidates with independent review recommendations. A public market-data
+WebSocket transport is available for brief, explicitly enabled local samples that discard feed
+data. The end-to-end product milestone still needs licensed real-data persistence, meaningful
+Nautilus strategy/data and benchmark wiring, approval gates, and an approved paper launch.
 
-The step 13 regression passed **885 tests with zero skips**, including 82 integrations, plus
-strict typing across 120 sources. Migration rollback passed in a separate test database.
-See [`PROGRESS.md`](PROGRESS.md) for final commit references and runtime verification, and
-[durable workflow operations](docs/product/durable-workflows.md) for recovery and limitations.
+See [`PROGRESS.md`](PROGRESS.md) for current verification counts and remaining work, and
+[durable workflow operations](docs/product/durable-workflows.md) for recovery limits.
 Independent security review, hosted deployment and continuous production operation remain pending.
