@@ -280,6 +280,41 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workspaces/{workspace_id}/paper/policy-bundles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List paper-policy candidates */
+    get: operations["list_paper_policy_bundles_v1_workspaces__workspace_id__paper_policy_bundles_get"];
+    put?: never;
+    /** Store an immutable, unapproved paper-policy candidate pair */
+    post: operations["create_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/workspaces/{workspace_id}/paper/policy-bundles/{bundle_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read a paper-policy candidate */
+    get: operations["get_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -598,6 +633,21 @@ export interface components {
      */
     AuthorKind: "human" | "ai_assisted" | "ai_generated";
     /**
+     * DataFamily
+     * @description Data families that carry independent freshness budgets (``MASTER_BUILD_SPEC.md`` §11.3).
+     * @enum {string}
+     */
+    DataFamily:
+      | "trades"
+      | "book"
+      | "candles"
+      | "derivatives"
+      | "onchain"
+      | "defi"
+      | "news"
+      | "macro"
+      | "reference";
+    /**
      * DataPack
      * @description Explicitly enabled data families (``MASTER_BUILD_SPEC.md`` §7).
      *
@@ -624,6 +674,48 @@ export interface components {
      * @enum {string}
      */
     DecisionState: "bullish" | "bearish" | "neutral" | "high_risk" | "unknown";
+    /**
+     * EventRiskPolicy
+     * @description Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` §7.13).
+     */
+    "EventRiskPolicy-Input": {
+      /**
+       * Block New Positions Before Macro Minutes
+       * @default 10
+       */
+      block_new_positions_before_macro_minutes: number;
+      /**
+       * Block New Positions After Macro Minutes
+       * @default 5
+       */
+      block_new_positions_after_macro_minutes: number;
+      /**
+       * Reduce Size Pct During Event Risk
+       * @default 0
+       */
+      reduce_size_pct_during_event_risk: number | string;
+    };
+    /**
+     * EventRiskPolicy
+     * @description Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` §7.13).
+     */
+    "EventRiskPolicy-Output": {
+      /**
+       * Block New Positions Before Macro Minutes
+       * @default 10
+       */
+      block_new_positions_before_macro_minutes: number;
+      /**
+       * Block New Positions After Macro Minutes
+       * @default 5
+       */
+      block_new_positions_after_macro_minutes: number;
+      /**
+       * Reduce Size Pct During Event Risk
+       * @default 0
+       */
+      reduce_size_pct_during_event_risk: string;
+    };
     /**
      * EvidenceItem
      * @description One immutable, attributable piece of evidence available to a decision.
@@ -733,6 +825,48 @@ export interface components {
        * @default 2
        */
       min_evidence_items: number;
+    };
+    /** ExecutionCandidate */
+    ExecutionCandidate: {
+      /** Fee Bps */
+      fee_bps: number | string;
+      /** Slippage Bps */
+      slippage_bps: number | string;
+      /** Notional Increment Usd */
+      notional_increment_usd: number | string;
+      /** Max Snapshot Age Ms */
+      max_snapshot_age_ms: number;
+      /** Max Portfolio Age Ms */
+      max_portfolio_age_ms: number;
+      /** Max Reconciliation Age Ms */
+      max_reconciliation_age_ms: number;
+      /** Max Market Age Ms */
+      max_market_age_ms: number;
+      /** Max Approval Age Ms */
+      max_approval_age_ms: number;
+    };
+    /**
+     * FreshnessPolicy
+     * @description Maximum tolerated data age per family, in milliseconds (``MASTER_BUILD_SPEC.md`` §11.3).
+     *
+     *     Data freshness is part of risk (``AGENTS.md`` domain rule 5): a correct decision on stale
+     *     data is still a wrong trade.
+     */
+    FreshnessPolicy: {
+      /** Max Age Ms */
+      max_age_ms: {
+        [key: string]: number;
+      };
+      /**
+       * Required Families
+       * @default []
+       */
+      required_families: components["schemas"]["DataFamily"][];
+      /**
+       * Min Data Quality
+       * @default 0.6
+       */
+      min_data_quality: number;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -1055,6 +1189,18 @@ export interface components {
        */
       has_more: boolean;
     };
+    /** Page[PaperPolicyBundleResponse] */
+    Page_PaperPolicyBundleResponse_: {
+      /** Items */
+      items: components["schemas"]["PaperPolicyBundleResponse"][];
+      /** Next Cursor */
+      next_cursor?: string | null;
+      /**
+       * Has More
+       * @default false
+       */
+      has_more: boolean;
+    };
     /** Page[RunSummary] */
     Page_RunSummary_: {
       /** Items */
@@ -1082,6 +1228,56 @@ export interface components {
       committed_at: string;
       portfolio: components["schemas"]["PortfolioSnapshot"];
       fees_paid: components["schemas"]["Money"];
+    };
+    /** PaperPolicyBundleCreate */
+    PaperPolicyBundleCreate: {
+      limits: components["schemas"]["RiskLimits-Input"];
+      freshness: components["schemas"]["FreshnessPolicy"];
+      /**
+       * @default {
+       *       "block_new_positions_before_macro_minutes": 10,
+       *       "block_new_positions_after_macro_minutes": 5,
+       *       "reduce_size_pct_during_event_risk": "0"
+       *     }
+       */
+      event_risk: components["schemas"]["EventRiskPolicy-Input"];
+      execution: components["schemas"]["ExecutionCandidate"];
+      /** Reason */
+      reason: string;
+    };
+    /** PaperPolicyBundleResponse */
+    PaperPolicyBundleResponse: {
+      /** Bundle Id */
+      bundle_id: string;
+      /** Workspace Id */
+      workspace_id: string;
+      risk: components["schemas"]["RiskPolicy"];
+      execution: components["schemas"]["RiskExecutionPolicy"];
+      /** Risk Hash */
+      risk_hash: string;
+      /** Execution Hash */
+      execution_hash: string;
+      /**
+       * Approval Status
+       * @default unapproved
+       * @constant
+       */
+      approval_status: "unapproved";
+      /**
+       * Execution Enabled
+       * @default false
+       * @constant
+       */
+      execution_enabled: false;
+      /** Reason */
+      reason: string;
+      /** Created By */
+      created_by: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
     /**
      * Permission
@@ -1295,6 +1491,145 @@ export interface components {
        */
       execution_enabled: false;
     };
+    /**
+     * RiskExecutionPolicy
+     * @description Local USD-spot MARKET/IOC only. Assumptions are operator configuration, not venue facts.
+     */
+    RiskExecutionPolicy: {
+      /** Execution Policy Id */
+      execution_policy_id: string;
+      /** Version */
+      version: string;
+      /** Fee Bps */
+      fee_bps: string;
+      /** Slippage Bps */
+      slippage_bps: string;
+      /** Notional Increment Usd */
+      notional_increment_usd: string;
+      /** Max Snapshot Age Ms */
+      max_snapshot_age_ms: number;
+      /** Max Portfolio Age Ms */
+      max_portfolio_age_ms: number;
+      /** Max Reconciliation Age Ms */
+      max_reconciliation_age_ms: number;
+      /** Max Market Age Ms */
+      max_market_age_ms: number;
+      /** Max Approval Age Ms */
+      max_approval_age_ms: number;
+    };
+    /**
+     * RiskLimits
+     * @description Exposure and loss limits. Percentages are of portfolio equity unless stated.
+     */
+    "RiskLimits-Input": {
+      /** Max Gross Exposure Pct */
+      max_gross_exposure_pct: number | string;
+      /** Max Single Asset Exposure Pct */
+      max_single_asset_exposure_pct: number | string;
+      /** Max Network Exposure Pct */
+      max_network_exposure_pct: number | string;
+      /** Max Open Positions */
+      max_open_positions: number;
+      /** Max Daily Loss Pct */
+      max_daily_loss_pct: number | string;
+      /** Max Drawdown Pct */
+      max_drawdown_pct: number | string;
+      /** Min Liquidity Usd */
+      min_liquidity_usd: number | string;
+      /** Max Spread Bps */
+      max_spread_bps: number;
+      /** Min Order Notional Usd */
+      min_order_notional_usd: number | string;
+      /** Max Order Notional Usd */
+      max_order_notional_usd: number | string;
+      /**
+       * Min Edge Over Cost Bps
+       * @default 5
+       */
+      min_edge_over_cost_bps: number;
+    };
+    /**
+     * RiskLimits
+     * @description Exposure and loss limits. Percentages are of portfolio equity unless stated.
+     */
+    "RiskLimits-Output": {
+      /** Max Gross Exposure Pct */
+      max_gross_exposure_pct: string;
+      /** Max Single Asset Exposure Pct */
+      max_single_asset_exposure_pct: string;
+      /** Max Network Exposure Pct */
+      max_network_exposure_pct: string;
+      /** Max Open Positions */
+      max_open_positions: number;
+      /** Max Daily Loss Pct */
+      max_daily_loss_pct: string;
+      /** Max Drawdown Pct */
+      max_drawdown_pct: string;
+      /** Min Liquidity Usd */
+      min_liquidity_usd: string;
+      /** Max Spread Bps */
+      max_spread_bps: number;
+      /** Min Order Notional Usd */
+      min_order_notional_usd: string;
+      /** Max Order Notional Usd */
+      max_order_notional_usd: string;
+      /**
+       * Min Edge Over Cost Bps
+       * @default 5
+       */
+      min_edge_over_cost_bps: number;
+    };
+    /**
+     * RiskPolicy
+     * @description An immutable, versioned risk policy.
+     *
+     *     Policies are referenced by id from an ``AgentSpec`` and recorded on every evaluation, so a
+     *     historical rejection can be explained with the policy that actually applied.
+     */
+    RiskPolicy: {
+      /**
+       * Risk Policy Id
+       * @description rp_ id
+       */
+      risk_policy_id: string;
+      /** Workspace Id */
+      workspace_id?: string | null;
+      /** Version */
+      version: number;
+      scope: components["schemas"]["RiskScope"];
+      limits: components["schemas"]["RiskLimits-Output"];
+      freshness: components["schemas"]["FreshnessPolicy"];
+      /**
+       * @default {
+       *       "block_new_positions_before_macro_minutes": 10,
+       *       "block_new_positions_after_macro_minutes": 5,
+       *       "reduce_size_pct_during_event_risk": "0"
+       *     }
+       */
+      event_risk: components["schemas"]["EventRiskPolicy-Output"];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Created By */
+      created_by: string;
+      /** Content Hash */
+      content_hash: string;
+    };
+    /**
+     * RiskScope
+     * @description The limit hierarchy (``MASTER_BUILD_SPEC.md`` §11.2), most general first.
+     * @enum {string}
+     */
+    RiskScope:
+      | "global"
+      | "workspace"
+      | "portfolio"
+      | "network"
+      | "agent"
+      | "asset"
+      | "order";
     /**
      * Role
      * @description Workspace roles, least privileged last.
@@ -2105,6 +2440,107 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RehearsalLaunch"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  list_paper_policy_bundles_v1_workspaces__workspace_id__paper_policy_bundles_get: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Page_PaperPolicyBundleResponse_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  create_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PaperPolicyBundleCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaperPolicyBundleResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        bundle_id: string;
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaperPolicyBundleResponse"];
         };
       };
       /** @description Validation Error */

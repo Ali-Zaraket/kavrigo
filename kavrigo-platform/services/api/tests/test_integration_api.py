@@ -667,3 +667,83 @@ class TestLocalPaperRehearsal:
             client.post(route, headers={**_auth("mallory"), "Idempotency-Key": "x"}).status_code
             == 404
         )
+
+
+class TestPaperPolicyCandidates:
+    @staticmethod
+    def _body() -> dict[str, Any]:
+        return {
+            "limits": {
+                "max_gross_exposure_pct": "10",
+                "max_single_asset_exposure_pct": "5",
+                "max_network_exposure_pct": "10",
+                "max_open_positions": 1,
+                "max_daily_loss_pct": "1",
+                "max_drawdown_pct": "2",
+                "min_liquidity_usd": "1000000",
+                "max_spread_bps": 20,
+                "min_order_notional_usd": "10",
+                "max_order_notional_usd": "100",
+            },
+            "freshness": {
+                "required_families": ["trades", "book"],
+                "max_age_ms": {"trades": 5000, "book": 2000},
+            },
+            "execution": {
+                "fee_bps": "10",
+                "slippage_bps": "10",
+                "notional_increment_usd": "0.01",
+                "max_snapshot_age_ms": 5000,
+                "max_portfolio_age_ms": 5000,
+                "max_reconciliation_age_ms": 5000,
+                "max_market_age_ms": 5000,
+                "max_approval_age_ms": 5000,
+            },
+            "reason": "Conservative paper candidate for review",
+        }
+
+    def test_create_requires_mfa_and_remains_unapproved(self, client: TestClient) -> None:
+        ws = _create_workspace(client, "alice", "policy-owner")
+        route = f"/v1/workspaces/{ws}/paper/policy-bundles"
+        body = self._body()
+        headers = {**_auth("alice"), "Idempotency-Key": "candidate-one"}
+        refused = client.post(route, json=body, headers=headers)
+        assert refused.status_code == 403
+        assert "multi-factor" in refused.json()["message"].lower()
+
+        headers = {**_auth("alice", mfa=True), "Idempotency-Key": "candidate-one"}
+        created = client.post(route, json=body, headers=headers)
+        assert created.status_code == 201, created.text
+        payload = created.json()
+        assert payload["approval_status"] == "unapproved"
+        assert payload["execution_enabled"] is False
+        assert payload["risk"]["risk_policy_id"].startswith("rp_")
+        assert payload["execution"]["execution_policy_id"].startswith("ep_")
+        assert payload["risk"]["content_hash"] == payload["risk_hash"]
+
+        repeated = client.post(route, json=body, headers=headers)
+        assert repeated.status_code == 201
+        assert repeated.json() == payload
+        changed = {**body, "reason": "Another candidate must use another key"}
+        conflict = client.post(route, json=changed, headers=headers)
+        assert conflict.status_code == 409
+
+        listed = client.get(route, headers=_auth("alice"))
+        assert listed.status_code == 200
+        assert len(listed.json()["items"]) == 1
+        detail = client.get(f"{route}/{payload['bundle_id']}", headers=_auth("alice"))
+        assert detail.status_code == 200
+        assert detail.json() == payload
+        other = client.get(f"{route}/{payload['bundle_id']}", headers=_auth("bob"))
+        assert other.status_code == 404
+
+    def test_untrusted_numbers_and_missing_freshness_fail(self, client: TestClient) -> None:
+        ws = _create_workspace(client, "alice", "policy-validation")
+        route = f"/v1/workspaces/{ws}/paper/policy-bundles"
+        headers = {**_auth("alice", mfa=True), "Idempotency-Key": "invalid-candidate"}
+        body = self._body()
+        body["limits"]["max_gross_exposure_pct"] = 0.1
+        assert client.post(route, json=body, headers=headers).status_code == 422
+        body = self._body()
+        body["freshness"]["required_families"] = ["news"]
+        assert client.post(route, json=body, headers=headers).status_code == 422

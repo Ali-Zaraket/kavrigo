@@ -21,12 +21,13 @@ for building AI crypto trading agents. This is an in-progress build, not a green
 
 ## Where things stand
 
-Local slices through step 15 and ADR 0030's synthetic rehearsal are implemented on `main`.
-The latest regression is 941 passing tests, zero skips; Ruff covers 282 Python files and strict
-typing covers 133 sources. See PROGRESS.md and git log for the published commit. The step 15 pause was
+Local slices through step 15 and ADRs 0030-0031 are implemented on `main`.
+The latest regression is 943 passing tests, zero skips; Ruff covers 286 Python files and strict
+typing covers 136 sources. See PROGRESS.md and git log for the published commit. The step 15 pause was
 explicitly lifted by the user. Studio can create paper drafts with clearly labeled local policy
 placeholders and launch an execution-disabled synthetic Temporal rehearsal; Pulse labels its
-receipts. This is not an approved real-data paper strategy run. Optional content-free OTel
+receipts. MFA-gated API writes now store immutable, unapproved paper policy candidates. This is
+not an approved real-data paper strategy run. Optional content-free OTel
 and Langfuse exporters and 31 synthetic golden boundary cases are implemented. No hosted
 telemetry account or paid model quality evaluation is claimed.
 PostgreSQL now owns durable paper account commands, receipts, run inputs/stages and an outbox.
@@ -46,7 +47,8 @@ Docker Python 3.13.11 is the verification environment; the host has no Python 3.
 Use `$env:KAVRIGO_API_HOST_PORT='58300'` for Compose because Windows reserved 58000.
 API integration tests truncate their configured database: use separate disposable test DSNs,
 never the application's `kavrigo` database. This machine has `kavrigo_step13_test`; defaults target
-`kavrigo_test`. Apply migration 0002 independently to application and test databases.
+`kavrigo_test`. Migration 0003 is applied to `kavrigo` and `kavrigo_step13_test`; migrate any
+other database to head independently before running integrations.
 
 Docker recovered on 2026-09-10 by preserving a stuck runtime-socket directory; see
 MACHINE_HANDOFF.md. Do not factory-reset, delete volumes, or reinstall tools to resume.
@@ -54,8 +56,8 @@ Temporal now persists history in `temporal-data`; the actual worker's completed 
 survived a server restart. Check current Docker/Git state rather than assuming services stayed up.
 
 **Next: close the real-data paper setup/run/results gap**, following HANDOFF.md §10. The frontend
-skill is installed. Add authenticated, workspace-scoped policy provisioning and approved paper
-run-launch interfaces. Preserve paper/live distinction, immutable
+skill is installed. Add policy review/approval and approved paper run-launch interfaces; candidate
+creation alone cannot activate execution. Preserve paper/live distinction, immutable
 version bindings, idempotency, freshness and evidence provenance. Do not fabricate P&L
 or meaningful backtest results to fill the interface. Retain the observability carry-overs.
 

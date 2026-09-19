@@ -44,6 +44,7 @@ __all__ = [
     "Base",
     "IdempotencyKey",
     "Membership",
+    "PaperPolicyBundle",
     "User",
     "Workspace",
 ]
@@ -57,6 +58,7 @@ TENANT_SCOPED_TABLES: tuple[str, ...] = (
     "memberships",
     "agents",
     "agent_versions",
+    "paper_policy_bundles",
     "idempotency_keys",
     "audit_events",
 )
@@ -68,7 +70,12 @@ TENANT_SCOPED_TABLES: tuple[str, ...] = (
 SELF_POLICIED_TABLES: tuple[str, ...] = ("workspaces",)
 
 #: Tables that may never be updated or deleted from.
-APPEND_ONLY_TABLES: tuple[str, ...] = ("agent_versions", "audit_events", "engine_commands")
+APPEND_ONLY_TABLES: tuple[str, ...] = (
+    "agent_versions",
+    "paper_policy_bundles",
+    "audit_events",
+    "engine_commands",
+)
 
 # Explicit migrations own these engine tables; the API ORM must not autogenerate/drop them.
 ENGINE_TABLES: tuple[str, ...] = (
@@ -258,6 +265,38 @@ class AgentVersionRow(Base):
             name="fk_agent_versions_agent",
         ),
         Index("ix_agent_versions_workspace_agent", "workspace_id", "agent_id", "version"),
+        {"schema": SCHEMA},
+    )
+
+
+class PaperPolicyBundle(Base):
+    """One immutable, unapproved pair of workspace paper-policy candidates."""
+
+    __tablename__ = "paper_policy_bundles"
+
+    bundle_id: Mapped[str] = mapped_column(String(35), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey(f"{SCHEMA}.workspaces.workspace_id"), nullable=False
+    )
+    risk_policy_id: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)
+    execution_policy_id: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)
+    risk_document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    risk_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    execution_document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    execution_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    created_at: Mapped[datetime] = _ts(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint(r"bundle_id ~ '^pb_[0-9a-f]{32}$'", name="bundle_id_format"),
+        CheckConstraint(r"risk_policy_id ~ '^rp_[0-9a-f]{32}$'", name="risk_id_format"),
+        CheckConstraint(r"execution_policy_id ~ '^ep_[0-9a-f]{32}$'", name="execution_id_format"),
+        CheckConstraint(r"risk_hash ~ '^sha256:[0-9a-f]{64}$'", name="risk_hash_format"),
+        CheckConstraint(r"execution_hash ~ '^sha256:[0-9a-f]{64}$'", name="execution_hash_format"),
+        CheckConstraint(r"request_hash ~ '^sha256:[0-9a-f]{64}$'", name="request_hash_format"),
+        Index("ix_paper_policy_bundles_workspace_id", "workspace_id", "bundle_id"),
         {"schema": SCHEMA},
     )
 

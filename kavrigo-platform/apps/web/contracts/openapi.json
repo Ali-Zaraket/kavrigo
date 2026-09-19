@@ -1059,6 +1059,197 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace_id}/paper/policy-bundles": {
+      "post": {
+        "tags": [
+          "paper-policies"
+        ],
+        "summary": "Store an immutable, unapproved paper-policy candidate pair",
+        "operationId": "create_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperPolicyBundleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperPolicyBundleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "paper-policies"
+        ],
+        "summary": "List paper-policy candidates",
+        "operationId": "list_paper_policy_bundles_v1_workspaces__workspace_id__paper_policy_bundles_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PaperPolicyBundleResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/paper/policy-bundles/{bundle_id}": {
+      "get": {
+        "tags": [
+          "paper-policies"
+        ],
+        "summary": "Read a paper-policy candidate",
+        "operationId": "get_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^pb_[0-9a-f]{32}$",
+              "title": "Bundle Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperPolicyBundleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1679,6 +1870,22 @@
         "title": "AuthorKind",
         "description": "Whether a version's changes were written by a human or generated (\u00a738)."
       },
+      "DataFamily": {
+        "type": "string",
+        "enum": [
+          "trades",
+          "book",
+          "candles",
+          "derivatives",
+          "onchain",
+          "defi",
+          "news",
+          "macro",
+          "reference"
+        ],
+        "title": "DataFamily",
+        "description": "Data families that carry independent freshness budgets (``MASTER_BUILD_SPEC.md`` \u00a711.3)."
+      },
       "DataPack": {
         "type": "string",
         "enum": [
@@ -1710,6 +1917,73 @@
         ],
         "title": "DecisionState",
         "description": "The agent's read of the situation (``MASTER_BUILD_SPEC.md`` \u00a76.7)."
+      },
+      "EventRiskPolicy-Input": {
+        "properties": {
+          "block_new_positions_before_macro_minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Block New Positions Before Macro Minutes",
+            "default": 10
+          },
+          "block_new_positions_after_macro_minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Block New Positions After Macro Minutes",
+            "default": 5
+          },
+          "reduce_size_pct_during_event_risk": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Reduce Size Pct During Event Risk",
+            "default": "0",
+            "ge": 0,
+            "le": 100
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventRiskPolicy",
+        "description": "Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` \u00a77.13)."
+      },
+      "EventRiskPolicy-Output": {
+        "properties": {
+          "block_new_positions_before_macro_minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Block New Positions Before Macro Minutes",
+            "default": 10
+          },
+          "block_new_positions_after_macro_minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Block New Positions After Macro Minutes",
+            "default": 5
+          },
+          "reduce_size_pct_during_event_risk": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Reduce Size Pct During Event Risk",
+            "default": "0",
+            "ge": 0,
+            "le": 100
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EventRiskPolicy",
+        "description": "Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` \u00a77.13)."
       },
       "EvidenceItem": {
         "properties": {
@@ -1903,6 +2177,132 @@
         "type": "object",
         "title": "EvidenceRequirements",
         "description": "What an agent must have before it is permitted to act (``MASTER_BUILD_SPEC.md`` \u00a79)."
+      },
+      "ExecutionCandidate": {
+        "properties": {
+          "fee_bps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Fee Bps",
+            "ge": 0,
+            "le": 10000
+          },
+          "slippage_bps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Slippage Bps",
+            "ge": 0,
+            "le": 10000
+          },
+          "notional_increment_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Notional Increment Usd",
+            "gt": 0
+          },
+          "max_snapshot_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Snapshot Age Ms"
+          },
+          "max_portfolio_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Portfolio Age Ms"
+          },
+          "max_reconciliation_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Reconciliation Age Ms"
+          },
+          "max_market_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Market Age Ms"
+          },
+          "max_approval_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Approval Age Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fee_bps",
+          "slippage_bps",
+          "notional_increment_usd",
+          "max_snapshot_age_ms",
+          "max_portfolio_age_ms",
+          "max_reconciliation_age_ms",
+          "max_market_age_ms",
+          "max_approval_age_ms"
+        ],
+        "title": "ExecutionCandidate"
+      },
+      "FreshnessPolicy": {
+        "properties": {
+          "max_age_ms": {
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0.0
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DataFamily"
+            },
+            "type": "object",
+            "title": "Max Age Ms"
+          },
+          "required_families": {
+            "items": {
+              "$ref": "#/components/schemas/DataFamily"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Required Families",
+            "default": []
+          },
+          "min_data_quality": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Data Quality",
+            "default": 0.6
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "max_age_ms"
+        ],
+        "title": "FreshnessPolicy",
+        "description": "Maximum tolerated data age per family, in milliseconds (``MASTER_BUILD_SPEC.md`` \u00a711.3).\n\nData freshness is part of risk (``AGENTS.md`` domain rule 5): a correct decision on stale\ndata is still a wrong trade."
       },
       "HTTPValidationError": {
         "properties": {
@@ -2600,6 +3000,39 @@
         ],
         "title": "Page[PaperAccountView]"
       },
+      "Page_PaperPolicyBundleResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PaperPolicyBundleResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "Page[PaperPolicyBundleResponse]"
+      },
       "Page_RunSummary_": {
         "properties": {
           "items": {
@@ -2670,6 +3103,111 @@
           "fees_paid"
         ],
         "title": "PaperAccountView"
+      },
+      "PaperPolicyBundleCreate": {
+        "properties": {
+          "limits": {
+            "$ref": "#/components/schemas/RiskLimits-Input"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/FreshnessPolicy"
+          },
+          "event_risk": {
+            "$ref": "#/components/schemas/EventRiskPolicy-Input",
+            "default": {
+              "block_new_positions_before_macro_minutes": 10,
+              "block_new_positions_after_macro_minutes": 5,
+              "reduce_size_pct_during_event_risk": "0"
+            }
+          },
+          "execution": {
+            "$ref": "#/components/schemas/ExecutionCandidate"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "limits",
+          "freshness",
+          "execution",
+          "reason"
+        ],
+        "title": "PaperPolicyBundleCreate"
+      },
+      "PaperPolicyBundleResponse": {
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "pattern": "^pb_[0-9a-f]{32}$",
+            "title": "Bundle Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id"
+          },
+          "risk": {
+            "$ref": "#/components/schemas/RiskPolicy"
+          },
+          "execution": {
+            "$ref": "#/components/schemas/RiskExecutionPolicy"
+          },
+          "risk_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Hash"
+          },
+          "execution_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Execution Hash"
+          },
+          "approval_status": {
+            "type": "string",
+            "const": "unapproved",
+            "title": "Approval Status",
+            "default": "unapproved"
+          },
+          "execution_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Execution Enabled",
+            "default": false
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bundle_id",
+          "workspace_id",
+          "risk",
+          "execution",
+          "risk_hash",
+          "execution_hash",
+          "reason",
+          "created_by",
+          "created_at"
+        ],
+        "title": "PaperPolicyBundleResponse"
       },
       "Permission": {
         "type": "string",
@@ -3094,6 +3632,409 @@
           "replayed"
         ],
         "title": "RehearsalLaunch"
+      },
+      "RiskExecutionPolicy": {
+        "properties": {
+          "execution_policy_id": {
+            "type": "string",
+            "pattern": "^ep_[0-9a-f]{32}$",
+            "title": "Execution Policy Id"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "title": "Version"
+          },
+          "fee_bps": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Fee Bps",
+            "ge": 0,
+            "le": 10000
+          },
+          "slippage_bps": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Slippage Bps",
+            "ge": 0,
+            "le": 10000
+          },
+          "notional_increment_usd": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Notional Increment Usd",
+            "gt": 0
+          },
+          "max_snapshot_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Snapshot Age Ms"
+          },
+          "max_portfolio_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Portfolio Age Ms"
+          },
+          "max_reconciliation_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Reconciliation Age Ms"
+          },
+          "max_market_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Market Age Ms"
+          },
+          "max_approval_age_ms": {
+            "type": "integer",
+            "maximum": 86400000.0,
+            "minimum": 1.0,
+            "title": "Max Approval Age Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "execution_policy_id",
+          "version",
+          "fee_bps",
+          "slippage_bps",
+          "notional_increment_usd",
+          "max_snapshot_age_ms",
+          "max_portfolio_age_ms",
+          "max_reconciliation_age_ms",
+          "max_market_age_ms",
+          "max_approval_age_ms"
+        ],
+        "title": "RiskExecutionPolicy",
+        "description": "Local USD-spot MARKET/IOC only. Assumptions are operator configuration, not venue facts."
+      },
+      "RiskLimits-Input": {
+        "properties": {
+          "max_gross_exposure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Max Gross Exposure Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_single_asset_exposure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Max Single Asset Exposure Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_network_exposure_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Max Network Exposure Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_open_positions": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Max Open Positions"
+          },
+          "max_daily_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Max Daily Loss Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_drawdown_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Max Drawdown Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "min_liquidity_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Min Liquidity Usd"
+          },
+          "max_spread_bps": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Max Spread Bps"
+          },
+          "min_order_notional_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Min Order Notional Usd"
+          },
+          "max_order_notional_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Max Order Notional Usd"
+          },
+          "min_edge_over_cost_bps": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Min Edge Over Cost Bps",
+            "default": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "max_gross_exposure_pct",
+          "max_single_asset_exposure_pct",
+          "max_network_exposure_pct",
+          "max_open_positions",
+          "max_daily_loss_pct",
+          "max_drawdown_pct",
+          "min_liquidity_usd",
+          "max_spread_bps",
+          "min_order_notional_usd",
+          "max_order_notional_usd"
+        ],
+        "title": "RiskLimits",
+        "description": "Exposure and loss limits. Percentages are of portfolio equity unless stated."
+      },
+      "RiskLimits-Output": {
+        "properties": {
+          "max_gross_exposure_pct": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Max Gross Exposure Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_single_asset_exposure_pct": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Max Single Asset Exposure Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_network_exposure_pct": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Max Network Exposure Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_open_positions": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Max Open Positions"
+          },
+          "max_daily_loss_pct": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Max Daily Loss Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "max_drawdown_pct": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Max Drawdown Pct",
+            "ge": 0,
+            "le": 100
+          },
+          "min_liquidity_usd": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Min Liquidity Usd"
+          },
+          "max_spread_bps": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Max Spread Bps"
+          },
+          "min_order_notional_usd": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Min Order Notional Usd"
+          },
+          "max_order_notional_usd": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Max Order Notional Usd"
+          },
+          "min_edge_over_cost_bps": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Min Edge Over Cost Bps",
+            "default": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "max_gross_exposure_pct",
+          "max_single_asset_exposure_pct",
+          "max_network_exposure_pct",
+          "max_open_positions",
+          "max_daily_loss_pct",
+          "max_drawdown_pct",
+          "min_liquidity_usd",
+          "max_spread_bps",
+          "min_order_notional_usd",
+          "max_order_notional_usd"
+        ],
+        "title": "RiskLimits",
+        "description": "Exposure and loss limits. Percentages are of portfolio equity unless stated."
+      },
+      "RiskPolicy": {
+        "properties": {
+          "risk_policy_id": {
+            "type": "string",
+            "pattern": "^rp_[0-9a-f]{32}$",
+            "title": "Risk Policy Id",
+            "description": "rp_ id"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^ws_[0-9a-f]{32}$",
+                "description": "ws_ id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/RiskScope"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/RiskLimits-Output"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/FreshnessPolicy"
+          },
+          "event_risk": {
+            "$ref": "#/components/schemas/EventRiskPolicy-Output",
+            "default": {
+              "block_new_positions_before_macro_minutes": 10,
+              "block_new_positions_after_macro_minutes": 5,
+              "reduce_size_pct_during_event_risk": "0"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "created_by": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Created By"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Content Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "risk_policy_id",
+          "version",
+          "scope",
+          "limits",
+          "freshness",
+          "created_at",
+          "created_by",
+          "content_hash"
+        ],
+        "title": "RiskPolicy",
+        "description": "An immutable, versioned risk policy.\n\nPolicies are referenced by id from an ``AgentSpec`` and recorded on every evaluation, so a\nhistorical rejection can be explained with the policy that actually applied."
+      },
+      "RiskScope": {
+        "type": "string",
+        "enum": [
+          "global",
+          "workspace",
+          "portfolio",
+          "network",
+          "agent",
+          "asset",
+          "order"
+        ],
+        "title": "RiskScope",
+        "description": "The limit hierarchy (``MASTER_BUILD_SPEC.md`` \u00a711.2), most general first."
       },
       "Role": {
         "type": "string",

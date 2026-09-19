@@ -18,7 +18,7 @@ from kavrigo_api.db.session import Database
 from kavrigo_api.errors import install_exception_handlers
 from kavrigo_api.logging import configure_logging, get_logger
 from kavrigo_api.middleware import RequestContextMiddleware
-from kavrigo_api.routers import agents, health, inspection, rehearsals, workspaces
+from kavrigo_api.routers import agents, health, inspection, paper_policies, rehearsals, workspaces
 from kavrigo_api.settings import Settings, get_settings
 
 __all__ = ["create_app"]
@@ -121,4 +121,5 @@ def create_app(
     app.include_router(agents.router)
     app.include_router(inspection.router)
     app.include_router(rehearsals.router)
+    app.include_router(paper_policies.router)
     return app

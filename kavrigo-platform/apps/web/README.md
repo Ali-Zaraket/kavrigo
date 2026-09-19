@@ -37,8 +37,10 @@ The API refuses development identity outside its local environment.
 - Responsive dark/light workspace shell, keyboard navigation/search, reduced motion and
   visible server-confirmed paper status. Mode lookup failure disables creation.
 
-Policies must be provisioned separately for an order-capable paper run. Draft saving validates
-policy ID syntax, not existence or approval. Rehearsals use isolated synthetic inputs, an abstaining mock model and a global
+The control plane can store immutable, MFA-gated policy candidates, but the local web sign-in
+does not establish MFA and the web proxy does not expose candidate mutations. Review and
+approval remain separate for any order-capable paper run. Draft saving validates policy ID
+syntax, not existence or approval. Rehearsals use isolated synthetic inputs, an abstaining mock model and a global
 risk stop; they do not activate a paper strategy or permit orders. No policy mutation, live
 trading, or exchange secret is exposed. Backtest strategy/data wiring, charts, SSE/WS transports,
 current provider freshness,

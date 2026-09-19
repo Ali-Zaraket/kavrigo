@@ -36,6 +36,7 @@ _TABLES = (
     "audit_events",
     "idempotency_keys",
     "agent_versions",
+    "paper_policy_bundles",
     "agents",
     "memberships",
     "workspaces",

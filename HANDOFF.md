@@ -1,5 +1,9 @@
 > **Step 15 resumed explicitly by user (2026-09-16).** The earlier pause is superseded.
 
+> **2026-09-19:** ADR 0031 adds immutable, MFA-gated, workspace-scoped paper policy candidates.
+> They remain unapproved and cannot enable orders. Migration 0003 is applied locally; 943 tests
+> pass with zero skips. Review/approval and real-data paper activation remain open.
+
 > **Post-step-15 local rehearsal (2026-09-18):** ADR 0030 adds a synthetic, execution-disabled
 > Studio launch and durable inspection flow. This is not approved paper strategy activation.
 > Local telemetry exports and 31 synthetic golden cases are implemented; the latest regression
@@ -16,7 +20,7 @@
 
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-18 · **Position:** local slices through step 15 plus synthetic rehearsal · **Next:** close real-data product-flow carry-overs
+**Updated:** 2026-09-19 · **Position:** step 15 plus synthetic rehearsal and policy candidates · **Next:** reviewed paper activation
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -552,7 +556,7 @@ works with nothing but Python. They must never require an external provider key 
 Step 14 now provides a Next.js paper workspace with immutable draft/version editing, stored
 run/decision/evidence inspection, risk requirements, historical portfolio receipts, honest
 unavailable provider states and permission-gated audit. See ADR 0028 and the web README.
-Hosted Clerk, approved real-data paper run-launch/account commands, policy editing and real chart/freshness
+Hosted Clerk, policy review/approval, approved real-data paper run-launch/account commands, policy UI and real chart/freshness
 feeds remain pending. No fabricated results are shown. Skill installation is complete.
 
 Step 15 connects existing OTel instrumentation to optional console/OTLP providers at API/worker
@@ -568,7 +572,8 @@ evals. These passes prove boundary regressions, not model quality or investment 
 
 The user found the UI's missing functionality limiting. ADR 0030 now permits a first draft
 with explicitly unprovisioned policy placeholders and an execution-disabled synthetic run.
-Prioritize reviewed policy provisioning and an approved real-data paper setup/run/results slice
+Policy candidates now persist behind verified MFA and RLS, but have no approval or activation.
+Prioritize review/approval and an approved real-data paper setup/run/results slice
 next; do not claim the product
 milestone merely because every numbered step has a local implementation.
 

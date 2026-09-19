@@ -1,5 +1,14 @@
 # Kavrigo progress
 
+**2026-09-19 policy-candidate slice:** ADR 0031 adds immutable, tenant-scoped paper risk and
+execution candidate pairs with canonical hashes, audit records, mandatory idempotency and
+MFA-gated writes. Read/list is workspace-scoped. Every response remains unapproved and
+execution-disabled; no activation path was added. Full regression: **943 passed, zero skips
+(43.71s)**. Ruff covers 286 files and strict typing 136 sources. Migration 0003 upgraded,
+downgraded and re-applied in the disposable test database; lock/OpenAPI and web checks pass.
+The local application database was upgraded additively; see
+[ADR 0031](docs/adr/0031-unapproved-paper-policy-candidates.md).
+
 **2026-09-18 post-step-15 slice:** Studio now launches a local synthetic paper rehearsal for
 one or two USD.SIM instruments through authenticated, idempotent API submission and the real
 Temporal workflow. It is labeled in Pulse, uses a separate global-killed paper account, and
@@ -123,6 +132,9 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | ADR 0030 | Ruff check/format; strict mypy; OpenAPI and uv lock | 282 Python files; 133 typed sources; contract and lock checks passed |
 | ADR 0030 | Web lint/format/types/boundary tests/build; API image rebuild | Passed; three boundary tests; local API healthy |
 | ADR 0030 | Browser: new workspace → paper draft → rehearsal → Pulse/Paper | Completed synthetic run `run_da9f8f4de48e5b9696315e1e47fb9885`, two NO_TRADE decisions, receipt 0 and no positions |
+| ADR 0031, 2026-09-19 | Full pytest with disposable PostgreSQL and real Temporal | 943 passed, zero skips (43.71s) |
+| ADR 0031 | Ruff check/format; strict mypy; uv lock/OpenAPI; web lint/format/types/tests/build | 286 Python files; 136 typed sources; all checks passed |
+| ADR 0031 | Migration 0003 test DB upgrade → downgrade → upgrade | Passed; application DB additive upgrade applied |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -133,7 +145,7 @@ pull-request workflow lookup for `de77742` returned no runs, which was not a CI 
 ## Next slice and safety
 
 The numbered plan has local slices through step 15, with substantial explicit carry-overs.
-The next product slice should provision reviewed policies and wire authenticated, approved
+The next product slice should add review/approval of stored policy candidates and wire authenticated, approved
 real-data paper launch to stored decisions/risk/results. Local synthetic rehearsal already
 works with placeholder draft policy IDs; it is execution-disabled. Preserve all earlier
 carry-overs, notably Nautilus strategy/data/benchmark
