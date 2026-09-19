@@ -54,3 +54,30 @@ class PaperPolicyBundleResponse(BaseModel):
     reason: str
     created_by: str
     created_at: datetime
+
+
+class PaperPolicyReviewCreate(BaseModel):
+    """A second person's recommendation; never an execution authorization."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    recommendation: Literal["advance_to_evaluation", "changes_requested"]
+    reason: Annotated[str, Field(min_length=10, max_length=1000)]
+    risk_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+    execution_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+
+
+class PaperPolicyReviewResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: Annotated[str, Field(pattern=r"^pr_[0-9a-f]{32}$")]
+    bundle_id: Annotated[str, Field(pattern=r"^pb_[0-9a-f]{32}$")]
+    workspace_id: Annotated[str, Field(pattern=r"^ws_[0-9a-f]{32}$")]
+    recommendation: Literal["advance_to_evaluation", "changes_requested"]
+    reason: str
+    risk_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+    execution_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+    reviewed_by: str
+    reviewed_at: datetime
+    approval_status: Literal["unapproved"] = "unapproved"
+    execution_enabled: Literal[False] = False

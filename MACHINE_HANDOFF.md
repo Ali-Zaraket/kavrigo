@@ -1,6 +1,6 @@
 # Resume Kavrigo on another machine
 
-Updated 2026-09-19 after ADR 0031's local policy-candidate slice. The detailed transfer
+Updated 2026-09-19 after ADR 0032's independent policy-review slice. The detailed transfer
 instructions below retain their original step-13 checkpoint; use PROGRESS.md and git log for
 current implementation and test counts.
 This file, `PROGRESS.md`, `HANDOFF.md`, `HANDOFF_PROMPT.md` and Git history are the portable project memory.
@@ -25,9 +25,9 @@ No account memory or previous chat is required. No background build is intended 
   replay reconciliation. Single-generation batch; no continuous operation or process-restart durability.
 - Step 13: PostgreSQL account/run authority, four Temporal workflows, real worker and bounded
   paper supervision; local/mock only, independent review pending.
-- Steps 14-15, ADR 0030's local execution-disabled rehearsal, and ADR 0031's immutable
-  paper policy candidates are now implemented on main. Migration 0003 is applied to the
-  local application and disposable `kavrigo_step13_test` databases.
+- Steps 14-15, ADR 0030's local execution-disabled rehearsal, ADR 0031's immutable
+  paper policy candidates, and ADR 0032's non-activating second-person reviews are on main.
+  Migration 0004 is applied to the local application and disposable `kavrigo_step13_test` databases.
   Studio creates paper drafts and launches a synthetic Temporal run; Pulse labels the receipts.
   Real-data policy-approved paper activation remains open.
 - Existing carry-overs include real market transport, durable stores, meaningful Nautilus strategy

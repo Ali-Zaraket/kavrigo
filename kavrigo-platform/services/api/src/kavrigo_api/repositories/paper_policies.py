@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from kavrigo_api.db.models import PaperPolicyBundle
+from kavrigo_api.db.models import PaperPolicyBundle, PaperPolicyReview
 
 
 class PaperPolicyRepository:
@@ -32,5 +32,19 @@ class PaperPolicyRepository:
         )
 
     async def insert(self, row: PaperPolicyBundle) -> None:
+        self._session.add(row)
+        await self._session.flush()
+
+    async def get_review(self, bundle_id: str) -> PaperPolicyReview | None:
+        return (
+            await self._session.execute(
+                select(PaperPolicyReview).where(
+                    PaperPolicyReview.bundle_id == bundle_id,
+                    PaperPolicyReview.workspace_id == self._workspace_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+    async def insert_review(self, row: PaperPolicyReview) -> None:
         self._session.add(row)
         await self._session.flush()

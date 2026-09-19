@@ -747,3 +747,71 @@ class TestPaperPolicyCandidates:
         body = self._body()
         body["freshness"]["required_families"] = ["news"]
         assert client.post(route, json=body, headers=headers).status_code == 422
+
+    def test_second_person_review_is_immutable_and_never_activates(
+        self, client: TestClient
+    ) -> None:
+        ws = _create_workspace(client, "alice", "policy-review")
+        route = f"/v1/workspaces/{ws}/paper/policy-bundles"
+        candidate = client.post(
+            route,
+            json=self._body(),
+            headers={**_auth("alice", mfa=True), "Idempotency-Key": "review-candidate"},
+        ).json()
+        review_route = f"{route}/{candidate['bundle_id']}/review"
+        body = {
+            "recommendation": "advance_to_evaluation",
+            "reason": "Independent review supports further paper evaluation only.",
+            "risk_hash": candidate["risk_hash"],
+            "execution_hash": candidate["execution_hash"],
+        }
+        owner_headers = {**_auth("alice", mfa=True), "Idempotency-Key": "review-one"}
+        assert client.post(review_route, json=body, headers=owner_headers).status_code == 403
+
+        reviewer = client.get("/v1/me", headers=_auth("bob")).json()["user_id"]
+        run_sql(
+            "INSERT INTO kavrigo.memberships (workspace_id,user_id,role) "
+            "VALUES (:ws,:user,'admin')",
+            {"ws": ws, "user": reviewer},
+            workspace_id=ws,
+        )
+        assert (
+            client.post(
+                review_route,
+                json=body,
+                headers={**_auth("bob"), "Idempotency-Key": "review-one"},
+            ).status_code
+            == 403
+        )
+        reviewer_headers = {**_auth("bob", mfa=True), "Idempotency-Key": "review-one"}
+        wrong_hash = {**body, "risk_hash": "sha256:" + "0" * 64}
+        assert (
+            client.post(review_route, json=wrong_hash, headers=reviewer_headers).status_code == 409
+        )
+        created = client.post(review_route, json=body, headers=reviewer_headers)
+        assert created.status_code == 201, created.text
+        review = created.json()
+        assert review["recommendation"] == "advance_to_evaluation"
+        assert review["risk_hash"] == candidate["risk_hash"]
+        assert review["execution_hash"] == candidate["execution_hash"]
+        assert review["approval_status"] == "unapproved"
+        assert review["execution_enabled"] is False
+        assert client.post(review_route, json=body, headers=reviewer_headers).json() == review
+        changed = {**body, "recommendation": "changes_requested"}
+        assert client.post(review_route, json=changed, headers=reviewer_headers).status_code == 409
+        assert client.get(review_route, headers=_auth("alice")).json() == review
+        assert client.get(review_route, headers=_auth("mallory")).status_code == 404
+        assert (
+            client.get(f"{route}/{candidate['bundle_id']}", headers=_auth("alice")).json()[
+                "approval_status"
+            ]
+            == "unapproved"
+        )
+        assert (
+            run_sql(
+                "SELECT count(*) FROM kavrigo.paper_policy_reviews WHERE bundle_id = :bundle",
+                {"bundle": candidate["bundle_id"]},
+                workspace_id=ws,
+            )[0][0]
+            == 1
+        )

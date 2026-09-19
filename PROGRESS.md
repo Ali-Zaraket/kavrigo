@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-09-19 independent-review slice:** ADR 0032 adds one immutable, MFA-gated,
+second-person review recommendation per paper-policy candidate, bound to caller-confirmed
+risk/execution hashes. It is audited and idempotent; both candidate and review remain
+`unapproved` and execution-disabled. Migration 0004 passed upgrade/downgrade/reapply in the
+disposable test database. Full Python regression: **944 passed, zero skips**. Ruff covers 289
+files; strict typing covers 136 sources. Lock/OpenAPI generation and web
+lint/format/types/tests/build pass. The local app database is at 0004 and the rebuilt API is
+healthy with the review route in OpenAPI. See
+[ADR 0032](docs/adr/0032-non-activating-paper-policy-review.md).
+
 **2026-09-19 policy-candidate slice:** ADR 0031 adds immutable, tenant-scoped paper risk and
 execution candidate pairs with canonical hashes, audit records, mandatory idempotency and
 MFA-gated writes. Read/list is workspace-scoped. Every response remains unapproved and
@@ -145,7 +155,7 @@ pull-request workflow lookup for `de77742` returned no runs, which was not a CI 
 ## Next slice and safety
 
 The numbered plan has local slices through step 15, with substantial explicit carry-overs.
-The next product slice should add review/approval of stored policy candidates and wire authenticated, approved
+The next product slice should add evidence-backed approval of reviewed policy candidates and wire authenticated, approved
 real-data paper launch to stored decisions/risk/results. Local synthetic rehearsal already
 works with placeholder draft policy IDs; it is execution-disabled. Preserve all earlier
 carry-overs, notably Nautilus strategy/data/benchmark

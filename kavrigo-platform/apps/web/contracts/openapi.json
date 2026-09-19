@@ -1250,6 +1250,130 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace_id}/paper/policy-bundles/{bundle_id}/review": {
+      "post": {
+        "tags": [
+          "paper-policies"
+        ],
+        "summary": "Record a second-person policy review recommendation without activation",
+        "operationId": "review_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__review_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^pb_[0-9a-f]{32}$",
+              "title": "Bundle Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperPolicyReviewCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperPolicyReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "paper-policies"
+        ],
+        "summary": "Read the non-activating review recommendation for a policy candidate",
+        "operationId": "get_paper_policy_review_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__review_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^pb_[0-9a-f]{32}$",
+              "title": "Bundle Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperPolicyReviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3208,6 +3332,120 @@
           "created_at"
         ],
         "title": "PaperPolicyBundleResponse"
+      },
+      "PaperPolicyReviewCreate": {
+        "properties": {
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "advance_to_evaluation",
+              "changes_requested"
+            ],
+            "title": "Recommendation"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Reason"
+          },
+          "risk_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Hash"
+          },
+          "execution_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Execution Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "recommendation",
+          "reason",
+          "risk_hash",
+          "execution_hash"
+        ],
+        "title": "PaperPolicyReviewCreate",
+        "description": "A second person's recommendation; never an execution authorization."
+      },
+      "PaperPolicyReviewResponse": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "pattern": "^pr_[0-9a-f]{32}$",
+            "title": "Review Id"
+          },
+          "bundle_id": {
+            "type": "string",
+            "pattern": "^pb_[0-9a-f]{32}$",
+            "title": "Bundle Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id"
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "advance_to_evaluation",
+              "changes_requested"
+            ],
+            "title": "Recommendation"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "risk_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Hash"
+          },
+          "execution_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Execution Hash"
+          },
+          "reviewed_by": {
+            "type": "string",
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Reviewed At"
+          },
+          "approval_status": {
+            "type": "string",
+            "const": "unapproved",
+            "title": "Approval Status",
+            "default": "unapproved"
+          },
+          "execution_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Execution Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "review_id",
+          "bundle_id",
+          "workspace_id",
+          "recommendation",
+          "reason",
+          "risk_hash",
+          "execution_hash",
+          "reviewed_by",
+          "reviewed_at"
+        ],
+        "title": "PaperPolicyReviewResponse"
       },
       "Permission": {
         "type": "string",

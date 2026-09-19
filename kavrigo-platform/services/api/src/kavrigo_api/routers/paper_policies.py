@@ -1,4 +1,4 @@
-"""Workspace-scoped, MFA-gated policy candidates; no approval or activation route."""
+"""Workspace-scoped policy candidates and non-activating review recommendations."""
 
 import re
 from datetime import UTC, datetime
@@ -10,14 +10,19 @@ from sqlalchemy import text
 
 from kavrigo_api.auth.dependencies import WorkspaceSession, require
 from kavrigo_api.auth.principal import Permission, WorkspaceContext
-from kavrigo_api.db.models import PaperPolicyBundle
+from kavrigo_api.db.models import PaperPolicyBundle, PaperPolicyReview
 from kavrigo_api.errors import ApiError, ErrorCode
 from kavrigo_api.logging import get_logger
 from kavrigo_api.repositories.agents import decode_cursor, encode_cursor
 from kavrigo_api.repositories.audit import AuditRepository
 from kavrigo_api.repositories.paper_policies import PaperPolicyRepository
 from kavrigo_api.schemas.common import Page
-from kavrigo_api.schemas.paper_policies import PaperPolicyBundleCreate, PaperPolicyBundleResponse
+from kavrigo_api.schemas.paper_policies import (
+    PaperPolicyBundleCreate,
+    PaperPolicyBundleResponse,
+    PaperPolicyReviewCreate,
+    PaperPolicyReviewResponse,
+)
 from kavrigo_api.services.idempotency import idempotency_key_from, request_fingerprint
 from kavrigo_domain import RiskPolicy, RiskScope, content_hash
 from kavrigo_risk import RiskExecutionPolicy, policy_hash
@@ -53,6 +58,31 @@ def _response(row: PaperPolicyBundle) -> PaperPolicyBundleResponse:
         reason=row.reason,
         created_by=row.created_by,
         created_at=row.created_at,
+    )
+
+
+def _review_response(
+    row: PaperPolicyReview, bundle: PaperPolicyBundle
+) -> PaperPolicyReviewResponse:
+    _response(bundle)  # Recheck the immutable bundle before presenting its review.
+    if (
+        row.workspace_id != bundle.workspace_id
+        or row.bundle_id != bundle.bundle_id
+        or row.risk_hash != bundle.risk_hash
+        or row.execution_hash != bundle.execution_hash
+        or row.reviewed_by == bundle.created_by
+    ):
+        raise ApiError(ErrorCode.CONFLICT, "Stored policy review integrity check failed.", 409)
+    return PaperPolicyReviewResponse(
+        review_id=row.review_id,
+        bundle_id=row.bundle_id,
+        workspace_id=row.workspace_id,
+        recommendation=row.recommendation,
+        reason=row.reason,
+        risk_hash=row.risk_hash,
+        execution_hash=row.execution_hash,
+        reviewed_by=row.reviewed_by,
+        reviewed_at=row.reviewed_at,
     )
 
 
@@ -175,3 +205,95 @@ async def get_paper_policy_bundle(
     if row is None:
         raise ApiError(ErrorCode.NOT_FOUND, "Policy candidate not found.", 404)
     return _response(row)
+
+
+@router.post(
+    "/{bundle_id}/review",
+    response_model=PaperPolicyReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Record a second-person policy review recommendation without activation",
+)
+async def review_paper_policy_bundle(
+    bundle_id: BundlePath,
+    body: PaperPolicyReviewCreate,
+    request: Request,
+    session: WorkspaceSession,
+    context: Annotated[WorkspaceContext, Depends(require(Permission.RISK_POLICY_WRITE))],
+) -> PaperPolicyReviewResponse:
+    key = idempotency_key_from(request)
+    if key is None or re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", key) is None:
+        raise ApiError(ErrorCode.VALIDATION_FAILED, "A valid Idempotency-Key is required.", 400)
+    # Serialize concurrent reviews of one bundle. Its unique constraint is a second guard.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:bundle, 0))"),
+        {"bundle": bundle_id + ":review"},
+    )
+    repo = PaperPolicyRepository(session, context.workspace_id)
+    bundle = await repo.get(bundle_id)
+    if bundle is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "Policy candidate not found.", 404)
+    _response(bundle)
+    if bundle.created_by == context.user_id:
+        raise ApiError(ErrorCode.FORBIDDEN, "A second person must review this candidate.", 403)
+    if body.risk_hash != bundle.risk_hash or body.execution_hash != bundle.execution_hash:
+        raise ApiError(ErrorCode.CONFLICT, "Candidate hashes changed or do not match.", 409)
+    fingerprint = request_fingerprint(body)
+    existing = await repo.get_review(bundle_id)
+    if existing is not None:
+        if (
+            existing.idempotency_key != key
+            or existing.request_hash != fingerprint
+            or existing.reviewed_by != context.user_id
+        ):
+            raise ApiError(ErrorCode.CONFLICT, "This candidate already has a review.", 409)
+        return _review_response(existing, bundle)
+
+    row = PaperPolicyReview(
+        review_id="pr_" + uuid5(_NAMESPACE, bundle_id + ":review").hex,
+        bundle_id=bundle_id,
+        workspace_id=context.workspace_id,
+        recommendation=body.recommendation,
+        reason=body.reason,
+        risk_hash=bundle.risk_hash,
+        execution_hash=bundle.execution_hash,
+        idempotency_key=key,
+        request_hash=fingerprint,
+        reviewed_by=context.user_id,
+    )
+    await repo.insert_review(row)
+    await AuditRepository(session, context.workspace_id).record(
+        action="paper_policy_candidate_reviewed",
+        actor=context.user_id,
+        subject_type="paper_policy_bundle",
+        subject_id=bundle_id,
+        reason=body.reason,
+        request_id=getattr(request.state, "request_id", None),
+        payload={
+            "recommendation": body.recommendation,
+            "review_id": row.review_id,
+            "risk_hash": row.risk_hash,
+            "execution_hash": row.execution_hash,
+        },
+    )
+    _log.info("paper_policy_candidate_reviewed", recommendation=body.recommendation)
+    return _review_response(row, bundle)
+
+
+@router.get(
+    "/{bundle_id}/review",
+    response_model=PaperPolicyReviewResponse,
+    summary="Read the non-activating review recommendation for a policy candidate",
+)
+async def get_paper_policy_review(
+    bundle_id: BundlePath,
+    session: WorkspaceSession,
+    context: Annotated[WorkspaceContext, Depends(require(Permission.RISK_POLICY_READ))],
+) -> PaperPolicyReviewResponse:
+    repo = PaperPolicyRepository(session, context.workspace_id)
+    bundle = await repo.get(bundle_id)
+    if bundle is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "Policy candidate not found.", 404)
+    row = await repo.get_review(bundle_id)
+    if row is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "Policy review not found.", 404)
+    return _review_response(row, bundle)

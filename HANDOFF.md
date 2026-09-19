@@ -4,6 +4,11 @@
 > They remain unapproved and cannot enable orders. Migration 0003 is applied locally; 943 tests
 > pass with zero skips. Review/approval and real-data paper activation remain open.
 
+> **2026-09-19:** ADR 0032 adds a separate, immutable second-person review recommendation
+> bound to the candidate hashes. It still does not approve or activate paper orders. Migration
+> 0004 and 944 tests pass in the disposable database. Formal approval, real-data paper launch
+> and results remain open.
+
 > **Post-step-15 local rehearsal (2026-09-18):** ADR 0030 adds a synthetic, execution-disabled
 > Studio launch and durable inspection flow. This is not approved paper strategy activation.
 > Local telemetry exports and 31 synthetic golden cases are implemented; the latest regression
@@ -20,7 +25,7 @@
 
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-19 · **Position:** step 15 plus synthetic rehearsal and policy candidates · **Next:** reviewed paper activation
+**Updated:** 2026-09-19 · **Position:** step 15 plus synthetic rehearsal and independent policy review · **Next:** approval gate and real-data paper activation
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both

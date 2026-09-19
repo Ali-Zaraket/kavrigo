@@ -45,6 +45,7 @@ __all__ = [
     "IdempotencyKey",
     "Membership",
     "PaperPolicyBundle",
+    "PaperPolicyReview",
     "User",
     "Workspace",
 ]
@@ -59,6 +60,7 @@ TENANT_SCOPED_TABLES: tuple[str, ...] = (
     "agents",
     "agent_versions",
     "paper_policy_bundles",
+    "paper_policy_reviews",
     "idempotency_keys",
     "audit_events",
 )
@@ -73,6 +75,7 @@ SELF_POLICIED_TABLES: tuple[str, ...] = ("workspaces",)
 APPEND_ONLY_TABLES: tuple[str, ...] = (
     "agent_versions",
     "paper_policy_bundles",
+    "paper_policy_reviews",
     "audit_events",
     "engine_commands",
 )
@@ -278,6 +281,7 @@ class PaperPolicyBundle(Base):
     workspace_id: Mapped[str] = mapped_column(
         ForeignKey(f"{SCHEMA}.workspaces.workspace_id"), nullable=False
     )
+
     risk_policy_id: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)
     execution_policy_id: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)
     risk_document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
@@ -296,7 +300,53 @@ class PaperPolicyBundle(Base):
         CheckConstraint(r"risk_hash ~ '^sha256:[0-9a-f]{64}$'", name="risk_hash_format"),
         CheckConstraint(r"execution_hash ~ '^sha256:[0-9a-f]{64}$'", name="execution_hash_format"),
         CheckConstraint(r"request_hash ~ '^sha256:[0-9a-f]{64}$'", name="request_hash_format"),
+        UniqueConstraint("bundle_id", "workspace_id", name="uq_paper_bundle_workspace"),
         Index("ix_paper_policy_bundles_workspace_id", "workspace_id", "bundle_id"),
+        {"schema": SCHEMA},
+    )
+
+
+class PaperPolicyReview(Base):
+    """One immutable, non-activating review recommendation per candidate bundle."""
+
+    __tablename__ = "paper_policy_reviews"
+
+    review_id: Mapped[str] = mapped_column(String(35), primary_key=True)
+    bundle_id: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey(f"{SCHEMA}.workspaces.workspace_id"), nullable=False
+    )
+    recommendation: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    risk_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    execution_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    reviewed_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    reviewed_at: Mapped[datetime] = _ts(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint(r"review_id ~ '^pr_[0-9a-f]{32}$'", name="review_id_format"),
+        CheckConstraint(
+            "recommendation IN ('advance_to_evaluation', 'changes_requested')",
+            name="review_recommendation",
+        ),
+        CheckConstraint(r"risk_hash ~ '^sha256:[0-9a-f]{64}$'", name="review_risk_hash_format"),
+        CheckConstraint(
+            r"execution_hash ~ '^sha256:[0-9a-f]{64}$'", name="review_execution_hash_format"
+        ),
+        CheckConstraint(
+            r"request_hash ~ '^sha256:[0-9a-f]{64}$'", name="review_request_hash_format"
+        ),
+        ForeignKeyConstraint(
+            ["bundle_id", "workspace_id"],
+            [
+                f"{SCHEMA}.paper_policy_bundles.bundle_id",
+                f"{SCHEMA}.paper_policy_bundles.workspace_id",
+            ],
+            name="fk_paper_review_bundle_workspace",
+        ),
+        Index("ix_paper_policy_reviews_workspace_id", "workspace_id", "bundle_id"),
         {"schema": SCHEMA},
     )
 
