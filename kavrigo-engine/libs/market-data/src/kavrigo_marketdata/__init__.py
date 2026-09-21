@@ -19,6 +19,7 @@ from kavrigo_marketdata.adapter import (
     VenueParser,
 )
 from kavrigo_marketdata.binance import (
+    BINANCE_MARKET_DATA_WS_URL,
     BINANCE_SPOT_WS_URL,
     BINANCE_VENUE,
     BinanceSpotParser,
@@ -53,6 +54,7 @@ from kavrigo_marketdata.transport import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "BINANCE_MARKET_DATA_WS_URL",
     "BINANCE_SPOT_WS_URL",
     "BINANCE_VENUE",
     "COINBASE_VENUE",

@@ -155,6 +155,8 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | ADR 0031, 2026-09-19 | Full pytest with disposable PostgreSQL and real Temporal | 943 passed, zero skips (43.71s) |
 | ADR 0031 | Ruff check/format; strict mypy; uv lock/OpenAPI; web lint/format/types/tests/build | 286 Python files; 136 typed sources; all checks passed |
 | ADR 0031 | Migration 0003 test DB upgrade → downgrade → upgrade | Passed; application DB additive upgrade applied |
+| ADR 0034, 2026-09-21 | Binance market-data-only five-second public feed smoke | 1,311 frames; 1,310 normalized events; zero skipped; zero reconnects; count-only and non-persistent |
+| ADR 0034 | Full pytest with isolated PostgreSQL and real Temporal; Ruff/format; strict mypy; uv lock/OpenAPI | 955 passed (34.61s); 295 Python files; 136 typed sources; checks passed |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -178,6 +180,13 @@ places and a conservative account-wide policy union. Durable generation advance 
 orders and fresh reconciliation; no prompt can release risk reservations.
 Git transfers tracked source, not volumes, databases, venvs, ignored data or credentials.
 Provider rights, hosted accounts, jurisdiction, domain and trademark decisions remain open.
+
+The 2026-09-21 provider review removed Coinbase from active ingestion because its current terms
+restrict third-party application, derived-work display and AI-agent use without written consent.
+Local validation now uses Binance's market-data-only public host and discards all values after a
+bounded sample. This does not license persistent agent snapshots or UI display. CoinGecko is the
+documented commercial procurement candidate; a suitable contract remains required before wiring
+real prices into the agent or paper broker.
 
 Repository: [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). On 2026-09-09 the user
 requested normal work on `main`. Main was fast-forwarded through `a1e0ecf`, preserving both

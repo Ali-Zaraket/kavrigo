@@ -591,6 +591,13 @@ Read MASTER_BUILD_SPEC sections 13.4 and 26 and existing threat models. Continue
 commit the slice separately and retain §5 carry-overs.
 Independent security review and hosted deployment remain separate release gates.
 
+Provider decision (2026-09-21): active local sampling is Binance BTC/USDT and ETH/USDT through
+`wss://data-stream.binance.vision/ws`, count-only for 1–60 seconds. Coinbase is parser-fixture
+only because its current market-data terms restrict third-party app and AI-agent use. Do not feed
+Binance values into persisted agent runs or the UI until written commercial display, derived-data
+and retention rights are recorded. CoinGecko is the current production contract candidate. See
+ADR 0034 and `docs/product/data-license-matrix.md`.
+
 ---
 
 ## 11. What only the human can do

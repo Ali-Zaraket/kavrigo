@@ -12,13 +12,10 @@ from dataclasses import dataclass, field
 
 from kavrigo_domain import InstrumentId
 from kavrigo_marketdata import (
-    BINANCE_SPOT_WS_URL,
+    BINANCE_MARKET_DATA_WS_URL,
     BINANCE_VENUE,
-    COINBASE_VENUE,
-    COINBASE_WS_URL,
     BinanceSpotParser,
     Channel,
-    CoinbaseExchangeParser,
     InstrumentMap,
     VenueParser,
 )
@@ -48,31 +45,21 @@ class VenueConfig:
 
 
 def default_venues() -> list[VenueConfig]:
-    """BTC and ETH on two venues, per ``AGENTS.md`` step 5 ("start with public BTC/ETH data").
+    """Local-development BTC/ETH feed selected after the 2026-09-21 terms review.
 
-    Two venues rather than one from the start: cross-venue price divergence is a data-health
-    signal (``MASTER_BUILD_SPEC.md`` §26.2), and it cannot be computed from a single source.
+    Coinbase is deliberately absent: its current market-data terms prohibit this AI-agent and
+    third-party application use without written consent. Binance remains local-development only
+    while commercial display, derived-data and retention rights are unconfirmed.
     """
     return [
         VenueConfig(
             venue=BINANCE_VENUE,
-            url=BINANCE_SPOT_WS_URL,
+            url=BINANCE_MARKET_DATA_WS_URL,
             parser=BinanceSpotParser(),
             instruments=InstrumentMap(
                 {
                     "BTCUSDT": InstrumentId.parse("BTC-USDT.BINANCE"),
                     "ETHUSDT": InstrumentId.parse("ETH-USDT.BINANCE"),
-                }
-            ),
-        ),
-        VenueConfig(
-            venue=COINBASE_VENUE,
-            url=COINBASE_WS_URL,
-            parser=CoinbaseExchangeParser(),
-            instruments=InstrumentMap(
-                {
-                    "BTC-USD": InstrumentId.parse("BTC-USD.COINBASE"),
-                    "ETH-USD": InstrumentId.parse("ETH-USD.COINBASE"),
                 }
             ),
         ),

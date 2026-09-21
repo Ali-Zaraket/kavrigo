@@ -31,10 +31,19 @@ from kavrigo_domain import (
 )
 from kavrigo_marketdata.adapter import Channel, InstrumentMap, ParsedFrame
 
-__all__ = ["BINANCE_SPOT_WS_URL", "BINANCE_VENUE", "BinanceSpotParser"]
+__all__ = [
+    "BINANCE_MARKET_DATA_WS_URL",
+    "BINANCE_SPOT_WS_URL",
+    "BINANCE_VENUE",
+    "BinanceSpotParser",
+]
 
 BINANCE_VENUE = "BINANCE"
-BINANCE_SPOT_WS_URL = "wss://stream.binance.com:9443/stream"
+# The market-data-only host cannot serve account/user streams. Keeping ingestion on that
+# endpoint makes the public-data trust boundary explicit even if a future caller is changed.
+BINANCE_MARKET_DATA_WS_URL = "wss://data-stream.binance.vision/ws"
+# Compatibility name for callers written before the market-data-only endpoint was selected.
+BINANCE_SPOT_WS_URL = BINANCE_MARKET_DATA_WS_URL
 
 _CHANNEL_SUFFIX = {
     Channel.TRADES: "trade",

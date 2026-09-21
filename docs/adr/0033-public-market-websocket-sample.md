@@ -42,3 +42,6 @@ Official sources checked 2026-09-19:
 [Coinbase Exchange WebSocket overview](https://docs.cdp.coinbase.com/exchange/websocket-feed/overview),
 [Coinbase channels](https://docs.cdp.coinbase.com/exchange/websocket-feed/channels), and
 [websockets asyncio client](https://websockets.readthedocs.io/en/stable/reference/asyncio/client.html).
+
+Superseded in part by ADR 0034: the active sample now uses only Binance's market-data-only host;
+Coinbase was removed after a current terms review.
