@@ -272,7 +272,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** Launch an explicitly synthetic, execution-disabled local paper rehearsal */
+    /** Launch an execution-disabled local paper rehearsal */
     post: operations["launch_rehearsal_v1_workspaces__workspace_id__agents__agent_id__versions__version__rehearsals_post"];
     delete?: never;
     options?: never;
@@ -1555,9 +1555,9 @@ export interface components {
       /**
        * Input Kind
        * @default synthetic_rehearsal
-       * @constant
+       * @enum {string}
        */
-      input_kind: "synthetic_rehearsal";
+      input_kind: "synthetic_rehearsal" | "testnet_rehearsal";
       /**
        * Execution Enabled
        * @default false
@@ -1727,7 +1727,7 @@ export interface components {
        * @default recorded
        * @enum {string}
        */
-      input_kind: "recorded" | "synthetic_rehearsal";
+      input_kind: "recorded" | "synthetic_rehearsal" | "testnet_rehearsal";
       /**
        * Status
        * @enum {string}
@@ -1763,7 +1763,7 @@ export interface components {
        * @default recorded
        * @enum {string}
        */
-      input_kind: "recorded" | "synthetic_rehearsal";
+      input_kind: "recorded" | "synthetic_rehearsal" | "testnet_rehearsal";
       /**
        * Status
        * @enum {string}
@@ -2496,7 +2496,9 @@ export interface operations {
   };
   launch_rehearsal_v1_workspaces__workspace_id__agents__agent_id__versions__version__rehearsals_post: {
     parameters: {
-      query?: never;
+      query?: {
+        source?: "synthetic" | "binance_testnet";
+      };
       header?: never;
       path: {
         agent_id: string;

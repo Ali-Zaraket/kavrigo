@@ -598,6 +598,12 @@ Binance values into persisted agent runs or the UI until written commercial disp
 and retention rights are recorded. CoinGecko is the current production contract candidate. See
 ADR 0034 and `docs/product/data-license-matrix.md`.
 
+ADR 0035 adds a separate local Binance Spot Testnet evidence rehearsal. It samples simulated
+BTC/USDT and ETH/USDT activity for at most 15 seconds, freezes derived evidence, runs the durable
+agent workflow and labels the result `testnet_rehearsal`. The account remains globally killed
+with zero exposure and no orders. This proves network-to-agent wiring, not real-data paper
+activation; do not relax the production provider-rights gate.
+
 ---
 
 ## 11. What only the human can do

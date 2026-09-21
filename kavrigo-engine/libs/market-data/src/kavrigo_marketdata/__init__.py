@@ -20,9 +20,12 @@ from kavrigo_marketdata.adapter import (
 )
 from kavrigo_marketdata.binance import (
     BINANCE_MARKET_DATA_WS_URL,
+    BINANCE_SPOT_TESTNET_WS_URL,
     BINANCE_SPOT_WS_URL,
+    BINANCE_TESTNET_VENUE,
     BINANCE_VENUE,
     BinanceSpotParser,
+    BinanceSpotTestnetParser,
 )
 from kavrigo_marketdata.coinbase import (
     COINBASE_VENUE,
@@ -55,11 +58,14 @@ __version__ = "0.1.0"
 
 __all__ = [
     "BINANCE_MARKET_DATA_WS_URL",
+    "BINANCE_SPOT_TESTNET_WS_URL",
     "BINANCE_SPOT_WS_URL",
+    "BINANCE_TESTNET_VENUE",
     "BINANCE_VENUE",
     "COINBASE_VENUE",
     "COINBASE_WS_URL",
     "BinanceSpotParser",
+    "BinanceSpotTestnetParser",
     "Channel",
     "CoinbaseExchangeParser",
     "InstrumentMap",

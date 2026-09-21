@@ -13,7 +13,7 @@ from kavrigo_market_ingestion.pipeline import (
     IngestionStats,
     PipelineConfig,
 )
-from kavrigo_market_ingestion.settings import VenueConfig, default_venues
+from kavrigo_market_ingestion.settings import VenueConfig, default_venues, testnet_venues
 from kavrigo_market_ingestion.sinks import (
     ClickHouseSink,
     CountingSink,
@@ -21,6 +21,7 @@ from kavrigo_market_ingestion.sinks import (
     MemorySink,
     clickhouse_rows_for,
 )
+from kavrigo_market_ingestion.testnet import TestnetSampleUnavailable, collect_testnet_sample
 
 __version__ = "0.1.0"
 
@@ -33,10 +34,13 @@ __all__ = [
     "IngestionStats",
     "MemorySink",
     "PipelineConfig",
+    "TestnetSampleUnavailable",
     "VenueConfig",
     "__version__",
     "clickhouse_rows_for",
+    "collect_testnet_sample",
     "default_venues",
     "envelope_for",
     "partition_key_for",
+    "testnet_venues",
 ]

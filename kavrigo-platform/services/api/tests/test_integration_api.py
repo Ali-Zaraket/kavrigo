@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 import os
 from collections.abc import Iterator
+from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
@@ -22,7 +24,9 @@ from kavrigo_api.app import create_app
 from kavrigo_api.auth.identity import DevIdentityProvider
 from kavrigo_api.auth.principal import Role
 from kavrigo_api.db.session import Database
+from kavrigo_api.routers import rehearsals as rehearsal_router
 from kavrigo_api.settings import Settings
+from kavrigo_domain import BookTicker, InstrumentId, MarketTrade, Price, Quantity
 
 APP_DSN = os.getenv(
     "TEST_POSTGRES_DSN",
@@ -667,6 +671,59 @@ class TestLocalPaperRehearsal:
             client.post(route, headers={**_auth("mallory"), "Idempotency-Key": "x"}).status_code
             == 404
         )
+
+    def test_testnet_source_is_frozen_and_labeled(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        observed = datetime.now(UTC)
+        instrument = InstrumentId.parse("BTC-USDT.BINANCE_TESTNET")
+
+        async def sample(bases: tuple[str, ...]) -> tuple[MarketTrade | BookTicker, ...]:
+            assert bases == ("BTC",)
+            return (
+                MarketTrade(
+                    instrument_id=instrument,
+                    price=Price(value=Decimal("100"), base="BTC", quote="USDT"),
+                    quantity=Quantity(value=Decimal("0.1"), asset="BTC"),
+                    venue_time=observed,
+                    received_at=observed,
+                ),
+                BookTicker(
+                    instrument_id=instrument,
+                    bid_price=Price(value=Decimal("99"), base="BTC", quote="USDT"),
+                    bid_size=Quantity(value=Decimal("1"), asset="BTC"),
+                    ask_price=Price(value=Decimal("101"), base="BTC", quote="USDT"),
+                    ask_size=Quantity(value=Decimal("1"), asset="BTC"),
+                    received_at=observed,
+                ),
+            )
+
+        monkeypatch.setattr(rehearsal_router, "collect_testnet_sample", sample)
+        ws = _create_workspace(client, "alice", "testnet-rehearsal-owner")
+        spec = _spec("btc-testnet-rehearsal")
+        spec["universe"] = {"instruments": [{"base": "BTC", "quote": "USD", "venue": "SIM"}]}
+        spec["data_packs"] = ["price_technical"]
+        created = client.post(
+            f"/v1/workspaces/{ws}/agents",
+            json={"name": "btc-testnet-rehearsal", "spec": spec},
+            headers={**_auth("alice"), "Idempotency-Key": "create-testnet-agent"},
+        )
+        agent_id = created.json()["agent_id"]
+        route = f"/v1/workspaces/{ws}/agents/{agent_id}/versions/1/rehearsals"
+
+        launched = client.post(
+            route,
+            params={"source": "binance_testnet"},
+            headers={**_auth("alice"), "Idempotency-Key": str(uuid4())},
+        )
+
+        assert launched.status_code == 202, launched.text
+        payload = launched.json()
+        assert payload["input_kind"] == "testnet_rehearsal"
+        assert payload["execution_enabled"] is False
+        stored = client.get(f"/v1/workspaces/{ws}/runs/{payload['run_id']}", headers=_auth("alice"))
+        assert stored.json()["input_kind"] == "testnet_rehearsal"
+        assert all(item["provider"] == "binance-spot-testnet" for item in stored.json()["evidence"])
 
 
 class TestPaperPolicyCandidates:

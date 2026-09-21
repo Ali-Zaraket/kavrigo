@@ -31,9 +31,9 @@ The API refuses development identity outside its local environment.
 - Inspect stored runs/stage receipts and structured decisions with supporting/contradicting
   evidence, exact server monetary values, timestamps, version/hash references and reason codes.
 - Inspect paper account receipts and workspace audit summaries with backend permissions/RLS.
-- Launch an explicitly synthetic, execution-disabled local rehearsal for a saved BTC/ETH
-  USD.SIM version and inspect its durable run and abstention in Pulse. Same-key retries reuse
-  frozen input. A queued dispatch can be retried from Studio.
+- Launch an explicitly labeled, execution-disabled Binance Spot Testnet rehearsal for a saved
+  BTC/ETH USD.SIM version and inspect its frozen derived evidence in Pulse. The testnet activity
+  is simulated; same-key retries reuse the durable input and no order can be submitted.
 - Responsive dark/light workspace shell, keyboard navigation/search, reduced motion and
   visible server-confirmed paper status. Mode lookup failure disables creation.
 

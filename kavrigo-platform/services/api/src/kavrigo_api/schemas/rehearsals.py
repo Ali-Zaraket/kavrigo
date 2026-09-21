@@ -12,5 +12,5 @@ class RehearsalLaunch(BaseModel):
     input_hash: str
     dispatch_state: Literal["dispatched", "queued"]
     replayed: bool
-    input_kind: Literal["synthetic_rehearsal"] = "synthetic_rehearsal"
+    input_kind: Literal["synthetic_rehearsal", "testnet_rehearsal"] = "synthetic_rehearsal"
     execution_enabled: Literal[False] = False

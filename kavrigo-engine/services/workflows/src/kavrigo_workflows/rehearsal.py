@@ -19,7 +19,9 @@ from kavrigo_domain import (
     FeatureVector,
     FreshnessPolicy,
     FreshnessReport,
+    InstrumentId,
     MarketSnapshot,
+    MarketTrade,
     Money,
     PortfolioSnapshot,
     Price,
@@ -63,7 +65,11 @@ def rehearsal_run_id(workspace_id: str, key: str) -> str:
 
 
 def build_rehearsal(
-    version: AgentVersion, *, key: str, at: datetime
+    version: AgentVersion,
+    *,
+    key: str,
+    at: datetime,
+    testnet_events: tuple[MarketTrade | BookTicker, ...] = (),
 ) -> tuple[AccountDefinition, RunDefinition]:
     """Build one isolated no-execution scenario from a stored immutable version."""
     spec = version.spec
@@ -179,41 +185,95 @@ def build_rehearsal(
         ),
         registrations=(registration,),
     )
+    testnet_by_base = {
+        i.base: tuple(event for event in testnet_events if event.instrument_id.base == i.base)
+        for i in instruments
+    }
+    if testnet_events and any(
+        not any(isinstance(event, BookTicker) for event in events)
+        for events in testnet_by_base.values()
+    ):
+        raise ValueError("testnet_rehearsal_requires_a_book_for_every_instrument")
+    if testnet_events and any(
+        event.instrument_id.venue != "BINANCE_TESTNET"
+        or event.instrument_id.quote != "USDT"
+        or event.instrument_id.base not in testnet_by_base
+        or event.received_at > at
+        or at - event.received_at > timedelta(seconds=30)
+        for event in testnet_events
+    ):
+        raise ValueError("testnet_rehearsal_requires_fresh_binance_testnet_events")
+
+    def evidence_summaries(instrument: InstrumentId) -> tuple[str, str]:
+        if not testnet_events:
+            return (
+                "Synthetic upward feature; no market observation.",
+                "Synthetic contradiction; no market observation.",
+            )
+        base = instrument.base
+        trades = sum(isinstance(event, MarketTrade) for event in testnet_by_base[base])
+        return (
+            f"Binance Spot Testnet simulated {base}/USDT sample contained {trades} trades and a book observation.",
+            "Testnet activity is simulated and does not establish current real-market conditions.",
+        )
+
     evidence = tuple(
         EvidenceItem(
             evidence_id="ev_" + uuid5(_NAMESPACE, run_id + ":e:" + i.value + ":" + str(n)).hex,
             kind=EvidenceKind.PRICE_TECHNICAL,
             source_class=SourceClass.DERIVED_FEATURE,
-            provider="kavrigo-synthetic",
+            provider="binance-spot-testnet" if testnet_events else "kavrigo-synthetic",
             summary=summary,
             instruments=[i],
-            observed_at=at,
+            observed_at=(
+                max(event.received_at for event in testnet_by_base[i.base])
+                if testnet_events
+                else at
+            ),
             ingested_at=at,
-            source_ref="synthetic-rehearsal-v1",
+            source_ref=(
+                "binance-spot-testnet-ws-v1" if testnet_events else "synthetic-rehearsal-v1"
+            ),
             content_hash=content_hash(summary),
             quality=1.0,
-            confidence=0.0,
+            confidence=0.2 if testnet_events else 0.0,
             is_contradictory_candidate=n % 2 == 1,
-            license_ref="self-authored-synthetic",
+            license_ref=(
+                "binance-spot-testnet-practice-2026-09-21"
+                if testnet_events
+                else "self-authored-synthetic"
+            ),
         )
         for i in instruments
-        for n, summary in enumerate(
-            (
-                "Synthetic upward feature; no market observation.",
-                "Synthetic contradiction; no market observation.",
-            )
-        )
+        for n, summary in enumerate(evidence_summaries(i))
     )
+
+    def feature_values(base: str) -> dict[str, Decimal]:
+        if not testnet_events:
+            return {"return_5m": Decimal("0.02")}
+        events = testnet_by_base[base]
+        trades = [event for event in events if isinstance(event, MarketTrade)]
+        books = [event for event in events if isinstance(event, BookTicker)]
+        observed_return = (
+            trades[-1].price.value / trades[0].price.value - Decimal(1)
+            if len(trades) >= 2
+            else Decimal(0)
+        )
+        return {
+            "testnet_sample_return": observed_return,
+            "spread_bps": books[-1].spread_bps,
+        }
+
     features = [
         FeatureVector(
             instrument_id=i,
             feature_set_version=version.feature_set_version,
-            values={"return_5m": Decimal("0.02")},
+            values=feature_values(i.base),
             content_hash=content_hash(
                 {
                     "instrument_id": i.value,
                     "feature_set_version": version.feature_set_version,
-                    "values": {"return_5m": Decimal("0.02")},
+                    "values": feature_values(i.base),
                 }
             ),
         )
@@ -229,7 +289,15 @@ def build_rehearsal(
         quality=DataQuality(
             score=1.0,
             freshness=FreshnessReport(age_ms={}),
-            notes=["synthetic_rehearsal_only", "not_live_market_data"],
+            notes=(
+                [
+                    "testnet_evidence_rehearsal",
+                    "simulated_provider_market",
+                    "execution_disabled",
+                ]
+                if testnet_events
+                else ["synthetic_rehearsal_only", "not_live_market_data"]
+            ),
         ),
         content_hash=_PLACEHOLDER_IMAGE,
     )
@@ -243,7 +311,9 @@ def build_rehearsal(
             code_version="local-rehearsal-v1",
             code_image_digest=_PLACEHOLDER_IMAGE,
             scanner=ScannerPolicy(
-                absolute_thresholds={"return_5m": Decimal("0.001")},
+                absolute_thresholds={
+                    ("testnet_sample_return" if testnet_events else "return_5m"): Decimal("0.001")
+                },
                 candidate_ttl_ms=60000,
                 max_candidates=2,
             ),
@@ -295,7 +365,12 @@ def build_rehearsal(
 
 
 async def persist_rehearsal(
-    database: EngineDatabase, version: AgentVersion, *, key: str, at: datetime
+    database: EngineDatabase,
+    version: AgentVersion,
+    *,
+    key: str,
+    at: datetime,
+    testnet_events: tuple[MarketTrade | BookTicker, ...] = (),
 ) -> tuple[RunRef, bool]:
     """Atomically store the isolated account, frozen run and dispatch event.
 
@@ -320,17 +395,21 @@ async def persist_rehearsal(
         )
         if existing is not None:
             saved = RunDefinition.model_validate_json(existing["definition"])
+            expected_note = (
+                "testnet_evidence_rehearsal" if testnet_events else "synthetic_rehearsal_only"
+            )
             if (
                 not isinstance(saved.job, AgentJob)
                 or saved.job.registration.agent_version.agent_version_id != version.agent_version_id
                 or saved.job.evaluation.idempotency_key != "rehearsal-" + run_id[4:]
                 or content_hash(saved) != existing["input_hash"]
+                or expected_note not in saved.job.evaluation.snapshot.quality.notes
             ):
                 raise DurableError("rehearsal_idempotency_conflict")
             return RunRef(
                 workspace_id=version.workspace_id, run_id=run_id, input_hash=existing["input_hash"]
             ), True
-        account, run = build_rehearsal(version, key=key, at=at)
+        account, run = build_rehearsal(version, key=key, at=at, testnet_events=testnet_events)
         machine = AccountMachine(account)
         receipt = machine.initial_receipt()
         account_json, receipt_json = encode(account), encode(receipt)

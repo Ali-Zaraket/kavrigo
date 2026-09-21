@@ -33,17 +33,22 @@ from kavrigo_marketdata.adapter import Channel, InstrumentMap, ParsedFrame
 
 __all__ = [
     "BINANCE_MARKET_DATA_WS_URL",
+    "BINANCE_SPOT_TESTNET_WS_URL",
     "BINANCE_SPOT_WS_URL",
+    "BINANCE_TESTNET_VENUE",
     "BINANCE_VENUE",
     "BinanceSpotParser",
+    "BinanceSpotTestnetParser",
 ]
 
 BINANCE_VENUE = "BINANCE"
+BINANCE_TESTNET_VENUE = "BINANCE_TESTNET"
 # The market-data-only host cannot serve account/user streams. Keeping ingestion on that
 # endpoint makes the public-data trust boundary explicit even if a future caller is changed.
 BINANCE_MARKET_DATA_WS_URL = "wss://data-stream.binance.vision/ws"
 # Compatibility name for callers written before the market-data-only endpoint was selected.
 BINANCE_SPOT_WS_URL = BINANCE_MARKET_DATA_WS_URL
+BINANCE_SPOT_TESTNET_WS_URL = "wss://stream.testnet.binance.vision/ws"
 
 _CHANNEL_SUFFIX = {
     Channel.TRADES: "trade",
@@ -249,3 +254,9 @@ class BinanceSpotParser:
         except ValueError as exc:
             return ParsedFrame(reason=f"kline failed validation: {exc}")
         return ParsedFrame(candle)
+
+
+class BinanceSpotTestnetParser(BinanceSpotParser):
+    """Same documented wire contract, with an unambiguous simulated venue identity."""
+
+    venue = BINANCE_TESTNET_VENUE

@@ -33,6 +33,7 @@ the API until the corresponding row is completed with written confirmation.
 | Provider | Intended use | Path | Licence status | Blocker |
 |---|---|---|---|---|
 | Binance spot market-data-only WS | local ephemeral trades/book ticker | native WS | **development only; production rights unconfirmed** | written commercial display, derived-data and retention rights |
+| Binance Spot Testnet WS | local execution-disabled agent rehearsal | native WS | **simulated practice environment only** | never present as real-market data or performance evidence |
 | Coinbase Exchange public WS | none | native WS adapter retained for tests only | **blocked** | Aug. 7, 2026 terms restrict third-party apps, external display/derived works, and AI/agent use without written consent |
 | Kraken public API | none | not enabled | **blocked pending permission** | official API guide requires prior permission for non-personal commercial use |
 | CoinGecko | reference universe, metadata and production price candidate | commercial API | **commercial contract required** | select a plan covering application display, derived data and retention; no raw API redistribution |
@@ -88,6 +89,11 @@ CoinGecko is the clearest production procurement path found: its official licens
 commercial application-display and redistribution options. It is not enabled until a suitable
 plan and written rights are recorded in this matrix.
 
+Binance Spot Testnet is separately enabled for a local execution-disabled rehearsal. Its venue
+identity is `BINANCE_TESTNET`, and every persisted evidence item says the source is simulated.
+This path validates network parsing and the agent workflow; it is not a substitute for licensed
+mainnet data and cannot support market or performance claims. See ADR 0035.
+
 Sources reviewed:
 
 - [Binance developer introduction](https://developers.binance.com/en/docs/introduction)
@@ -96,3 +102,4 @@ Sources reviewed:
 - [Coinbase Market Data Terms of Use](https://www.coinbase.com/legal/market_data)
 - [Kraken API guide](https://docs-legacy.kraken.com/api/docs/guides/global-intro/)
 - [CoinGecko commercial data licensing](https://www.coingecko.com/en/api/enterprise/data-license)
+- [Binance Spot Testnet WebSocket streams](https://github.com/binance/binance-spot-api-docs/blob/master/testnet/web-socket-streams.md)

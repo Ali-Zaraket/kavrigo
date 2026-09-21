@@ -368,6 +368,7 @@ function RehearsalLauncher({
                 agent_id: agentId,
                 version: detail.version,
               },
+              query: { source: "binance_testnet" },
             },
             headers: { "Idempotency-Key": key },
           },
@@ -382,10 +383,10 @@ function RehearsalLauncher({
     <section className="rehearsal-launch" aria-label="Local paper rehearsal">
       <h3>Local paper rehearsal</h3>
       <p>
-        Run this saved version through a durable workflow with clearly marked
-        synthetic evidence and an abstaining local model. The isolated account
-        has a global risk stop; no order can be submitted. This is not market
-        data, a backtest, or an approved paper agent.
+        Sample simulated BTC/ETH activity from Binance Spot Testnet, freeze the
+        derived evidence, and run this saved version through the durable agent
+        workflow. The local model abstains and the isolated account has a global
+        risk stop, so no order can be submitted.
       </p>
       {!supported && (
         <Notice>
@@ -427,10 +428,10 @@ function RehearsalLauncher({
       >
         <Play size={16} aria-hidden="true" />
         {launch.isPending
-          ? "Submitting rehearsal…"
+          ? "Sampling testnet and submitting…"
           : launched?.dispatch_state === "queued"
             ? "Retry dispatch"
-            : "Run local rehearsal"}
+            : "Run testnet rehearsal"}
       </Button>
     </section>
   );

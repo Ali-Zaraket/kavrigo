@@ -3,9 +3,9 @@
 import asyncio
 import re
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Request, status
+from fastapi import APIRouter, Depends, Path, Query, Request, status
 from temporalio.client import Client
 from temporalio.contrib.pydantic import pydantic_data_converter
 
@@ -17,7 +17,15 @@ from kavrigo_api.repositories.agents import AgentRepository
 from kavrigo_api.schemas.rehearsals import RehearsalLaunch
 from kavrigo_api.services.idempotency import idempotency_key_from
 from kavrigo_api.settings import Settings, get_settings
-from kavrigo_domain import AgentSpec, AgentVersion, TradingMode, content_hash
+from kavrigo_domain import (
+    AgentSpec,
+    AgentVersion,
+    BookTicker,
+    MarketTrade,
+    TradingMode,
+    content_hash,
+)
+from kavrigo_market_ingestion import TestnetSampleUnavailable, collect_testnet_sample
 from kavrigo_workflows.database import EngineDatabase
 from kavrigo_workflows.dispatch import dispatch_run
 from kavrigo_workflows.machine import DurableError
@@ -34,7 +42,7 @@ VersionPath = Annotated[int, Path(ge=1)]
     "/{agent_id}/versions/{version}/rehearsals",
     response_model=RehearsalLaunch,
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Launch an explicitly synthetic, execution-disabled local paper rehearsal",
+    summary="Launch an execution-disabled local paper rehearsal",
 )
 async def launch_rehearsal(
     agent_id: AgentPath,
@@ -43,6 +51,7 @@ async def launch_rehearsal(
     session: WorkspaceSession,
     context: Annotated[WorkspaceContext, Depends(require(Permission.RUN_START))],
     settings: Annotated[Settings, Depends(get_settings)],
+    source: Annotated[Literal["synthetic", "binance_testnet"], Query()] = "synthetic",
 ) -> RehearsalLaunch:
     if settings.kavrigo_env != "local" or settings.default_trading_mode != "paper":
         raise ApiError(ErrorCode.FORBIDDEN, "Local paper rehearsal is unavailable.", 403)
@@ -82,7 +91,24 @@ async def launch_rehearsal(
     database = EngineDatabase(settings.postgres_dsn)
     try:
         try:
-            ref, replayed = await persist_rehearsal(database, frozen, key=key, at=datetime.now(UTC))
+            testnet_events: tuple[MarketTrade | BookTicker, ...] = ()
+            if source == "binance_testnet":
+                testnet_events = await collect_testnet_sample(
+                    tuple(instrument.base for instrument in spec.universe.instruments)
+                )
+            ref, replayed = await persist_rehearsal(
+                database,
+                frozen,
+                key=key,
+                at=datetime.now(UTC),
+                testnet_events=testnet_events,
+            )
+        except TestnetSampleUnavailable as error:
+            raise ApiError(
+                ErrorCode.UPSTREAM_UNAVAILABLE,
+                "Binance Spot Testnet did not provide a complete bounded sample.",
+                503,
+            ) from error
         except DurableError as error:
             if str(error) == "rehearsal_idempotency_conflict":
                 raise ApiError(
@@ -96,6 +122,12 @@ async def launch_rehearsal(
                 raise ApiError(
                     ErrorCode.VALIDATION_FAILED,
                     "Rehearsal requires one or two USD spot instruments on SIM.",
+                    422,
+                ) from error
+            if str(error) == "testnet_sample_supports_btc_and_eth_only":
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "Binance Spot Testnet rehearsal supports BTC and ETH only.",
                     422,
                 ) from error
             raise
@@ -118,12 +150,16 @@ async def launch_rehearsal(
             "rehearsal_submitted",
             dispatch_state="dispatched" if dispatched else "queued",
             replayed=replayed,
+            source=source,
         )
         return RehearsalLaunch(
             run_id=ref.run_id,
             input_hash=ref.input_hash,
             dispatch_state="dispatched" if dispatched else "queued",
             replayed=replayed,
+            input_kind=(
+                "testnet_rehearsal" if source == "binance_testnet" else "synthetic_rehearsal"
+            ),
         )
     finally:
         await database.close()

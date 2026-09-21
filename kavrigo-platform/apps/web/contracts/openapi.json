@@ -997,7 +997,7 @@
         "tags": [
           "rehearsals"
         ],
-        "summary": "Launch an explicitly synthetic, execution-disabled local paper rehearsal",
+        "summary": "Launch an execution-disabled local paper rehearsal",
         "operationId": "launch_rehearsal_v1_workspaces__workspace_id__agents__agent_id__versions__version__rehearsals_post",
         "security": [
           {
@@ -1033,6 +1033,20 @@
               "type": "string",
               "pattern": "^ws_[0-9a-f]{32}$",
               "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "synthetic",
+                "binance_testnet"
+              ],
+              "type": "string",
+              "default": "synthetic",
+              "title": "Source"
             }
           }
         ],
@@ -3850,7 +3864,10 @@
           },
           "input_kind": {
             "type": "string",
-            "const": "synthetic_rehearsal",
+            "enum": [
+              "synthetic_rehearsal",
+              "testnet_rehearsal"
+            ],
             "title": "Input Kind",
             "default": "synthetic_rehearsal"
           },
@@ -4305,7 +4322,8 @@
             "type": "string",
             "enum": [
               "recorded",
-              "synthetic_rehearsal"
+              "synthetic_rehearsal",
+              "testnet_rehearsal"
             ],
             "title": "Input Kind",
             "default": "recorded"
@@ -4394,7 +4412,8 @@
             "type": "string",
             "enum": [
               "recorded",
-              "synthetic_rehearsal"
+              "synthetic_rehearsal",
+              "testnet_rehearsal"
             ],
             "title": "Input Kind",
             "default": "recorded"

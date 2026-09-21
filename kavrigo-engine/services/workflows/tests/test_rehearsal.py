@@ -2,10 +2,12 @@
 
 import asyncio
 import json
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
 
+from kavrigo_domain import BookTicker, InstrumentId, MarketTrade, Price, Quantity, content_hash
 from kavrigo_model_gateway import registered_prompt_hash
 from kavrigo_runtime import analysis_prompt
 from kavrigo_workflows.accounts import AccountRepository
@@ -51,6 +53,61 @@ def test_browser_uuid_key_is_normalized_for_runtime_contract(registration, clock
     key = str(uuid4())
     _, run = build_rehearsal(registration.agent_version, key=key, at=clock())
     assert run.job.evaluation.idempotency_key == "rehearsal-" + run.run_id[4:]
+
+
+def test_testnet_rehearsal_freezes_labeled_simulated_evidence(registration, clock):
+    instrument = InstrumentId.parse("BTC-USDT.BINANCE_TESTNET")
+    observed = clock()
+    events = (
+        MarketTrade(
+            instrument_id=instrument,
+            price=Price(value=Decimal("100"), base="BTC", quote="USDT"),
+            quantity=Quantity(value=Decimal("0.1"), asset="BTC"),
+            venue_time=observed,
+            received_at=observed,
+        ),
+        MarketTrade(
+            instrument_id=instrument,
+            price=Price(value=Decimal("101"), base="BTC", quote="USDT"),
+            quantity=Quantity(value=Decimal("0.1"), asset="BTC"),
+            venue_time=observed,
+            received_at=observed,
+        ),
+        BookTicker(
+            instrument_id=instrument,
+            bid_price=Price(value=Decimal("100.9"), base="BTC", quote="USDT"),
+            bid_size=Quantity(value=Decimal("1"), asset="BTC"),
+            ask_price=Price(value=Decimal("101.1"), base="BTC", quote="USDT"),
+            ask_size=Quantity(value=Decimal("1"), asset="BTC"),
+            received_at=observed,
+        ),
+    )
+    version = registration.agent_version.model_copy(
+        update={
+            "spec": registration.agent_version.spec.model_copy(
+                update={
+                    "universe": registration.agent_version.spec.universe.model_copy(
+                        update={"instruments": [BTC]}
+                    )
+                }
+            )
+        }
+    )
+    version = version.model_copy(update={"spec_hash": content_hash(version.spec)})
+
+    account, run = build_rehearsal(version, key="testnet", at=observed, testnet_events=events)
+
+    assert account.controls.active_kills == ("global",)
+    assert run.job.evaluation.snapshot.quality.notes == [
+        "testnet_evidence_rehearsal",
+        "simulated_provider_market",
+        "execution_disabled",
+    ]
+    assert run.job.evaluation.snapshot.features[0].values["testnet_sample_return"] == Decimal(
+        "0.01"
+    )
+    assert all(e.provider == "binance-spot-testnet" for e in run.job.evaluation.evidence)
+    assert all("testnet" in e.license_ref for e in run.job.evaluation.evidence)
 
 
 @pytest.mark.integration

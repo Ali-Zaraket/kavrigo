@@ -157,6 +157,9 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | ADR 0031 | Migration 0003 test DB upgrade → downgrade → upgrade | Passed; application DB additive upgrade applied |
 | ADR 0034, 2026-09-21 | Binance market-data-only five-second public feed smoke | 1,311 frames; 1,310 normalized events; zero skipped; zero reconnects; count-only and non-persistent |
 | ADR 0034 | Full pytest with isolated PostgreSQL and real Temporal; Ruff/format; strict mypy; uv lock/OpenAPI | 955 passed (34.61s); 295 Python files; 136 typed sources; checks passed |
+| ADR 0035, 2026-09-21 | Full pytest with isolated PostgreSQL and real Temporal | 961 passed (38.83s), including authenticated testnet source persistence/inspection and bounded-sample failure |
+| ADR 0035 | Ruff check/format; strict mypy; uv lock/OpenAPI; web lint/format/types/tests/build | 298 Python files; 137 typed sources; three web boundary tests and production build passed |
+| ADR 0035 | Live Binance Spot Testnet → API → Temporal → agent smoke | Completed `testnet_rehearsal`; labeled evidence persisted, `no_candidates`, account sequence 0, no positions |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -187,6 +190,12 @@ Local validation now uses Binance's market-data-only public host and discards al
 bounded sample. This does not license persistent agent snapshots or UI display. CoinGecko is the
 documented commercial procurement candidate; a suitable contract remains required before wiring
 real prices into the agent or paper broker.
+
+ADR 0035 now wires the public Binance Spot Testnet stream into an execution-disabled local agent
+rehearsal. The source is kept as `BINANCE_TESTNET`, testnet activity is labeled simulated, only
+derived evidence is frozen, and the account remains globally killed with zero exposure. This is
+usable from Studio for network-to-agent validation; it is not order-capable paper activation or
+licensed mainnet market evidence.
 
 Repository: [Ali-Zaraket/kavrigo](https://github.com/Ali-Zaraket/kavrigo). On 2026-09-09 the user
 requested normal work on `main`. Main was fast-forwarded through `a1e0ecf`, preserving both

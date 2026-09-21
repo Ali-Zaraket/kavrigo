@@ -352,7 +352,9 @@ function Runs({
               cell: ({ row }) =>
                 row.original.input_kind === "synthetic_rehearsal"
                   ? "Synthetic rehearsal"
-                  : "Recorded",
+                  : row.original.input_kind === "testnet_rehearsal"
+                    ? "Testnet rehearsal"
+                    : "Recorded",
             },
             {
               accessorKey: "status",
@@ -430,6 +432,12 @@ function RunDetail({ id }: { id: string }) {
         <Notice>
           Synthetic rehearsal only. No live market observation, approved
           strategy, or order execution is represented here.
+        </Notice>
+      )}
+      {run.input_kind === "testnet_rehearsal" && (
+        <Notice>
+          Binance Spot Testnet evidence only. The market activity is simulated,
+          the local model abstains, and execution remains disabled.
         </Notice>
       )}
       <p>Created {utc(run.created_at)}</p>

@@ -13,14 +13,17 @@ from dataclasses import dataclass, field
 from kavrigo_domain import InstrumentId
 from kavrigo_marketdata import (
     BINANCE_MARKET_DATA_WS_URL,
+    BINANCE_SPOT_TESTNET_WS_URL,
+    BINANCE_TESTNET_VENUE,
     BINANCE_VENUE,
     BinanceSpotParser,
+    BinanceSpotTestnetParser,
     Channel,
     InstrumentMap,
     VenueParser,
 )
 
-__all__ = ["VenueConfig", "default_venues"]
+__all__ = ["VenueConfig", "default_venues", "testnet_venues"]
 
 
 @dataclass(slots=True)
@@ -63,4 +66,23 @@ def default_venues() -> list[VenueConfig]:
                 }
             ),
         ),
+    ]
+
+
+def testnet_venues() -> list[VenueConfig]:
+    """Explicit simulated market source for execution-disabled local agent rehearsals."""
+    return [
+        VenueConfig(
+            venue=BINANCE_TESTNET_VENUE,
+            url=BINANCE_SPOT_TESTNET_WS_URL,
+            parser=BinanceSpotTestnetParser(),
+            instruments=InstrumentMap(
+                {
+                    "BTCUSDT": InstrumentId.parse("BTC-USDT.BINANCE_TESTNET"),
+                    "ETHUSDT": InstrumentId.parse("ETH-USDT.BINANCE_TESTNET"),
+                }
+            ),
+            license_ref="binance-spot-testnet-practice-2026-09-21",
+            provider="binance-spot-testnet",
+        )
     ]

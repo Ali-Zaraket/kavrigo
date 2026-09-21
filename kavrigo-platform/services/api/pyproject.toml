@@ -7,6 +7,7 @@ dependencies = [
   "kavrigo-domain",
   "kavrigo-observability",
   "kavrigo-model-gateway",
+  "kavrigo-market-ingestion",
   "kavrigo-risk",
   "kavrigo-workflows",
   "fastapi>=0.115",
@@ -27,6 +28,7 @@ dependencies = [
 kavrigo-domain = { workspace = true }
 kavrigo-observability = { workspace = true }
 kavrigo-model-gateway = { workspace = true }
+kavrigo-market-ingestion = { workspace = true }
 kavrigo-risk = { workspace = true }
 kavrigo-workflows = { workspace = true }
 
