@@ -1512,6 +1512,162 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/paper-activation-assessments": {
+      "post": {
+        "tags": [
+          "paper-activation"
+        ],
+        "summary": "Record a fail-closed paper-activation eligibility assessment",
+        "operationId": "assess_paper_activation_v1_workspaces__workspace_id__agents__agent_id__versions__version__paper_activation_assessments_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Version"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperActivationAssessmentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperActivationAssessmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/paper-activation-assessments/{assessment_id}": {
+      "get": {
+        "tags": [
+          "paper-activation"
+        ],
+        "summary": "Read one immutable paper-activation eligibility assessment",
+        "operationId": "get_paper_activation_assessment_v1_workspaces__workspace_id__agents__agent_id__versions__version__paper_activation_assessments__assessment_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ag_[0-9a-f]{32}$",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Version"
+            }
+          },
+          {
+            "name": "assessment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^paa_[0-9a-f]{32}$",
+              "title": "Assessment Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperActivationAssessmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3365,6 +3521,256 @@
           "fees_paid"
         ],
         "title": "PaperAccountView"
+      },
+      "PaperActivationAssessmentCreate": {
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "pattern": "^pb_[0-9a-f]{32}$",
+            "title": "Bundle Id"
+          },
+          "approval_id": {
+            "type": "string",
+            "pattern": "^pa_[0-9a-f]{32}$",
+            "title": "Approval Id"
+          },
+          "evaluation_run_id": {
+            "type": "string",
+            "pattern": "^run_[0-9a-f]{32}$",
+            "title": "Evaluation Run Id"
+          },
+          "agent_spec_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Agent Spec Hash"
+          },
+          "risk_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Hash"
+          },
+          "execution_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Execution Hash"
+          },
+          "evaluation_input_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Evaluation Input Hash"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bundle_id",
+          "approval_id",
+          "evaluation_run_id",
+          "agent_spec_hash",
+          "risk_hash",
+          "execution_hash",
+          "evaluation_input_hash",
+          "reason"
+        ],
+        "title": "PaperActivationAssessmentCreate"
+      },
+      "PaperActivationAssessmentResponse": {
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "pattern": "^paa_[0-9a-f]{32}$",
+            "title": "Assessment Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "pattern": "^ag_[0-9a-f]{32}$",
+            "title": "Agent Id"
+          },
+          "agent_version_id": {
+            "type": "string",
+            "pattern": "^av_[0-9a-f]{32}$",
+            "title": "Agent Version Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "bundle_id": {
+            "type": "string",
+            "pattern": "^pb_[0-9a-f]{32}$",
+            "title": "Bundle Id"
+          },
+          "approval_id": {
+            "type": "string",
+            "pattern": "^pa_[0-9a-f]{32}$",
+            "title": "Approval Id"
+          },
+          "evaluation_run_id": {
+            "type": "string",
+            "pattern": "^run_[0-9a-f]{32}$",
+            "title": "Evaluation Run Id"
+          },
+          "agent_spec_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Agent Spec Hash"
+          },
+          "risk_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Hash"
+          },
+          "execution_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Execution Hash"
+          },
+          "evaluation_input_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Evaluation Input Hash"
+          },
+          "evaluation_output_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Output Hash"
+          },
+          "providers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Providers"
+          },
+          "license_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "License Refs"
+          },
+          "gate_results": {
+            "items": {
+              "$ref": "#/components/schemas/PaperActivationGateResult"
+            },
+            "type": "array",
+            "title": "Gate Results"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "blocked",
+              "eligible"
+            ],
+            "title": "Decision"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "assessed_by": {
+            "type": "string",
+            "title": "Assessed By"
+          },
+          "assessed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Assessed At"
+          },
+          "activation_status": {
+            "type": "string",
+            "const": "inactive",
+            "title": "Activation Status",
+            "default": "inactive"
+          },
+          "execution_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Execution Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "assessment_id",
+          "workspace_id",
+          "agent_id",
+          "agent_version_id",
+          "version",
+          "bundle_id",
+          "approval_id",
+          "evaluation_run_id",
+          "agent_spec_hash",
+          "risk_hash",
+          "execution_hash",
+          "evaluation_input_hash",
+          "evaluation_output_hash",
+          "providers",
+          "license_refs",
+          "gate_results",
+          "decision",
+          "reason",
+          "assessed_by",
+          "assessed_at"
+        ],
+        "title": "PaperActivationAssessmentResponse"
+      },
+      "PaperActivationGateName": {
+        "type": "string",
+        "enum": [
+          "policy_approval_integrity",
+          "version_policy_binding",
+          "evaluation_completion",
+          "evaluation_version_binding",
+          "promotable_evidence",
+          "provider_entitlement",
+          "activation_support"
+        ]
+      },
+      "PaperActivationGateResult": {
+        "properties": {
+          "gate": {
+            "$ref": "#/components/schemas/PaperActivationGateName"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          },
+          "reason_code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Reason Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gate",
+          "passed",
+          "reason_code"
+        ],
+        "title": "PaperActivationGateResult"
       },
       "PaperPolicyApprovalCreate": {
         "properties": {

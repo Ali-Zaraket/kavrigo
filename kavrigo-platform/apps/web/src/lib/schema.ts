@@ -351,6 +351,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/paper-activation-assessments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record a fail-closed paper-activation eligibility assessment */
+    post: operations["assess_paper_activation_v1_workspaces__workspace_id__agents__agent_id__versions__version__paper_activation_assessments_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/paper-activation-assessments/{assessment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read one immutable paper-activation eligibility assessment */
+    get: operations["get_paper_activation_assessment_v1_workspaces__workspace_id__agents__agent_id__versions__version__paper_activation_assessments__assessment_id__get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1264,6 +1298,103 @@ export interface components {
       committed_at: string;
       portfolio: components["schemas"]["PortfolioSnapshot"];
       fees_paid: components["schemas"]["Money"];
+    };
+    /** PaperActivationAssessmentCreate */
+    PaperActivationAssessmentCreate: {
+      /** Bundle Id */
+      bundle_id: string;
+      /** Approval Id */
+      approval_id: string;
+      /** Evaluation Run Id */
+      evaluation_run_id: string;
+      /** Agent Spec Hash */
+      agent_spec_hash: string;
+      /** Risk Hash */
+      risk_hash: string;
+      /** Execution Hash */
+      execution_hash: string;
+      /** Evaluation Input Hash */
+      evaluation_input_hash: string;
+      /** Reason */
+      reason: string;
+    };
+    /** PaperActivationAssessmentResponse */
+    PaperActivationAssessmentResponse: {
+      /** Assessment Id */
+      assessment_id: string;
+      /** Workspace Id */
+      workspace_id: string;
+      /** Agent Id */
+      agent_id: string;
+      /** Agent Version Id */
+      agent_version_id: string;
+      /** Version */
+      version: number;
+      /** Bundle Id */
+      bundle_id: string;
+      /** Approval Id */
+      approval_id: string;
+      /** Evaluation Run Id */
+      evaluation_run_id: string;
+      /** Agent Spec Hash */
+      agent_spec_hash: string;
+      /** Risk Hash */
+      risk_hash: string;
+      /** Execution Hash */
+      execution_hash: string;
+      /** Evaluation Input Hash */
+      evaluation_input_hash: string;
+      /** Evaluation Output Hash */
+      evaluation_output_hash: string | null;
+      /** Providers */
+      providers: string[];
+      /** License Refs */
+      license_refs: string[];
+      /** Gate Results */
+      gate_results: components["schemas"]["PaperActivationGateResult"][];
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: "blocked" | "eligible";
+      /** Reason */
+      reason: string;
+      /** Assessed By */
+      assessed_by: string;
+      /**
+       * Assessed At
+       * Format: date-time
+       */
+      assessed_at: string;
+      /**
+       * Activation Status
+       * @default inactive
+       * @constant
+       */
+      activation_status: "inactive";
+      /**
+       * Execution Enabled
+       * @default false
+       * @constant
+       */
+      execution_enabled: false;
+    };
+    /** @enum {string} */
+    PaperActivationGateName:
+      | "policy_approval_integrity"
+      | "version_policy_binding"
+      | "evaluation_completion"
+      | "evaluation_version_binding"
+      | "promotable_evidence"
+      | "provider_entitlement"
+      | "activation_support";
+    /** PaperActivationGateResult */
+    PaperActivationGateResult: {
+      gate: components["schemas"]["PaperActivationGateName"];
+      /** Passed */
+      passed: boolean;
+      /** Reason Code */
+      reason_code: string;
     };
     /**
      * PaperPolicyApprovalCreate
@@ -2826,6 +2957,77 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PaperPolicyApprovalResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  assess_paper_activation_v1_workspaces__workspace_id__agents__agent_id__versions__version__paper_activation_assessments_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        agent_id: string;
+        version: number;
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PaperActivationAssessmentCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaperActivationAssessmentResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_paper_activation_assessment_v1_workspaces__workspace_id__agents__agent_id__versions__version__paper_activation_assessments__assessment_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        agent_id: string;
+        version: number;
+        assessment_id: string;
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaperActivationAssessmentResponse"];
         };
       };
       /** @description Validation Error */

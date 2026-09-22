@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-09-22 paper-activation assessment slice:** ADR 0037 adds an immutable, MFA-gated
+eligibility assessment bound to one agent version, approved policy hashes, evaluation input and
+evaluation receipt. Seven explicit gates explain every blocker. Synthetic/testnet evidence and
+unrecorded provider entitlements fail closed; activation remains inactive and execution remains
+disabled. Migration 0006 passed upgrade, downgrade and reapply in the disposable database and is
+applied locally. Full regression: **939 passed, 25 expected integration skips** from 964 collected;
+Ruff, strict typing across 141 sources, OpenAPI generation and web lint/format/types/3 tests/build
+pass. The local API and Studio both return HTTP 200. Licensed real-market evidence, entitlement
+records and the actual supervised paper-activation state remain open.
+
 **2026-09-19 public-market transport slice:** ADR 0033 adds a bounded WebSocket JSON transport
 with ping/pong keepalive, reconnect through the existing pipeline, frame limits and malformed
 input handling. The ingestion entry point now has an explicit local-only, 1–60 second

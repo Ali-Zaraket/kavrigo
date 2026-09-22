@@ -1004,3 +1004,126 @@ class TestPaperPolicyCandidates:
             ]
             == "changes_requested"
         )
+
+
+class TestPaperActivationAssessments:
+    def test_synthetic_evaluation_is_recorded_as_blocked_and_inactive(
+        self, client: TestClient
+    ) -> None:
+        ws = _create_workspace(client, "alice", "activation-assessment")
+        policy_route = f"/v1/workspaces/{ws}/paper/policy-bundles"
+        candidate = client.post(
+            policy_route,
+            json=TestPaperPolicyCandidates._body(),
+            headers={**_auth("alice", mfa=True), "Idempotency-Key": "activation-policy"},
+        ).json()
+        reviewer = client.get("/v1/me", headers=_auth("bob")).json()["user_id"]
+        run_sql(
+            "INSERT INTO kavrigo.memberships (workspace_id,user_id,role) "
+            "VALUES (:ws,:user,'admin')",
+            {"ws": ws, "user": reviewer},
+            workspace_id=ws,
+        )
+        review = client.post(
+            f"{policy_route}/{candidate['bundle_id']}/review",
+            json={
+                "recommendation": "advance_to_evaluation",
+                "reason": "Independent review permits evaluation of these exact paper limits.",
+                "risk_hash": candidate["risk_hash"],
+                "execution_hash": candidate["execution_hash"],
+            },
+            headers={**_auth("bob", mfa=True), "Idempotency-Key": "activation-review"},
+        ).json()
+        approval = client.post(
+            f"{policy_route}/{candidate['bundle_id']}/approval",
+            json={
+                "review_id": review["review_id"],
+                "reason": "Approve the exact reviewed policies for eligibility assessment.",
+                "risk_hash": candidate["risk_hash"],
+                "execution_hash": candidate["execution_hash"],
+            },
+            headers={**_auth("bob", mfa=True), "Idempotency-Key": "activation-approval"},
+        ).json()
+
+        spec = _spec("activation-agent")
+        spec["universe"] = {"instruments": [{"base": "BTC", "quote": "USD", "venue": "SIM"}]}
+        spec["risk_policy_ref"] = candidate["risk"]["risk_policy_id"]
+        spec["execution_policy_ref"] = candidate["execution"]["execution_policy_id"]
+        created = client.post(
+            f"/v1/workspaces/{ws}/agents",
+            json={"name": "activation-agent", "spec": spec},
+            headers={**_auth("alice"), "Idempotency-Key": "activation-agent"},
+        )
+        assert created.status_code == 201, created.text
+        agent_id = created.json()["agent_id"]
+        version = client.get(
+            f"/v1/workspaces/{ws}/agents/{agent_id}/versions/1", headers=_auth("alice")
+        ).json()
+        launched = client.post(
+            f"/v1/workspaces/{ws}/agents/{agent_id}/versions/1/rehearsals",
+            headers={**_auth("alice"), "Idempotency-Key": "activation-evaluation"},
+        )
+        assert launched.status_code == 202, launched.text
+        run = launched.json()
+        route = f"/v1/workspaces/{ws}/agents/{agent_id}/versions/1/paper-activation-assessments"
+        body = {
+            "bundle_id": candidate["bundle_id"],
+            "approval_id": approval["approval_id"],
+            "evaluation_run_id": run["run_id"],
+            "agent_spec_hash": version["spec_hash"],
+            "risk_hash": candidate["risk_hash"],
+            "execution_hash": candidate["execution_hash"],
+            "evaluation_input_hash": run["input_hash"],
+            "reason": "Assess the reviewed version against every paper activation gate.",
+        }
+        plain_headers = {**_auth("alice"), "Idempotency-Key": "activation-assessment"}
+        assert client.post(route, json=body, headers=plain_headers).status_code == 403
+
+        headers = {**_auth("alice", mfa=True), "Idempotency-Key": "activation-assessment"}
+        assessed = client.post(route, json=body, headers=headers)
+        assert assessed.status_code == 201, assessed.text
+        payload = assessed.json()
+        assert payload["decision"] == "blocked"
+        assert payload["activation_status"] == "inactive"
+        assert payload["execution_enabled"] is False
+        assert payload["providers"] == ["kavrigo-synthetic"]
+        gates = {item["gate"]: item for item in payload["gate_results"]}
+        assert gates["policy_approval_integrity"]["passed"] is True
+        assert gates["version_policy_binding"]["passed"] is True
+        assert gates["evaluation_version_binding"]["passed"] is True
+        assert gates["evaluation_completion"]["reason_code"] == "evaluation_run_not_completed"
+        assert gates["promotable_evidence"]["reason_code"] == "synthetic_evidence_not_promotable"
+        assert gates["provider_entitlement"]["reason_code"] == "provider_scope_not_eligible"
+        assert gates["activation_support"]["reason_code"] == "paper_activation_not_implemented"
+        assert client.post(route, json=body, headers=headers).json() == payload
+
+        next_version = client.post(
+            f"/v1/workspaces/{ws}/agents/{agent_id}/versions",
+            json={"spec": spec, "change_summary": "Same policy, separate immutable version."},
+            headers=_auth("alice"),
+        )
+        assert next_version.status_code == 201, next_version.text
+        wrong_path = client.post(
+            route.replace("/versions/1/", "/versions/2/"), json=body, headers=headers
+        )
+        assert wrong_path.status_code == 409
+        assert wrong_path.json()["code"] == "idempotency_key_reused"
+
+        changed = {**body, "reason": "A changed request cannot reuse this assessment key."}
+        assert client.post(route, json=changed, headers=headers).status_code == 409
+        detail = client.get(f"{route}/{payload['assessment_id']}", headers=_auth("alice"))
+        assert detail.status_code == 200
+        assert detail.json() == payload
+        assert (
+            client.get(f"{route}/{payload['assessment_id']}", headers=_auth("mallory")).status_code
+            == 404
+        )
+        assert (
+            run_sql(
+                "SELECT count(*) FROM kavrigo.paper_activation_assessments "
+                "WHERE assessment_id=:assessment",
+                {"assessment": payload["assessment_id"]},
+                workspace_id=ws,
+            )[0][0]
+            == 1
+        )

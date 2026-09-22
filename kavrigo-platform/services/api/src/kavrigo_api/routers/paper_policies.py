@@ -26,6 +26,11 @@ from kavrigo_api.schemas.paper_policies import (
     PaperPolicyReviewResponse,
 )
 from kavrigo_api.services.idempotency import idempotency_key_from, request_fingerprint
+from kavrigo_api.services.paper_policy_integrity import (
+    validate_approval,
+    validate_review,
+    validated_bundle,
+)
 from kavrigo_domain import RiskPolicy, RiskScope, content_hash
 from kavrigo_risk import RiskExecutionPolicy, policy_hash
 
@@ -35,50 +40,6 @@ router = APIRouter(
 _log = get_logger(__name__)
 _NAMESPACE = UUID("a50c23a7-97a7-4723-b338-2382776b62b4")
 BundlePath = Annotated[str, Path(pattern=r"^pb_[0-9a-f]{32}$")]
-
-
-def _validated_bundle(row: PaperPolicyBundle) -> tuple[RiskPolicy, RiskExecutionPolicy]:
-    risk = RiskPolicy.model_validate(row.risk_document)
-    execution = RiskExecutionPolicy.model_validate(row.execution_document)
-    if (
-        risk.workspace_id != row.workspace_id
-        or risk.scope is not RiskScope.AGENT
-        or risk.risk_policy_id != row.risk_policy_id
-        or policy_hash(risk) != row.risk_hash
-        or risk.content_hash != row.risk_hash
-        or execution.execution_policy_id != row.execution_policy_id
-        or content_hash(execution) != row.execution_hash
-    ):
-        raise ApiError(ErrorCode.CONFLICT, "Stored policy integrity check failed.", 409)
-    return risk, execution
-
-
-def _validate_review(row: PaperPolicyReview, bundle: PaperPolicyBundle) -> None:
-    _validated_bundle(bundle)
-    if (
-        row.workspace_id != bundle.workspace_id
-        or row.bundle_id != bundle.bundle_id
-        or row.risk_hash != bundle.risk_hash
-        or row.execution_hash != bundle.execution_hash
-        or row.reviewed_by == bundle.created_by
-    ):
-        raise ApiError(ErrorCode.CONFLICT, "Stored policy review integrity check failed.", 409)
-
-
-def _validate_approval(
-    row: PaperPolicyApproval, review: PaperPolicyReview, bundle: PaperPolicyBundle
-) -> None:
-    _validate_review(review, bundle)
-    if (
-        review.recommendation != "advance_to_evaluation"
-        or row.workspace_id != bundle.workspace_id
-        or row.bundle_id != bundle.bundle_id
-        or row.review_id != review.review_id
-        or row.risk_hash != bundle.risk_hash
-        or row.execution_hash != bundle.execution_hash
-        or row.approved_by != review.reviewed_by
-    ):
-        raise ApiError(ErrorCode.CONFLICT, "Stored policy approval integrity check failed.", 409)
 
 
 def _approval_status(
@@ -98,13 +59,13 @@ def _response(
     review: PaperPolicyReview | None = None,
     approval: PaperPolicyApproval | None = None,
 ) -> PaperPolicyBundleResponse:
-    risk, execution = _validated_bundle(row)
+    risk, execution = validated_bundle(row)
     if review is not None:
-        _validate_review(review, row)
+        validate_review(review, row)
     if approval is not None:
         if review is None:
             raise ApiError(ErrorCode.CONFLICT, "Stored policy approval has no review.", 409)
-        _validate_approval(approval, review, row)
+        validate_approval(approval, review, row)
     return PaperPolicyBundleResponse(
         bundle_id=row.bundle_id,
         workspace_id=row.workspace_id,
@@ -124,9 +85,9 @@ def _review_response(
     bundle: PaperPolicyBundle,
     approval: PaperPolicyApproval | None = None,
 ) -> PaperPolicyReviewResponse:
-    _validate_review(row, bundle)
+    validate_review(row, bundle)
     if approval is not None:
-        _validate_approval(approval, row, bundle)
+        validate_approval(approval, row, bundle)
     return PaperPolicyReviewResponse(
         review_id=row.review_id,
         bundle_id=row.bundle_id,
@@ -144,7 +105,7 @@ def _review_response(
 def _approval_response(
     row: PaperPolicyApproval, review: PaperPolicyReview, bundle: PaperPolicyBundle
 ) -> PaperPolicyApprovalResponse:
-    _validate_approval(row, review, bundle)
+    validate_approval(row, review, bundle)
     return PaperPolicyApprovalResponse(
         approval_id=row.approval_id,
         review_id=row.review_id,

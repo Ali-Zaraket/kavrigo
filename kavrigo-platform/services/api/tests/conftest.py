@@ -35,6 +35,7 @@ OWNER_DSN = os.getenv(
 _TABLES = (
     "audit_events",
     "idempotency_keys",
+    "paper_activation_assessments",
     "agent_versions",
     "paper_policy_approvals",
     "paper_policy_reviews",

@@ -31,7 +31,14 @@
 
 # Kavrigo — engineering handoff
 
-**Updated:** 2026-09-19 · **Position:** step 15 plus governed policy review and ephemeral market feed · **Next:** licensed data persistence and evidence-backed approval
+> **2026-09-22:** ADR 0037 adds append-only paper-activation eligibility assessments tied to an
+> immutable version, approved policy hashes and evaluation receipts. Every current assessment
+> remains blocked because synthetic/testnet evidence is non-promotable, no production provider
+> entitlement is recorded, and activation support is intentionally absent. Migration 0006 is
+> applied locally; 939 tests pass with 25 expected integration skips. The next slice is licensed
+> real-market evidence plus explicit entitlement records, still without enabling orders.
+
+**Updated:** 2026-09-22 · **Position:** step 15 plus fail-closed paper-activation assessment · **Next:** licensed data persistence, entitlement records and promotable evaluation evidence
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both

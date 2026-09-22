@@ -40,3 +40,13 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0025](0025-local-deterministic-risk.md) | Local deterministic risk reservations and paper handoff | Accepted |
 | [0026](0026-local-paper-broker.md) | Deterministic local paper ledger and reconciled projections | Accepted for local simulation |
 | [0027](0027-durable-paper-workflows.md) | PostgreSQL paper authority and Temporal run orchestration | Accepted for local integration |
+| [0028](0028-paper-product-inspection.md) | Local paper workspace and immutable receipt inspection | Accepted for local product inspection |
+| [0029](0029-observability-and-golden-evals.md) | Filtered telemetry and synthetic golden evaluations | Accepted for local evaluation |
+| [0030](0030-local-paper-rehearsal.md) | Execution-disabled synthetic paper rehearsal | Accepted for local rehearsal |
+| [0031](0031-unapproved-paper-policy-candidates.md) | Immutable paper risk and execution candidates | Accepted for local control plane |
+| [0032](0032-non-activating-paper-policy-review.md) | Independent, non-activating policy review | Accepted for local control plane |
+| [0033](0033-public-market-websocket-sample.md) | Bounded public-market WebSocket sampling | Accepted for local transport testing |
+| [0034](0034-local-market-provider-selection.md) | Binance development feed and CoinGecko procurement path | Accepted for local development |
+| [0035](0035-binance-testnet-agent-rehearsal.md) | Testnet evidence rehearsal remains simulated | Accepted for local rehearsal |
+| [0036](0036-reviewed-paper-policy-approval.md) | Immutable approval of reviewed paper policies | Accepted for local control plane |
+| [0037](0037-fail-closed-paper-activation-assessment.md) | Immutable, fail-closed paper-activation assessment | Accepted for local control plane |

@@ -44,6 +44,7 @@ __all__ = [
     "Base",
     "IdempotencyKey",
     "Membership",
+    "PaperActivationAssessment",
     "PaperPolicyApproval",
     "PaperPolicyBundle",
     "PaperPolicyReview",
@@ -60,6 +61,7 @@ TENANT_SCOPED_TABLES: tuple[str, ...] = (
     "memberships",
     "agents",
     "agent_versions",
+    "paper_activation_assessments",
     "paper_policy_bundles",
     "paper_policy_approvals",
     "paper_policy_reviews",
@@ -76,6 +78,7 @@ SELF_POLICIED_TABLES: tuple[str, ...] = ("workspaces",)
 #: Tables that may never be updated or deleted from.
 APPEND_ONLY_TABLES: tuple[str, ...] = (
     "agent_versions",
+    "paper_activation_assessments",
     "paper_policy_bundles",
     "paper_policy_approvals",
     "paper_policy_reviews",
@@ -262,6 +265,13 @@ class AgentVersionRow(Base):
             name="approval_status_valid",
         ),
         UniqueConstraint("agent_id", "version", name="uq_agent_versions_agent_version"),
+        UniqueConstraint(
+            "agent_version_id",
+            "agent_id",
+            "version",
+            "workspace_id",
+            name="uq_agent_version_activation_scope",
+        ),
         # The composite foreign key is what prevents a version being attached to an agent in a
         # different workspace — a single-column FK to agent_id would not.
         ForeignKeyConstraint(
@@ -400,7 +410,114 @@ class PaperPolicyApproval(Base):
             ],
             name="fk_paper_approval_bundle_workspace",
         ),
+        UniqueConstraint("approval_id", "workspace_id", name="uq_paper_approval_workspace"),
         Index("ix_paper_policy_approvals_workspace_id", "workspace_id", "bundle_id"),
+        {"schema": SCHEMA},
+    )
+
+
+class PaperActivationAssessment(Base):
+    """One immutable decision from the fail-closed paper-activation gate."""
+
+    __tablename__ = "paper_activation_assessments"
+
+    assessment_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey(f"{SCHEMA}.workspaces.workspace_id"), nullable=False
+    )
+    agent_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    agent_version_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    bundle_id: Mapped[str] = mapped_column(String(35), nullable=False)
+    approval_id: Mapped[str] = mapped_column(String(35), nullable=False)
+    evaluation_run_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    agent_spec_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    risk_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    execution_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    evaluation_input_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    evaluation_output_hash: Mapped[str | None] = mapped_column(String(71))
+    providers: Mapped[list[str]] = mapped_column(ARRAY(String(64)), nullable=False)
+    license_refs: Mapped[list[str]] = mapped_column(ARRAY(String(128)), nullable=False)
+    gate_results: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    gate_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    assessed_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    assessed_at: Mapped[datetime] = _ts(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint(
+            r"assessment_id ~ '^paa_[0-9a-f]{32}$'", name="activation_assessment_id_format"
+        ),
+        CheckConstraint(
+            "decision IN ('blocked','eligible')", name="activation_assessment_decision"
+        ),
+        CheckConstraint("version >= 1", name="activation_assessment_version_positive"),
+        CheckConstraint(
+            r"agent_spec_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_spec_hash_format",
+        ),
+        CheckConstraint(
+            r"risk_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_risk_hash_format",
+        ),
+        CheckConstraint(
+            r"execution_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_execution_hash_format",
+        ),
+        CheckConstraint(
+            r"evaluation_input_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_input_hash_format",
+        ),
+        CheckConstraint(
+            r"evaluation_output_hash IS NULL OR evaluation_output_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_output_hash_format",
+        ),
+        CheckConstraint(
+            r"gate_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_gate_hash_format",
+        ),
+        CheckConstraint(
+            r"request_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_request_hash_format",
+        ),
+        ForeignKeyConstraint(
+            ["agent_version_id", "agent_id", "version", "workspace_id"],
+            [
+                f"{SCHEMA}.agent_versions.agent_version_id",
+                f"{SCHEMA}.agent_versions.agent_id",
+                f"{SCHEMA}.agent_versions.version",
+                f"{SCHEMA}.agent_versions.workspace_id",
+            ],
+            name="fk_activation_assessment_agent_version",
+        ),
+        ForeignKeyConstraint(
+            ["bundle_id", "workspace_id"],
+            [
+                f"{SCHEMA}.paper_policy_bundles.bundle_id",
+                f"{SCHEMA}.paper_policy_bundles.workspace_id",
+            ],
+            name="fk_activation_assessment_bundle",
+        ),
+        ForeignKeyConstraint(
+            ["approval_id", "workspace_id"],
+            [
+                f"{SCHEMA}.paper_policy_approvals.approval_id",
+                f"{SCHEMA}.paper_policy_approvals.workspace_id",
+            ],
+            name="fk_activation_assessment_approval",
+        ),
+        # Migration 0006 owns the composite engine_runs foreign key. Engine tables are
+        # deliberately absent from ORM metadata, so declaring that relationship here would
+        # make SQLAlchemy fail to sort mapped tables during an otherwise valid insert.
+        Index(
+            "ix_paper_activation_assessments_workspace_version",
+            "workspace_id",
+            "agent_version_id",
+            "assessment_id",
+        ),
         {"schema": SCHEMA},
     )
 
