@@ -1,4 +1,4 @@
-"""Typed, unapproved paper-policy candidate contracts."""
+"""Typed paper-policy candidate, review and approval contracts."""
 
 from datetime import datetime
 from typing import Annotated, Literal, Self
@@ -49,7 +49,7 @@ class PaperPolicyBundleResponse(BaseModel):
     execution: RiskExecutionPolicy
     risk_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
     execution_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
-    approval_status: Literal["unapproved"] = "unapproved"
+    approval_status: Literal["unapproved", "reviewed", "changes_requested", "approved"]
     execution_enabled: Literal[False] = False
     reason: str
     created_by: str
@@ -79,5 +79,33 @@ class PaperPolicyReviewResponse(BaseModel):
     execution_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
     reviewed_by: str
     reviewed_at: datetime
-    approval_status: Literal["unapproved"] = "unapproved"
+    approval_status: Literal["reviewed", "changes_requested", "approved"]
+    execution_enabled: Literal[False] = False
+
+
+class PaperPolicyApprovalCreate(BaseModel):
+    """Approve the exact policy documents recorded by an advancing review."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: Annotated[str, Field(pattern=r"^pr_[0-9a-f]{32}$")]
+    reason: Annotated[str, Field(min_length=10, max_length=1000)]
+    risk_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+    execution_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+
+
+class PaperPolicyApprovalResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approval_id: Annotated[str, Field(pattern=r"^pa_[0-9a-f]{32}$")]
+    review_id: Annotated[str, Field(pattern=r"^pr_[0-9a-f]{32}$")]
+    bundle_id: Annotated[str, Field(pattern=r"^pb_[0-9a-f]{32}$")]
+    workspace_id: Annotated[str, Field(pattern=r"^ws_[0-9a-f]{32}$")]
+    reason: str
+    risk_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+    execution_hash: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+    approved_by: str
+    approved_at: datetime
+    approval_status: Literal["approved"] = "approved"
+    activation_status: Literal["inactive"] = "inactive"
     execution_enabled: Literal[False] = False

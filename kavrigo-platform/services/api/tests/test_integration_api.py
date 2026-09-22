@@ -851,7 +851,7 @@ class TestPaperPolicyCandidates:
         assert review["recommendation"] == "advance_to_evaluation"
         assert review["risk_hash"] == candidate["risk_hash"]
         assert review["execution_hash"] == candidate["execution_hash"]
-        assert review["approval_status"] == "unapproved"
+        assert review["approval_status"] == "reviewed"
         assert review["execution_enabled"] is False
         assert client.post(review_route, json=body, headers=reviewer_headers).json() == review
         changed = {**body, "recommendation": "changes_requested"}
@@ -862,7 +862,7 @@ class TestPaperPolicyCandidates:
             client.get(f"{route}/{candidate['bundle_id']}", headers=_auth("alice")).json()[
                 "approval_status"
             ]
-            == "unapproved"
+            == "reviewed"
         )
         assert (
             run_sql(
@@ -871,4 +871,136 @@ class TestPaperPolicyCandidates:
                 workspace_id=ws,
             )[0][0]
             == 1
+        )
+
+    def test_reviewer_can_approve_exact_hashes_without_activating(self, client: TestClient) -> None:
+        ws = _create_workspace(client, "alice", "policy-approval")
+        route = f"/v1/workspaces/{ws}/paper/policy-bundles"
+        candidate = client.post(
+            route,
+            json=self._body(),
+            headers={**_auth("alice", mfa=True), "Idempotency-Key": "approval-candidate"},
+        ).json()
+        reviewer = client.get("/v1/me", headers=_auth("bob")).json()["user_id"]
+        run_sql(
+            "INSERT INTO kavrigo.memberships (workspace_id,user_id,role) "
+            "VALUES (:ws,:user,'admin')",
+            {"ws": ws, "user": reviewer},
+            workspace_id=ws,
+        )
+        review = client.post(
+            f"{route}/{candidate['bundle_id']}/review",
+            json={
+                "recommendation": "advance_to_evaluation",
+                "reason": "Independent review supports explicit approval for paper evaluation.",
+                "risk_hash": candidate["risk_hash"],
+                "execution_hash": candidate["execution_hash"],
+            },
+            headers={**_auth("bob", mfa=True), "Idempotency-Key": "approval-review"},
+        ).json()
+        approval_route = f"{route}/{candidate['bundle_id']}/approval"
+        body = {
+            "review_id": review["review_id"],
+            "reason": "Approve these exact limits for later paper activation evaluation.",
+            "risk_hash": candidate["risk_hash"],
+            "execution_hash": candidate["execution_hash"],
+        }
+
+        no_mfa = client.post(
+            approval_route,
+            json=body,
+            headers={**_auth("bob"), "Idempotency-Key": "approval-one"},
+        )
+        assert no_mfa.status_code == 403
+        creator = client.post(
+            approval_route,
+            json=body,
+            headers={**_auth("alice", mfa=True), "Idempotency-Key": "approval-one"},
+        )
+        assert creator.status_code == 403
+        wrong_hash = {**body, "execution_hash": "sha256:" + "0" * 64}
+        assert (
+            client.post(
+                approval_route,
+                json=wrong_hash,
+                headers={**_auth("bob", mfa=True), "Idempotency-Key": "approval-one"},
+            ).status_code
+            == 409
+        )
+
+        headers = {**_auth("bob", mfa=True), "Idempotency-Key": "approval-one"}
+        approved = client.post(approval_route, json=body, headers=headers)
+        assert approved.status_code == 201, approved.text
+        payload = approved.json()
+        assert payload["approval_status"] == "approved"
+        assert payload["activation_status"] == "inactive"
+        assert payload["execution_enabled"] is False
+        assert payload["approved_by"] == reviewer
+        assert client.post(approval_route, json=body, headers=headers).json() == payload
+        changed = {**body, "reason": "A different approval reason cannot reuse this record."}
+        assert client.post(approval_route, json=changed, headers=headers).status_code == 409
+        assert client.get(approval_route, headers=_auth("alice")).json() == payload
+        assert (
+            client.get(f"{route}/{candidate['bundle_id']}", headers=_auth("alice")).json()[
+                "approval_status"
+            ]
+            == "approved"
+        )
+        assert (
+            client.get(f"{route}/{candidate['bundle_id']}/review", headers=_auth("alice")).json()[
+                "approval_status"
+            ]
+            == "approved"
+        )
+        assert (
+            run_sql(
+                "SELECT count(*) FROM kavrigo.paper_policy_approvals WHERE bundle_id = :bundle",
+                {"bundle": candidate["bundle_id"]},
+                workspace_id=ws,
+            )[0][0]
+            == 1
+        )
+
+    def test_changes_requested_review_cannot_be_approved(self, client: TestClient) -> None:
+        ws = _create_workspace(client, "alice", "policy-changes-requested")
+        route = f"/v1/workspaces/{ws}/paper/policy-bundles"
+        candidate = client.post(
+            route,
+            json=self._body(),
+            headers={**_auth("alice", mfa=True), "Idempotency-Key": "changes-candidate"},
+        ).json()
+        reviewer = client.get("/v1/me", headers=_auth("bob")).json()["user_id"]
+        run_sql(
+            "INSERT INTO kavrigo.memberships (workspace_id,user_id,role) "
+            "VALUES (:ws,:user,'admin')",
+            {"ws": ws, "user": reviewer},
+            workspace_id=ws,
+        )
+        review = client.post(
+            f"{route}/{candidate['bundle_id']}/review",
+            json={
+                "recommendation": "changes_requested",
+                "reason": "The maximum order notional needs a stricter evaluation bound.",
+                "risk_hash": candidate["risk_hash"],
+                "execution_hash": candidate["execution_hash"],
+            },
+            headers={**_auth("bob", mfa=True), "Idempotency-Key": "changes-review"},
+        ).json()
+        assert review["approval_status"] == "changes_requested"
+        refused = client.post(
+            f"{route}/{candidate['bundle_id']}/approval",
+            json={
+                "review_id": review["review_id"],
+                "reason": "This must remain blocked because changes were requested.",
+                "risk_hash": candidate["risk_hash"],
+                "execution_hash": candidate["execution_hash"],
+            },
+            headers={**_auth("bob", mfa=True), "Idempotency-Key": "blocked-approval"},
+        )
+        assert refused.status_code == 409
+        assert (
+            client.get(f"{route}/{candidate['bundle_id']}", headers=_auth("alice")).json()[
+                "approval_status"
+            ]
+            == "changes_requested"
         )

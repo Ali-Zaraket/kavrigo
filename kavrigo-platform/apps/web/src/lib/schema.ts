@@ -333,6 +333,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workspaces/{workspace_id}/paper/policy-bundles/{bundle_id}/approval": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read the non-activating approval for a paper-policy candidate */
+    get: operations["get_paper_policy_approval_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__approval_get"];
+    put?: never;
+    /** Approve the exact reviewed paper policies without activating execution */
+    post: operations["approve_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__approval_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1247,6 +1265,62 @@ export interface components {
       portfolio: components["schemas"]["PortfolioSnapshot"];
       fees_paid: components["schemas"]["Money"];
     };
+    /**
+     * PaperPolicyApprovalCreate
+     * @description Approve the exact policy documents recorded by an advancing review.
+     */
+    PaperPolicyApprovalCreate: {
+      /** Review Id */
+      review_id: string;
+      /** Reason */
+      reason: string;
+      /** Risk Hash */
+      risk_hash: string;
+      /** Execution Hash */
+      execution_hash: string;
+    };
+    /** PaperPolicyApprovalResponse */
+    PaperPolicyApprovalResponse: {
+      /** Approval Id */
+      approval_id: string;
+      /** Review Id */
+      review_id: string;
+      /** Bundle Id */
+      bundle_id: string;
+      /** Workspace Id */
+      workspace_id: string;
+      /** Reason */
+      reason: string;
+      /** Risk Hash */
+      risk_hash: string;
+      /** Execution Hash */
+      execution_hash: string;
+      /** Approved By */
+      approved_by: string;
+      /**
+       * Approved At
+       * Format: date-time
+       */
+      approved_at: string;
+      /**
+       * Approval Status
+       * @default approved
+       * @constant
+       */
+      approval_status: "approved";
+      /**
+       * Activation Status
+       * @default inactive
+       * @constant
+       */
+      activation_status: "inactive";
+      /**
+       * Execution Enabled
+       * @default false
+       * @constant
+       */
+      execution_enabled: false;
+    };
     /** PaperPolicyBundleCreate */
     PaperPolicyBundleCreate: {
       limits: components["schemas"]["RiskLimits-Input"];
@@ -1277,10 +1351,10 @@ export interface components {
       execution_hash: string;
       /**
        * Approval Status
-       * @default unapproved
-       * @constant
+       * @enum {string}
        */
-      approval_status: "unapproved";
+      approval_status:
+        "unapproved" | "reviewed" | "changes_requested" | "approved";
       /**
        * Execution Enabled
        * @default false
@@ -1342,10 +1416,9 @@ export interface components {
       reviewed_at: string;
       /**
        * Approval Status
-       * @default unapproved
-       * @constant
+       * @enum {string}
        */
-      approval_status: "unapproved";
+      approval_status: "reviewed" | "changes_requested" | "approved";
       /**
        * Execution Enabled
        * @default false
@@ -2685,6 +2758,74 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PaperPolicyReviewResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_paper_policy_approval_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__approval_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        bundle_id: string;
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaperPolicyApprovalResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  approve_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__approval_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        bundle_id: string;
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PaperPolicyApprovalCreate"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PaperPolicyApprovalResponse"];
         };
       };
       /** @description Validation Error */

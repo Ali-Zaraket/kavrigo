@@ -2,6 +2,8 @@
 
 Status: accepted for the local control-plane slice, 2026-09-19.
 
+Approval status handling is extended by ADR 0036. The review remains non-activating.
+
 ## Context
 
 ADR 0031 stores immutable policy candidates but cannot record a human review. The master

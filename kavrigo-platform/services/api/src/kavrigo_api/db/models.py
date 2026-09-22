@@ -44,6 +44,7 @@ __all__ = [
     "Base",
     "IdempotencyKey",
     "Membership",
+    "PaperPolicyApproval",
     "PaperPolicyBundle",
     "PaperPolicyReview",
     "User",
@@ -60,6 +61,7 @@ TENANT_SCOPED_TABLES: tuple[str, ...] = (
     "agents",
     "agent_versions",
     "paper_policy_bundles",
+    "paper_policy_approvals",
     "paper_policy_reviews",
     "idempotency_keys",
     "audit_events",
@@ -75,6 +77,7 @@ SELF_POLICIED_TABLES: tuple[str, ...] = ("workspaces",)
 APPEND_ONLY_TABLES: tuple[str, ...] = (
     "agent_versions",
     "paper_policy_bundles",
+    "paper_policy_approvals",
     "paper_policy_reviews",
     "audit_events",
     "engine_commands",
@@ -346,7 +349,58 @@ class PaperPolicyReview(Base):
             ],
             name="fk_paper_review_bundle_workspace",
         ),
+        UniqueConstraint("review_id", "workspace_id", name="uq_paper_review_workspace"),
         Index("ix_paper_policy_reviews_workspace_id", "workspace_id", "bundle_id"),
+        {"schema": SCHEMA},
+    )
+
+
+class PaperPolicyApproval(Base):
+    """One immutable, non-activating approval of an advancing policy review."""
+
+    __tablename__ = "paper_policy_approvals"
+
+    approval_id: Mapped[str] = mapped_column(String(35), primary_key=True)
+    review_id: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)
+    bundle_id: Mapped[str] = mapped_column(String(35), nullable=False, unique=True)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey(f"{SCHEMA}.workspaces.workspace_id"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    risk_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    execution_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    approved_at: Mapped[datetime] = _ts(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint(r"approval_id ~ '^pa_[0-9a-f]{32}$'", name="approval_id_format"),
+        CheckConstraint(r"risk_hash ~ '^sha256:[0-9a-f]{64}$'", name="approval_risk_hash_format"),
+        CheckConstraint(
+            r"execution_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="approval_execution_hash_format",
+        ),
+        CheckConstraint(
+            r"request_hash ~ '^sha256:[0-9a-f]{64}$'", name="approval_request_hash_format"
+        ),
+        ForeignKeyConstraint(
+            ["review_id", "workspace_id"],
+            [
+                f"{SCHEMA}.paper_policy_reviews.review_id",
+                f"{SCHEMA}.paper_policy_reviews.workspace_id",
+            ],
+            name="fk_paper_approval_review_workspace",
+        ),
+        ForeignKeyConstraint(
+            ["bundle_id", "workspace_id"],
+            [
+                f"{SCHEMA}.paper_policy_bundles.bundle_id",
+                f"{SCHEMA}.paper_policy_bundles.workspace_id",
+            ],
+            name="fk_paper_approval_bundle_workspace",
+        ),
+        Index("ix_paper_policy_approvals_workspace_id", "workspace_id", "bundle_id"),
         {"schema": SCHEMA},
     )
 

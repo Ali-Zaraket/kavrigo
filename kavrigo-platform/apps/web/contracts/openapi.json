@@ -1388,6 +1388,130 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace_id}/paper/policy-bundles/{bundle_id}/approval": {
+      "post": {
+        "tags": [
+          "paper-policies"
+        ],
+        "summary": "Approve the exact reviewed paper policies without activating execution",
+        "operationId": "approve_paper_policy_bundle_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__approval_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^pb_[0-9a-f]{32}$",
+              "title": "Bundle Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaperPolicyApprovalCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperPolicyApprovalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "paper-policies"
+        ],
+        "summary": "Read the non-activating approval for a paper-policy candidate",
+        "operationId": "get_paper_policy_approval_v1_workspaces__workspace_id__paper_policy_bundles__bundle_id__approval_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^pb_[0-9a-f]{32}$",
+              "title": "Bundle Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaperPolicyApprovalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3242,6 +3366,120 @@
         ],
         "title": "PaperAccountView"
       },
+      "PaperPolicyApprovalCreate": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "pattern": "^pr_[0-9a-f]{32}$",
+            "title": "Review Id"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "Reason"
+          },
+          "risk_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Hash"
+          },
+          "execution_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Execution Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "review_id",
+          "reason",
+          "risk_hash",
+          "execution_hash"
+        ],
+        "title": "PaperPolicyApprovalCreate",
+        "description": "Approve the exact policy documents recorded by an advancing review."
+      },
+      "PaperPolicyApprovalResponse": {
+        "properties": {
+          "approval_id": {
+            "type": "string",
+            "pattern": "^pa_[0-9a-f]{32}$",
+            "title": "Approval Id"
+          },
+          "review_id": {
+            "type": "string",
+            "pattern": "^pr_[0-9a-f]{32}$",
+            "title": "Review Id"
+          },
+          "bundle_id": {
+            "type": "string",
+            "pattern": "^pb_[0-9a-f]{32}$",
+            "title": "Bundle Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "risk_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Hash"
+          },
+          "execution_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Execution Hash"
+          },
+          "approved_by": {
+            "type": "string",
+            "title": "Approved By"
+          },
+          "approved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Approved At"
+          },
+          "approval_status": {
+            "type": "string",
+            "const": "approved",
+            "title": "Approval Status",
+            "default": "approved"
+          },
+          "activation_status": {
+            "type": "string",
+            "const": "inactive",
+            "title": "Activation Status",
+            "default": "inactive"
+          },
+          "execution_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Execution Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "approval_id",
+          "review_id",
+          "bundle_id",
+          "workspace_id",
+          "reason",
+          "risk_hash",
+          "execution_hash",
+          "approved_by",
+          "approved_at"
+        ],
+        "title": "PaperPolicyApprovalResponse"
+      },
       "PaperPolicyBundleCreate": {
         "properties": {
           "limits": {
@@ -3308,9 +3546,13 @@
           },
           "approval_status": {
             "type": "string",
-            "const": "unapproved",
-            "title": "Approval Status",
-            "default": "unapproved"
+            "enum": [
+              "unapproved",
+              "reviewed",
+              "changes_requested",
+              "approved"
+            ],
+            "title": "Approval Status"
           },
           "execution_enabled": {
             "type": "boolean",
@@ -3341,6 +3583,7 @@
           "execution",
           "risk_hash",
           "execution_hash",
+          "approval_status",
           "reason",
           "created_by",
           "created_at"
@@ -3435,9 +3678,12 @@
           },
           "approval_status": {
             "type": "string",
-            "const": "unapproved",
-            "title": "Approval Status",
-            "default": "unapproved"
+            "enum": [
+              "reviewed",
+              "changes_requested",
+              "approved"
+            ],
+            "title": "Approval Status"
           },
           "execution_enabled": {
             "type": "boolean",
@@ -3457,7 +3703,8 @@
           "risk_hash",
           "execution_hash",
           "reviewed_by",
-          "reviewed_at"
+          "reviewed_at",
+          "approval_status"
         ],
         "title": "PaperPolicyReviewResponse"
       },
