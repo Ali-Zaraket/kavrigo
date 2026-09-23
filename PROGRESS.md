@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-09-23 deterministic reference-backtest slice:** ADR 0039 adds hash-bound, point-in-time
+BTC/ETH bar fixtures and a long-only EMA diagnostic strategy for pinned NautilusTrader 1.231.0.
+Single-instrument runs now exercise real decisions, cash-account orders, fills, fees, configured
+slippage, Decimal equity metrics and a buy-and-hold benchmark through the durable Temporal
+workflow. Every result carries five limitations, is non-publishable and cannot satisfy paper
+activation. Licensed catalog data, actual agent-decision/risk replay and out-of-sample promotion
+evidence remain open. Full regression: **977 passed** against the local stack; Ruff covers 316
+files and strict typing covers 144 sources. Rebuilt API and worker images started successfully;
+API liveness/readiness and Studio return HTTP 200.
+
 **2026-09-23 data-entitlement slice:** ADR 0038 adds an operator-controlled, append-only ledger
 for global provider rights and per-workspace data-pack access. Activation now evaluates both
 scopes at the frozen evidence time and assessment time, verifies canonical event hashes, and
@@ -111,8 +121,8 @@ Temporal histories carry references; uncertain model dispatch stops without retr
 
 The UI now supports versioned paper drafts and inspection of stored runs/evidence/accounts.
 The full paper product milestone is **not achieved**. Order-capable paper run-launch/account commands,
-hosted sign-in, meaningful Nautilus strategy/data and
-benchmark wiring, licensed durable data collection, paid providers, shared billing, continuous production
+hosted sign-in, licensed catalog-backed agent/risk replay backtests, licensed durable data
+collection, paid providers, shared billing, continuous production
 operation, hosted security/retention and independent review remain open. See
 [ADR 0027](docs/adr/0027-durable-paper-workflows.md),
 [workflow operations](docs/product/durable-workflows.md) and HANDOFF.md's earlier carry-overs.
@@ -127,7 +137,7 @@ operation, hosted security/retention and independent review remain open. See
 | 4. Auth / tenants | Implemented slice | Real Clerk config and membership mutation routes deferred |
 | 5. Market ingestion | Recorded replay and ephemeral public WebSocket sample | Licensed storage and Redpanda producer deferred |
 | 6. Features | Deterministic point-in-time slice | Stored-window loader deferred |
-| 7. Backtest | Contracts/engine configuration | No strategy/data wiring or meaningful BTC/ETH run |
+| 7. Backtest | Bounded BTC/ETH reference strategy/data run through Nautilus and Temporal | Licensed catalog loader, actual agent/risk replay and out-of-sample evidence pending |
 | 8. Model gateway | Local/mock | No paid provider or durable ledger |
 | 9. News intelligence | Local synthetic feed | No live/durable collector |
 | 10. Agent runtime | Local decisions/allocations | Mock workflow backend wired; hosted/authenticated routes pending |
@@ -182,6 +192,7 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | ADR 0035, 2026-09-21 | Full pytest with isolated PostgreSQL and real Temporal | 961 passed (38.83s), including authenticated testnet source persistence/inspection and bounded-sample failure |
 | ADR 0035 | Ruff check/format; strict mypy; uv lock/OpenAPI; web lint/format/types/tests/build | 298 Python files; 137 typed sources; three web boundary tests and production build passed |
 | ADR 0035 | Live Binance Spot Testnet → API → Temporal → agent smoke | Completed `testnet_rehearsal`; labeled evidence persisted, `no_candidates`, account sequence 0, no positions |
+| ADR 0039, 2026-09-23 | Full pytest with PostgreSQL/ClickHouse/Temporal; Ruff/format; strict mypy | 977 passed; 316 Python files formatted; 144 typed sources; bounded reference workflow integration passed |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -195,8 +206,8 @@ The numbered plan has local slices through step 15, with substantial explicit ca
 The next product slice should add evidence-backed approval of reviewed policy candidates and wire authenticated, approved
 real-data paper launch to stored decisions/risk/results. Local synthetic rehearsal already
 works with placeholder draft policy IDs; it is execution-disabled. Preserve all earlier
-carry-overs, notably Nautilus strategy/data/benchmark
-wiring, hosted auth, licensed market-data retention and operational review. No hosted telemetry
+carry-overs, notably licensed catalog-backed agent/risk replay backtests, hosted auth, licensed
+market-data retention and operational review. No hosted telemetry
 account or paid model is configured; synthetic eval passes do not measure model accuracy.
 
 Keep `LIVE_TRADING_ENABLED=false` and `DEFAULT_TRADING_MODE=paper`; no exchange credentials

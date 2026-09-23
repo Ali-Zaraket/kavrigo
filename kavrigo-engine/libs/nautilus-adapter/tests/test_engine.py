@@ -12,18 +12,23 @@ from decimal import Decimal
 
 import nautilus_trader
 import pytest
+from pydantic import ValidationError
 
 from kavrigo_backtest import (
+    BacktestBar,
     BacktestRunConfig,
     CostModel,
     DatasetManifest,
     DatasetSource,
     FeeSchedule,
+    InlineBarDataset,
     LatencyModel,
+    LongOnlyEmaStrategy,
     ReproducibilityBundle,
     RunStatus,
     SlippageModel,
     TimeBasis,
+    bar_dataset_hash,
 )
 from kavrigo_domain import (
     AgentSpec,
@@ -105,6 +110,69 @@ def _config(**overrides: object) -> BacktestRunConfig:
     return BacktestRunConfig(**values)  # type: ignore[arg-type]
 
 
+def _inline_config() -> BacktestRunConfig:
+    instrument = InstrumentId.parse("BTC-USDT.BINANCE")
+    prices = [
+        Decimal(100 + (i if i < 15 else 30 - i if i < 30 else i - 30 if i < 45 else 60 - i))
+        for i in range(60)
+    ]
+    bars = tuple(
+        BacktestBar(
+            instrument_id=instrument,
+            interval_seconds=900,
+            open=price,
+            high=price + Decimal(1),
+            low=price - Decimal(1),
+            close=price + Decimal("0.5"),
+            volume=Decimal("1000.000000"),
+            event_time=START + timedelta(minutes=15 * index),
+            ingested_at=START + timedelta(minutes=15 * index, seconds=1),
+        )
+        for index, price in enumerate(prices)
+    )
+    inline_data = InlineBarDataset(bars=bars, content_hash=bar_dataset_hash(bars))
+    period_end = START + timedelta(days=1)
+    dataset = DatasetManifest(
+        manifest_id=oid("ds", 2),
+        created_at=period_end,
+        period_start=START,
+        period_end=period_end,
+        time_basis=TimeBasis.INGESTED_AT,
+        sources=[
+            DatasetSource(
+                provider="deterministic-fixture",
+                venue="BINANCE",
+                dataset="inline-bars-v1",
+                row_count=len(bars),
+                content_hash=inline_data.content_hash,
+                first_event_time=bars[0].event_time,
+                last_event_time=bars[-1].event_time,
+                last_ingested_at=bars[-1].ingested_at,
+                license_ref="self-authored-fixture-v1",
+            )
+        ],
+        instruments=[instrument.value],
+        feature_set_version="v1",
+        notes="Deterministic synthetic shape for adapter and workflow validation only.",
+    )
+    spec = AgentSpec(
+        name="btc-reference-fixture",
+        universe=UniverseConfig(instruments=[instrument]),
+        schedule=ScheduleConfig(decision_interval_seconds=900),
+        data_packs=[DataPack.PRICE_TECHNICAL],
+        model_policy=ModelPolicy(max_cost_per_decision_usd=Decimal("0.10")),
+        risk_policy_ref=oid("rp"),
+        execution_policy_ref=oid("ep"),
+    )
+    return _config(
+        spec=spec,
+        dataset=dataset,
+        benchmark_instrument=instrument.value,
+        inline_data=inline_data,
+        strategy=LongOnlyEmaStrategy(trade_notional=Money(amount=Decimal("100"), currency="USDT")),
+    )
+
+
 @pytest.fixture
 def adapter() -> NautilusBacktestAdapter:
     return NautilusBacktestAdapter()
@@ -160,6 +228,15 @@ class TestPreflightRefusal:
     def test_a_clean_dataset_passes_preflight(self, adapter: NautilusBacktestAdapter) -> None:
         assert adapter.preflight(_config()) == []
 
+    def test_inline_data_must_match_a_manifest_source_hash(self) -> None:
+        config = _inline_config()
+        source = config.dataset.sources[0].model_copy(update={"content_hash": HASH})
+        values = config.model_dump(mode="python")
+        values["dataset"] = config.dataset.model_copy(update={"sources": [source]})
+
+        with pytest.raises(ValidationError, match="not bound to a matching manifest source"):
+            BacktestRunConfig.model_validate(values)
+
     def test_a_leaky_dataset_is_refused_before_any_engine_work(
         self, adapter: NautilusBacktestAdapter, bundle: ReproducibilityBundle
     ) -> None:
@@ -203,6 +280,59 @@ class TestRun:
         assert result.cost_model.fees.taker_bps == Decimal("10")
         assert result.bundle.engine_name == "nautilus_trader"
         assert result.bundle.engine_version == "1.231.0"
+
+    def test_an_inline_btc_fixture_executes_and_reports_after_cost_benchmark_metrics(
+        self, adapter: NautilusBacktestAdapter
+    ) -> None:
+        config = _inline_config()
+        bundle = adapter.bundle_for(
+            config,
+            spec_hash=HASH,
+            prompt_hash=HASH,
+            feature_manifest_hash=HASH,
+            model_profile="reference_strategy",
+            resolved_model_identifier="no-model",
+            container_image_digest="sha256:deadbeef",
+            code_version="fixture-v1",
+            created_at=END,
+        )
+
+        result = adapter.run(config, bundle=bundle)
+
+        assert result.status is RunStatus.COMPLETED
+        assert result.decisions_evaluated == 53
+        assert result.orders_submitted == 4
+        assert result.orders_rejected_by_risk == 0
+        assert result.metrics is not None
+        assert result.metrics.trade_count == 2
+        assert result.metrics.total_fees.amount > 0
+        assert result.metrics.benchmark_return is not None
+        assert result.metrics.net_return < result.metrics.gross_return
+        assert result.limitations == sorted(result.limitations)
+        assert not result.is_publishable
+
+    def test_inline_execution_is_deterministic_for_one_frozen_config(
+        self, adapter: NautilusBacktestAdapter
+    ) -> None:
+        config = _inline_config()
+        bundle = adapter.bundle_for(
+            config,
+            spec_hash=HASH,
+            prompt_hash=HASH,
+            feature_manifest_hash=HASH,
+            model_profile="reference_strategy",
+            resolved_model_identifier="no-model",
+            container_image_digest="sha256:deadbeef",
+            code_version="fixture-v1",
+            created_at=END,
+        )
+
+        first = adapter.run(config, bundle=bundle)
+        second = adapter.run(config, bundle=bundle)
+
+        assert first.metrics == second.metrics
+        assert first.decisions_evaluated == second.decisions_evaluated
+        assert first.orders_submitted == second.orders_submitted
 
     def test_two_runs_of_one_configuration_produce_the_same_bundle_hash(
         self, adapter: NautilusBacktestAdapter

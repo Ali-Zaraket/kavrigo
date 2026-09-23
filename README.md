@@ -71,7 +71,9 @@ rehearsal, durable Temporal receipts, deterministic risk and paper accounting, l
 and immutable policy candidates with independent review recommendations. A public market-data
 WebSocket transport is available for brief, explicitly enabled local samples that discard feed
 data. The end-to-end product milestone still needs licensed real-data persistence, meaningful
-Nautilus strategy/data and benchmark wiring, approval gates, and an approved paper launch.
+catalog-backed agent/risk replay in Nautilus, approval gates, and an approved paper launch. A
+bounded synthetic reference strategy now verifies Nautilus decisions, fills, costs and benchmark
+metrics but remains explicitly non-promotable.
 
 See [`PROGRESS.md`](PROGRESS.md) for current verification counts and remaining work, and
 [durable workflow operations](docs/product/durable-workflows.md) for recovery limits.

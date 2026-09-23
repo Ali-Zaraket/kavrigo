@@ -51,3 +51,4 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0036](0036-reviewed-paper-policy-approval.md) | Immutable approval of reviewed paper policies | Accepted for local control plane |
 | [0037](0037-fail-closed-paper-activation-assessment.md) | Immutable, fail-closed paper-activation assessment | Accepted for local control plane |
 | [0038](0038-point-in-time-data-entitlement-ledger.md) | Point-in-time platform and workspace data entitlements | Accepted for local control plane |
+| [0039](0039-bounded-nautilus-reference-backtest.md) | Bounded deterministic Nautilus reference backtest | Accepted for local validation |

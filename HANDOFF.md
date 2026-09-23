@@ -31,6 +31,14 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-23:** ADR 0039 adds a bounded, hash-bound BTC/ETH reference backtest through pinned
+> NautilusTrader and the durable Temporal workflow. It produces actual decisions, cash-account
+> fills, after-cost metrics and a benchmark. Five mandatory limitations keep it non-publishable
+> and ineligible for paper activation. Licensed catalog data and actual agent/risk replay remain
+> open. Full regression: 977 passed against the local stack; Ruff covers 316 files and strict
+> typing covers 144 sources. Rebuilt API and worker images are running; API health/readiness and
+> Studio return HTTP 200.
+
 > **2026-09-23:** ADR 0038 adds immutable platform and workspace data-entitlement events. Paper
 > activation now proves provider rights and workspace pack access at evidence and assessment
 > time and stores exact event references. The application role cannot mutate the ledger, and no
@@ -44,7 +52,7 @@
 > applied locally; 939 tests pass with 25 expected integration skips. The next slice is licensed
 > real-market evidence plus explicit entitlement records, still without enabling orders.
 
-**Updated:** 2026-09-23 · **Position:** step 15 plus point-in-time entitlement-gated activation assessment · **Next:** licensed data persistence, promotable evaluation evidence and supervised paper activation
+**Updated:** 2026-09-23 · **Position:** step 15 plus a bounded reference backtest and point-in-time entitlement-gated activation assessment · **Next:** licensed catalog data, agent/risk replay, promotable evaluation evidence and supervised paper activation
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -78,7 +86,7 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 4 | Auth / tenant control plane | done |
 | 5 | Market ingestion | public WebSocket transport and ephemeral sample verified; licensed durable collection and Redpanda producer remain — see §5 |
 | 6 | Feature engine | done |
-| 7 | Backtest engine | done **except the strategy layer** — see §5 |
+| 7 | Backtest engine | bounded reference strategy/data path done; licensed catalog and actual agent/risk replay remain — see §5 |
 | 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
 | 9 | News intelligence | local synthetic-feed slice done — see §5 |
 | 10 | Agent runtime | local decision/allocation slice; destination stack verified — see §5 |
@@ -239,14 +247,16 @@ are scoped-out work with a reason.
 
 ### From step 7 — backtest engine
 
-- **No strategy layer.** The agent runtime that produces decisions is step 10, so a run today
-  completes with **zero decisions** and flat metrics. This was reported honestly rather than
-  wired with a placeholder strategy that would make the engine look further along than it is.
-- **The deterministic BTC/ETH fixture run is deferred with it.** `AGENTS.md` step 7 asks for it;
-  it needs a strategy to be meaningful.
-- **Nautilus data and instrument wiring is not done.** `add_instrument()` and `add_data()` are
-  never called. `build_engine()` configures the venue, account, fee, fill and latency models and
-  is tested against a real engine — that boundary works; the data path does not exist yet.
+- **Bounded reference execution is implemented.** Hash-addressed BTC/ETH bar fixtures now call
+  `add_instrument()`, `add_data()` and a long-only EMA diagnostic strategy in pinned
+  NautilusTrader 1.231.0. The durable workflow records decisions, accepted cash-account orders,
+  fills, after-cost Decimal metrics and a buy-and-hold benchmark.
+- **Reference output is not promotion evidence.** Five mandatory limitations identify bar-level
+  fidelity, absent deterministic risk replay, inline rather than catalog data, unverified
+  provider entitlement and the internal strategy rather than the versioned agent runtime. Any
+  limitation makes the result non-publishable and activation-ineligible.
+- **One instrument per engine run.** BTC and ETH fixtures run independently because an upstream
+  1.231.0 issue reports registration-order-dependent fills in multi-instrument cash backtests.
 - **No dataset builder.** `DatasetManifest` is a contract with leakage detection and a content
   hash. Nothing yet *constructs* one from ClickHouse rows.
 
@@ -308,9 +318,9 @@ are scoped-out work with a reason.
 - **Model orchestration remains scripted.** No vendor SDK/tool loop. One configured horizon per
   evaluation; workflow scheduling/trigger delivery is step 13. Runtime and gateway budgets and
   idempotency are bounded in one process, not durable/distributed scheduling or billing.
-- **Backtest strategy/data wiring is still incomplete.** The runtime supplies actual decisions,
-  but no Nautilus strategy or data adapter has been connected. Recorded-model artifact loading
-  must be combined with risk and paper fills for the pending meaningful BTC/ETH fixture run.
+- **Backtest promotion wiring is still incomplete.** The bounded Nautilus reference path does
+  not replay runtime decisions or deterministic risk. Recorded model artifacts must be combined
+  with licensed catalog data, risk outcomes and out-of-sample evidence before promotion.
 - **API prompt migration is explicit.** New versions pin shared prompt v2 matching the gateway;
   prior scaffold v1 rows remain immutable and are refused by this runtime until a new version
   is created. Canonical Decimal hashing now avoids ambient-context rounding; old artifacts
@@ -408,8 +418,9 @@ are scoped-out work with a reason.
 - Data health consumes frozen observations and emits an outbox event. Supervision runs 1-20
   reconciliation cycles. Live provider reconnect, incident delivery and automatic rescheduling
   are not implemented. Only run creation events have an outbox consumer in this slice.
-- Backtest workflow invokes Nautilus but refuses its current zero-decision result. Meaningful
-  BTC/ETH strategy/data/benchmark wiring is still pending; it has not been silently completed.
+- Backtest workflow now completes the bounded BTC/ETH reference strategy/data/benchmark run and
+  still refuses legacy zero-decision diagnostics. Its mandatory limitations prevent publishing
+  or using it as paper-activation evidence.
 - Temporal Cloud auth, deployment identity/separation, encryption/retention, hosted exporters,
   production performance and independent security review remain. The local worker is trusted
   internal code; references and hashes do not replace tenant authentication.
@@ -616,6 +627,11 @@ BTC/USDT and ETH/USDT activity for at most 15 seconds, freezes derived evidence,
 agent workflow and labels the result `testnet_rehearsal`. The account remains globally killed
 with zero exposure and no orders. This proves network-to-agent wiring, not real-data paper
 activation; do not relax the production provider-rights gate.
+
+ADR 0039 adds a deterministic, bounded Nautilus reference backtest for BTC/ETH. It validates
+engine and Temporal plumbing with synthetic, hash-bound bars and an internal long-only strategy.
+Do not use its performance for promotion: licensed catalog extraction, actual runtime decision
+and risk replay, and out-of-sample evidence remain required.
 
 ---
 

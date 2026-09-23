@@ -18,6 +18,7 @@ from typing import Annotated, Protocol, Self, runtime_checkable
 from pydantic import Field, model_validator
 
 from kavrigo_backtest.costs import CostModel
+from kavrigo_backtest.fixture import InlineBarDataset, LongOnlyEmaStrategy
 from kavrigo_backtest.manifest import DatasetManifest
 from kavrigo_backtest.metrics import PerformanceMetrics
 from kavrigo_domain import AgentSpec, DomainModel, ModelCallRecord, Money, UtcDatetime, content_hash
@@ -53,6 +54,8 @@ class BacktestRunConfig(DomainModel):
     costs: CostModel
     starting_balance: Money
     benchmark_instrument: Annotated[str | None, Field(default=None, max_length=64)] = None
+    inline_data: InlineBarDataset | None = None
+    strategy: LongOnlyEmaStrategy | None = None
     random_seed: Annotated[int, Field(ge=0, le=2**31 - 1)] = 0
     """Pinned even where the engine is deterministic: fill models and any sampling must not
     vary between two runs claiming the same configuration (``MASTER_BUILD_SPEC.md`` §12.2)."""
@@ -68,6 +71,57 @@ class BacktestRunConfig(DomainModel):
                 f"dataset does not cover every instrument in the agent's universe: "
                 f"{sorted(missing)}"
             )
+        if (self.inline_data is None) != (self.strategy is None):
+            raise ValueError("inline data and its reference strategy must be supplied together")
+        if self.inline_data is not None and self.strategy is not None:
+            if len(self.spec.universe.instruments) != 1:
+                raise ValueError("the inline reference strategy supports exactly one instrument")
+            instrument = self.spec.universe.instruments[0]
+            bars = self.inline_data.bars
+            if {bar.instrument_id for bar in bars} != {instrument}:
+                raise ValueError("inline bars must cover exactly the configured instrument")
+            if len(bars) < self.strategy.slow_period + 2:
+                raise ValueError("inline dataset is too short for the configured EMA periods")
+            if any(
+                bar.event_time < self.dataset.period_start
+                or bar.event_time > self.dataset.period_end
+                or bar.ingested_at > self.dataset.created_at
+                for bar in bars
+            ):
+                raise ValueError("inline bars fall outside the point-in-time dataset manifest")
+            matching_sources = [
+                source
+                for source in self.dataset.sources
+                if source.content_hash == self.inline_data.content_hash
+            ]
+            if not matching_sources or all(
+                source.row_count != len(bars) for source in matching_sources
+            ):
+                raise ValueError("inline dataset is not bound to a matching manifest source")
+            if self.strategy.trade_notional.currency != instrument.quote:
+                raise ValueError("strategy notional currency must match the instrument quote")
+            if self.starting_balance.currency != instrument.quote:
+                raise ValueError("starting balance currency must match the instrument quote")
+            if instrument.quote != "USDT":
+                raise ValueError("the current inline Nautilus slice supports USDT spot only")
+            if self.benchmark_instrument != instrument.value:
+                raise ValueError(
+                    "inline reference runs require the configured instrument benchmark"
+                )
+            if len({bar.interval_seconds for bar in bars}) != 1:
+                raise ValueError("inline reference bars must share one interval")
+            price_quantum = Decimal(1).scaleb(-self.strategy.price_precision)
+            size_quantum = Decimal(1).scaleb(-self.strategy.size_precision)
+            if any(
+                value.quantize(price_quantum) != value
+                for bar in bars
+                for value in (bar.open, bar.high, bar.low, bar.close)
+            ) or any(bar.volume.quantize(size_quantum) != bar.volume for bar in bars):
+                raise ValueError("inline bars exceed the configured price or size precision")
+            if self.strategy.trade_notional.amount < bars[0].close * self.strategy.size_increment:
+                raise ValueError("trade notional cannot buy one configured size increment")
+            if all(source.last_ingested_at < bars[-1].ingested_at for source in matching_sources):
+                raise ValueError("manifest source does not cover the final inline ingestion time")
         return self
 
     @property
@@ -80,6 +134,10 @@ class BacktestRunConfig(DomainModel):
                 "costs": self.costs,
                 "starting_balance": self.starting_balance,
                 "benchmark": self.benchmark_instrument,
+                "inline_data": (
+                    self.inline_data.content_hash if self.inline_data is not None else None
+                ),
+                "strategy": self.strategy,
                 "seed": self.random_seed,
             }
         )
@@ -178,6 +236,7 @@ class BacktestResult(DomainModel):
     decisions_evaluated: Annotated[int, Field(ge=0)] = 0
     orders_submitted: Annotated[int, Field(ge=0)] = 0
     orders_rejected_by_risk: Annotated[int, Field(ge=0)] = 0
+    limitations: Annotated[list[str], Field(max_length=16)] = []
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
@@ -203,7 +262,11 @@ class BacktestResult(DomainModel):
         Refused and failed runs are not results; a completed run with leakage findings is a
         result about a dataset that could see the future, which is worse than no figure at all.
         """
-        return self.status is RunStatus.COMPLETED and not self.leakage_findings
+        return (
+            self.status is RunStatus.COMPLETED
+            and not self.leakage_findings
+            and not self.limitations
+        )
 
 
 @runtime_checkable

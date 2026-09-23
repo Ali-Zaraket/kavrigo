@@ -15,6 +15,12 @@ from kavrigo_backtest.costs import (
     SlippageModel,
     TradeCost,
 )
+from kavrigo_backtest.fixture import (
+    BacktestBar,
+    InlineBarDataset,
+    LongOnlyEmaStrategy,
+    bar_dataset_hash,
+)
 from kavrigo_backtest.manifest import (
     DatasetManifest,
     DatasetSource,
@@ -40,6 +46,7 @@ from kavrigo_backtest.run import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "BacktestBar",
     "BacktestEngine",
     "BacktestResult",
     "BacktestRunConfig",
@@ -48,9 +55,11 @@ __all__ = [
     "DatasetSource",
     "EquityPoint",
     "FeeSchedule",
+    "InlineBarDataset",
     "LatencyModel",
     "LeakageFinding",
     "LiquidityAssumption",
+    "LongOnlyEmaStrategy",
     "PerformanceMetrics",
     "ReproducibilityBundle",
     "RunStatus",
@@ -59,6 +68,7 @@ __all__ = [
     "TradeCost",
     "TradeOutcome",
     "__version__",
+    "bar_dataset_hash",
     "compute_metrics",
     "cost_model_hash",
     "refuse",
