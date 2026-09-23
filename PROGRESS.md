@@ -1,5 +1,17 @@
 # Kavrigo progress
 
+**2026-09-23 data-entitlement slice:** ADR 0038 adds an operator-controlled, append-only ledger
+for global provider rights and per-workspace data-pack access. Activation now evaluates both
+scopes at the frozen evidence time and assessment time, verifies canonical event hashes, and
+binds the exact event IDs/hashes into its immutable receipt. The application role is read-only;
+no provider grants or user mutation route were added. Synthetic/testnet evidence remains
+ineligible and activation remains inactive. Migration 0007 passed upgrade, downgrade and
+reapply in the disposable database and is applied locally. Full regression: **944 passed, 25
+expected integration skips**; Ruff covers 312 files, strict typing covers 143 sources, and
+OpenAPI generation plus web lint/format/types/3 tests/build pass. The rebuilt API and Studio
+return HTTP 200. Provider procurement, licensed durable ingestion and supervised paper
+activation remain open.
+
 **2026-09-22 paper-activation assessment slice:** ADR 0037 adds an immutable, MFA-gated
 eligibility assessment bound to one agent version, approved policy hashes, evaluation input and
 evaluation receipt. Seven explicit gates explain every blocker. Synthetic/testnet evidence and

@@ -50,3 +50,4 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0035](0035-binance-testnet-agent-rehearsal.md) | Testnet evidence rehearsal remains simulated | Accepted for local rehearsal |
 | [0036](0036-reviewed-paper-policy-approval.md) | Immutable approval of reviewed paper policies | Accepted for local control plane |
 | [0037](0037-fail-closed-paper-activation-assessment.md) | Immutable, fail-closed paper-activation assessment | Accepted for local control plane |
+| [0038](0038-point-in-time-data-entitlement-ledger.md) | Point-in-time platform and workspace data entitlements | Accepted for local control plane |

@@ -36,6 +36,7 @@ _TABLES = (
     "audit_events",
     "idempotency_keys",
     "paper_activation_assessments",
+    "data_entitlement_events",
     "agent_versions",
     "paper_policy_approvals",
     "paper_policy_reviews",

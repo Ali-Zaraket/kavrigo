@@ -3668,6 +3668,13 @@
             "type": "array",
             "title": "License Refs"
           },
+          "entitlement_event_refs": {
+            "items": {
+              "$ref": "#/components/schemas/PaperActivationEntitlementRef"
+            },
+            "type": "array",
+            "title": "Entitlement Event Refs"
+          },
           "gate_results": {
             "items": {
               "$ref": "#/components/schemas/PaperActivationGateResult"
@@ -3727,6 +3734,7 @@
           "evaluation_output_hash",
           "providers",
           "license_refs",
+          "entitlement_event_refs",
           "gate_results",
           "decision",
           "reason",
@@ -3734,6 +3742,50 @@
           "assessed_at"
         ],
         "title": "PaperActivationAssessmentResponse"
+      },
+      "PaperActivationEntitlementRef": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "pattern": "^dee_[0-9a-f]{32}$",
+            "title": "Event Id"
+          },
+          "event_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Event Hash"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "workspace"
+            ],
+            "title": "Scope"
+          },
+          "provider": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Provider"
+          },
+          "license_ref": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "License Ref"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "event_hash",
+          "scope",
+          "provider",
+          "license_ref"
+        ],
+        "title": "PaperActivationEntitlementRef"
       },
       "PaperActivationGateName": {
         "type": "string",

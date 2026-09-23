@@ -31,6 +31,12 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-23:** ADR 0038 adds immutable platform and workspace data-entitlement events. Paper
+> activation now proves provider rights and workspace pack access at evidence and assessment
+> time and stores exact event references. The application role cannot mutate the ledger, and no
+> production provider grant is seeded. Migration 0007 is applied locally; 944 tests pass with 25
+> expected integration skips. Licensed ingestion and supervised paper activation remain open.
+
 > **2026-09-22:** ADR 0037 adds append-only paper-activation eligibility assessments tied to an
 > immutable version, approved policy hashes and evaluation receipts. Every current assessment
 > remains blocked because synthetic/testnet evidence is non-promotable, no production provider
@@ -38,7 +44,7 @@
 > applied locally; 939 tests pass with 25 expected integration skips. The next slice is licensed
 > real-market evidence plus explicit entitlement records, still without enabling orders.
 
-**Updated:** 2026-09-22 · **Position:** step 15 plus fail-closed paper-activation assessment · **Next:** licensed data persistence, entitlement records and promotable evaluation evidence
+**Updated:** 2026-09-23 · **Position:** step 15 plus point-in-time entitlement-gated activation assessment · **Next:** licensed data persistence, promotable evaluation evidence and supervised paper activation
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both

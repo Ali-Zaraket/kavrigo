@@ -42,6 +42,7 @@ __all__ = [
     "AgentVersionRow",
     "AuditEvent",
     "Base",
+    "DataEntitlementEvent",
     "IdempotencyKey",
     "Membership",
     "PaperActivationAssessment",
@@ -61,6 +62,7 @@ TENANT_SCOPED_TABLES: tuple[str, ...] = (
     "memberships",
     "agents",
     "agent_versions",
+    "data_entitlement_events",
     "paper_activation_assessments",
     "paper_policy_bundles",
     "paper_policy_approvals",
@@ -78,6 +80,7 @@ SELF_POLICIED_TABLES: tuple[str, ...] = ("workspaces",)
 #: Tables that may never be updated or deleted from.
 APPEND_ONLY_TABLES: tuple[str, ...] = (
     "agent_versions",
+    "data_entitlement_events",
     "paper_activation_assessments",
     "paper_policy_bundles",
     "paper_policy_approvals",
@@ -416,6 +419,92 @@ class PaperPolicyApproval(Base):
     )
 
 
+class DataEntitlementEvent(Base):
+    """Operator-recorded platform or workspace data entitlement event."""
+
+    __tablename__ = "data_entitlement_events"
+
+    event_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[str | None] = mapped_column(
+        ForeignKey(f"{SCHEMA}.workspaces.workspace_id"), nullable=True
+    )
+    scope: Mapped[str] = mapped_column(String(16), nullable=False)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    license_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    rights: Mapped[list[str]] = mapped_column(ARRAY(String(32)), nullable=False)
+    data_packs: Mapped[list[str]] = mapped_column(ARRAY(String(32)), nullable=False)
+    contract_hash: Mapped[str | None] = mapped_column(String(71))
+    effective_at: Mapped[datetime] = _ts(nullable=False)
+    expires_at: Mapped[datetime | None] = _ts()
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    event_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    recorded_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_at: Mapped[datetime] = _ts(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint(r"event_id ~ '^dee_[0-9a-f]{32}$'", name="entitlement_event_id_format"),
+        CheckConstraint("scope IN ('platform','workspace')", name="entitlement_scope"),
+        CheckConstraint("action IN ('grant','revoke')", name="entitlement_action"),
+        CheckConstraint(
+            r"provider ~ '^[a-z0-9][a-z0-9._-]{0,63}$'", name="entitlement_provider_format"
+        ),
+        CheckConstraint("length(license_ref) > 0", name="entitlement_license_ref_present"),
+        CheckConstraint(
+            r"event_hash ~ '^sha256:[0-9a-f]{64}$'", name="entitlement_event_hash_format"
+        ),
+        CheckConstraint(
+            r"contract_hash IS NULL OR contract_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="entitlement_contract_hash_format",
+        ),
+        CheckConstraint(
+            "(scope = 'platform' AND workspace_id IS NULL) OR "
+            "(scope = 'workspace' AND workspace_id IS NOT NULL)",
+            name="entitlement_workspace_scope",
+        ),
+        CheckConstraint(
+            "expires_at IS NULL OR expires_at > effective_at",
+            name="entitlement_expiry_order",
+        ),
+        CheckConstraint(
+            "rights <@ ARRAY['application_display','derived_data','agent_decision',"
+            "'historical_storage']::varchar[]",
+            name="entitlement_rights_closed_set",
+        ),
+        CheckConstraint(
+            "data_packs <@ ARRAY['market_microstructure','price_technical','derivatives',"
+            "'onchain_core','stablecoins','etf_flows','tokenomics','defi','news','macro',"
+            "'security_events','social_attention','relative_strength']::varchar[]",
+            name="entitlement_data_packs_closed_set",
+        ),
+        CheckConstraint(
+            "(action = 'grant' AND cardinality(data_packs) > 0 AND "
+            "((scope = 'platform' AND cardinality(rights) > 0 AND contract_hash IS NOT NULL) "
+            "OR (scope = 'workspace' AND cardinality(rights) = 0 AND contract_hash IS NULL))) "
+            "OR (action = 'revoke' AND cardinality(rights) = 0 "
+            "AND cardinality(data_packs) = 0 AND contract_hash IS NULL)",
+            name="entitlement_event_shape",
+        ),
+        UniqueConstraint(
+            "scope",
+            "workspace_id",
+            "provider",
+            "license_ref",
+            "effective_at",
+            name="uq_entitlement_effective_event",
+            postgresql_nulls_not_distinct=True,
+        ),
+        Index(
+            "ix_data_entitlement_events_lookup",
+            "provider",
+            "license_ref",
+            "workspace_id",
+            "effective_at",
+        ),
+        {"schema": SCHEMA},
+    )
+
+
 class PaperActivationAssessment(Base):
     """One immutable decision from the fail-closed paper-activation gate."""
 
@@ -438,6 +527,10 @@ class PaperActivationAssessment(Base):
     evaluation_output_hash: Mapped[str | None] = mapped_column(String(71))
     providers: Mapped[list[str]] = mapped_column(ARRAY(String(64)), nullable=False)
     license_refs: Mapped[list[str]] = mapped_column(ARRAY(String(128)), nullable=False)
+    entitlement_event_refs: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    entitlement_event_refs_hash: Mapped[str] = mapped_column(String(71), nullable=False)
     gate_results: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
     gate_hash: Mapped[str] = mapped_column(String(71), nullable=False)
     decision: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -474,6 +567,10 @@ class PaperActivationAssessment(Base):
         CheckConstraint(
             r"evaluation_output_hash IS NULL OR evaluation_output_hash ~ '^sha256:[0-9a-f]{64}$'",
             name="activation_assessment_output_hash_format",
+        ),
+        CheckConstraint(
+            r"entitlement_event_refs_hash ~ '^sha256:[0-9a-f]{64}$'",
+            name="activation_assessment_entitlement_refs_hash_format",
         ),
         CheckConstraint(
             r"gate_hash ~ '^sha256:[0-9a-f]{64}$'",

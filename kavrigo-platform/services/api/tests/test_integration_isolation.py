@@ -88,6 +88,23 @@ class TestApplicationRolePrivileges:
             async with database.global_session() as session:
                 await session.execute(text("TRUNCATE kavrigo.audit_events"))
 
+    async def test_data_entitlements_are_read_only_to_the_application(
+        self, database: Database
+    ) -> None:
+        async with database.global_session() as session:
+            privileges = (
+                await session.execute(
+                    text(
+                        "SELECT has_table_privilege(current_user, "
+                        "'kavrigo.data_entitlement_events', 'SELECT') AS can_read, "
+                        "has_table_privilege(current_user, "
+                        "'kavrigo.data_entitlement_events', 'INSERT') AS can_insert"
+                    )
+                )
+            ).one()
+        assert privileges.can_read is True
+        assert privileges.can_insert is False
+
 
 class TestSchemaInvariants:
     """Catch a future table that forgets its isolation, rather than discovering it later."""

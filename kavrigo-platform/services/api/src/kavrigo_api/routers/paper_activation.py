@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import UTC, datetime
 from typing import Annotated, Literal, cast
 from uuid import UUID, uuid5
 
@@ -18,14 +19,17 @@ from kavrigo_api.repositories.agents import AgentRepository
 from kavrigo_api.repositories.audit import AuditRepository
 from kavrigo_api.repositories.paper_activation import PaperActivationRepository
 from kavrigo_api.repositories.paper_policies import PaperPolicyRepository
+from kavrigo_api.repositories.provider_entitlements import ProviderEntitlementRepository
 from kavrigo_api.schemas.paper_activation import (
     PaperActivationAssessmentCreate,
     PaperActivationAssessmentResponse,
+    PaperActivationEntitlementRef,
     PaperActivationGateName,
     PaperActivationGateResult,
 )
 from kavrigo_api.services.idempotency import idempotency_key_from, request_fingerprint
 from kavrigo_api.services.paper_policy_integrity import validate_approval
+from kavrigo_api.services.provider_entitlements import evaluate_provider_entitlements
 from kavrigo_domain import AgentSpec, TradingMode, content_hash
 from kavrigo_workflows.contracts import AgentJob, RunDefinition
 
@@ -36,6 +40,7 @@ AgentPath = Annotated[str, Path(pattern=r"^ag_[0-9a-f]{32}$")]
 VersionPath = Annotated[int, Path(ge=1)]
 AssessmentPath = Annotated[str, Path(pattern=r"^paa_[0-9a-f]{32}$")]
 _gate_adapter = TypeAdapter(list[PaperActivationGateResult])
+_entitlement_ref_adapter = TypeAdapter(list[PaperActivationEntitlementRef])
 _GATE_ORDER: tuple[PaperActivationGateName, ...] = (
     "policy_approval_integrity",
     "version_policy_binding",
@@ -50,10 +55,13 @@ _GATE_ORDER: tuple[PaperActivationGateName, ...] = (
 def _response(row: PaperActivationAssessment) -> PaperActivationAssessmentResponse:
     gates = _gate_adapter.validate_python(row.gate_results)
     gate_documents = [gate.model_dump(mode="json") for gate in gates]
+    entitlement_refs = _entitlement_ref_adapter.validate_python(row.entitlement_event_refs)
+    entitlement_ref_documents = [item.model_dump(mode="json") for item in entitlement_refs]
     expected_decision = "eligible" if gates and all(gate.passed for gate in gates) else "blocked"
     if (
         tuple(gate.gate for gate in gates) != _GATE_ORDER
         or content_hash(gate_documents) != row.gate_hash
+        or content_hash(entitlement_ref_documents) != row.entitlement_event_refs_hash
         or row.decision != expected_decision
     ):
         raise ApiError(
@@ -75,6 +83,7 @@ def _response(row: PaperActivationAssessment) -> PaperActivationAssessmentRespon
         evaluation_output_hash=row.evaluation_output_hash,
         providers=list(row.providers),
         license_refs=list(row.license_refs),
+        entitlement_event_refs=entitlement_refs,
         gate_results=gates,
         decision=cast(Literal["blocked", "eligible"], row.decision),
         reason=row.reason,
@@ -110,6 +119,7 @@ async def assess_paper_activation(
         raise ApiError(ErrorCode.VALIDATION_FAILED, "A valid Idempotency-Key is required.", 400)
     assessment_id = "paa_" + uuid5(_NAMESPACE, context.workspace_id + ":" + key).hex
     fingerprint = request_fingerprint(body)
+    assessed_at = datetime.now(UTC)
     await session.execute(
         text("SELECT pg_advisory_xact_lock(hashtextextended(:assessment, 0))"),
         {"assessment": assessment_id},
@@ -240,12 +250,29 @@ async def assess_paper_activation(
         completion_reason = "evaluation_completed"
     else:
         completion_reason = "evaluation_run_not_completed"
-    if not evidence:
-        entitlement_reason = "provider_evidence_missing"
-    elif {"kavrigo-synthetic", "binance-spot-testnet"} & set(providers):
+    entitlement_passed = False
+    entitlement_reason = "provider_evidence_missing"
+    entitlement_refs: tuple[PaperActivationEntitlementRef, ...] = ()
+    if evidence and {"kavrigo-synthetic", "binance-spot-testnet"} & set(providers):
         entitlement_reason = "provider_scope_not_eligible"
-    else:
-        entitlement_reason = "provider_entitlement_not_configured"
+    elif evidence:
+        provider_licenses = {
+            (item.provider, item.license_ref) for item in evidence if item.license_ref is not None
+        }
+        entitlement_rows = await ProviderEntitlementRepository(
+            session, context.workspace_id
+        ).relevant_events(provider_licenses)
+        entitlement = evaluate_provider_entitlements(
+            entitlement_rows,
+            workspace_id=context.workspace_id,
+            evidence=evidence,
+            data_packs=tuple(spec.data_packs),
+            evidence_at=job.evaluation.snapshot.as_of if isinstance(job, AgentJob) else assessed_at,
+            assessed_at=assessed_at,
+        )
+        entitlement_passed = entitlement.passed
+        entitlement_reason = entitlement.reason_code
+        entitlement_refs = entitlement.event_refs
 
     gates = [
         _gate("policy_approval_integrity", True, "approved_policy_verified"),
@@ -261,10 +288,11 @@ async def assess_paper_activation(
             "evaluation_version_matches" if version_bound else "evaluation_version_mismatch",
         ),
         _gate("promotable_evidence", evidence_passed, evidence_reason),
-        _gate("provider_entitlement", False, entitlement_reason),
+        _gate("provider_entitlement", entitlement_passed, entitlement_reason),
         _gate("activation_support", False, "paper_activation_not_implemented"),
     ]
     gate_documents = [gate.model_dump(mode="json") for gate in gates]
+    entitlement_ref_documents = [item.model_dump(mode="json") for item in entitlement_refs]
     decision = "eligible" if all(gate.passed for gate in gates) else "blocked"
     row = PaperActivationAssessment(
         assessment_id=assessment_id,
@@ -282,6 +310,8 @@ async def assess_paper_activation(
         evaluation_output_hash=evaluation_output_hash,
         providers=providers,
         license_refs=license_refs,
+        entitlement_event_refs=entitlement_ref_documents,
+        entitlement_event_refs_hash=content_hash(entitlement_ref_documents),
         gate_results=gate_documents,
         gate_hash=content_hash(gate_documents),
         decision=decision,
@@ -289,6 +319,7 @@ async def assess_paper_activation(
         idempotency_key=key,
         request_hash=fingerprint,
         assessed_by=context.user_id,
+        assessed_at=assessed_at,
     )
     await assessments.insert(row)
     await AuditRepository(session, context.workspace_id).record(

@@ -8,9 +8,10 @@ create a second agent, and editing an agent appends a version rather than rewrit
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
@@ -25,12 +26,31 @@ from kavrigo_api.auth.identity import DevIdentityProvider
 from kavrigo_api.auth.principal import Role
 from kavrigo_api.db.session import Database
 from kavrigo_api.routers import rehearsals as rehearsal_router
+from kavrigo_api.services.provider_entitlements import (
+    DataEntitlementEventDocument,
+    entitlement_event_hash,
+)
 from kavrigo_api.settings import Settings
-from kavrigo_domain import BookTicker, InstrumentId, MarketTrade, Price, Quantity
+from kavrigo_domain import (
+    BookTicker,
+    DataPack,
+    InstrumentId,
+    MarketSnapshot,
+    MarketTrade,
+    Price,
+    Quantity,
+    content_hash,
+)
+from kavrigo_runtime.validation import snapshot_hash
+from kavrigo_workflows.contracts import AgentJob, RunDefinition
 
 APP_DSN = os.getenv(
     "TEST_POSTGRES_DSN",
     "postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:55432/kavrigo_test",
+)
+OWNER_DSN = os.getenv(
+    "TEST_POSTGRES_OWNER_DSN",
+    "postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:55432/kavrigo_test",
 )
 
 pytestmark = pytest.mark.integration
@@ -61,6 +81,7 @@ def run_sql(
     params: dict[str, Any] | None = None,
     *,
     workspace_id: str | None = None,
+    owner: bool = False,
 ) -> list[Any]:
     """Execute one statement on a throwaway connection, outside the app's loop.
 
@@ -70,7 +91,7 @@ def run_sql(
     """
 
     async def _run() -> list[Any]:
-        engine = create_async_engine(APP_DSN)
+        engine = create_async_engine(OWNER_DSN if owner else APP_DSN)
         try:
             async with engine.begin() as conn:
                 if workspace_id is not None:
@@ -110,6 +131,26 @@ def _create_workspace(client: TestClient, subject: str, slug: str) -> str:
     )
     assert response.status_code == 201, response.text
     return response.json()["workspace_id"]
+
+
+def _record_entitlement(document: DataEntitlementEventDocument) -> str:
+    event_hash = entitlement_event_hash(document)
+    values = document.model_dump(mode="python")
+    run_sql(
+        """INSERT INTO kavrigo.data_entitlement_events
+        (event_id,workspace_id,scope,action,provider,license_ref,rights,data_packs,
+         contract_hash,effective_at,expires_at,reason,event_hash,recorded_by)
+        VALUES (:event_id,:workspace_id,:scope,:action,:provider,:license_ref,:rights,:data_packs,
+                :contract_hash,:effective_at,:expires_at,:reason,:event_hash,:recorded_by)""",
+        {
+            **values,
+            "rights": list(document.rights),
+            "data_packs": [item.value for item in document.data_packs],
+            "event_hash": event_hash,
+        },
+        owner=True,
+    )
+    return event_hash
 
 
 class TestAuthentication:
@@ -1108,6 +1149,103 @@ class TestPaperActivationAssessments:
         )
         assert wrong_path.status_code == 409
         assert wrong_path.json()["code"] == "idempotency_key_reused"
+
+        stored_definition = run_sql(
+            "SELECT definition FROM kavrigo.engine_runs WHERE run_id=:run",
+            {"run": run["run_id"]},
+            workspace_id=ws,
+        )[0][0]
+        definition_document = json.loads(stored_definition)
+        licensed_run_id = "run_" + uuid4().hex
+        definition_document["run_id"] = licensed_run_id
+        evaluation_document = definition_document["job"]["evaluation"]
+        evaluation_document["snapshot"]["quality"]["notes"] = []
+        for item in evaluation_document["evidence"]:
+            item["provider"] = "licensed-fixture"
+            item["license_ref"] = "licensed-fixture-contract-v1"
+        snapshot_document = evaluation_document["snapshot"]
+        snapshot_document["content_hash"] = "sha256:" + "0" * 64
+        snapshot = MarketSnapshot.model_validate(snapshot_document)
+        snapshot_document["content_hash"] = snapshot_hash(snapshot)
+        licensed_definition = RunDefinition.model_validate(definition_document)
+        assert isinstance(licensed_definition.job, AgentJob)
+        licensed_input_hash = content_hash(licensed_definition)
+        run_sql(
+            """INSERT INTO kavrigo.engine_runs
+            (workspace_id,run_id,definition,input_hash,status,created_at)
+            VALUES (:ws,:run,:definition,:input_hash,'queued',:created_at)""",
+            {
+                "ws": ws,
+                "run": licensed_run_id,
+                "definition": licensed_definition.model_dump_json(),
+                "input_hash": licensed_input_hash,
+                "created_at": licensed_definition.job.evaluation.snapshot.as_of,
+            },
+            workspace_id=ws,
+        )
+        evidence_at = licensed_definition.job.evaluation.snapshot.as_of
+        effective_at = evidence_at - timedelta(days=1)
+        expires_at = datetime.now(UTC) + timedelta(days=30)
+        platform_event = DataEntitlementEventDocument(
+            event_id="dee_" + uuid4().hex,
+            scope="platform",
+            action="grant",
+            provider="licensed-fixture",
+            license_ref="licensed-fixture-contract-v1",
+            rights=(
+                "agent_decision",
+                "application_display",
+                "derived_data",
+                "historical_storage",
+            ),
+            data_packs=(DataPack.MARKET_MICROSTRUCTURE, DataPack.PRICE_TECHNICAL),
+            contract_hash=content_hash({"fixture_contract": "v1"}),
+            effective_at=effective_at,
+            expires_at=expires_at,
+            reason="Test-only platform rights fixture for activation eligibility.",
+            recorded_by="test-compliance-operator",
+        )
+        workspace_event = DataEntitlementEventDocument(
+            event_id="dee_" + uuid4().hex,
+            workspace_id=ws,
+            scope="workspace",
+            action="grant",
+            provider="licensed-fixture",
+            license_ref="licensed-fixture-contract-v1",
+            data_packs=(DataPack.MARKET_MICROSTRUCTURE, DataPack.PRICE_TECHNICAL),
+            effective_at=effective_at,
+            expires_at=expires_at,
+            reason="Test-only workspace data-pack entitlement fixture.",
+            recorded_by="test-billing-operator",
+        )
+        platform_hash = _record_entitlement(platform_event)
+        workspace_hash = _record_entitlement(workspace_event)
+        licensed_body = {
+            **body,
+            "evaluation_run_id": licensed_run_id,
+            "evaluation_input_hash": licensed_input_hash,
+            "reason": "Assess a fixture with exact platform and workspace entitlement records.",
+        }
+        licensed_response = client.post(
+            route,
+            json=licensed_body,
+            headers={**_auth("alice", mfa=True), "Idempotency-Key": "licensed-assessment"},
+        )
+        assert licensed_response.status_code == 201, licensed_response.text
+        licensed_payload = licensed_response.json()
+        licensed_gates = {item["gate"]: item for item in licensed_payload["gate_results"]}
+        assert licensed_gates["promotable_evidence"]["passed"] is True
+        assert licensed_gates["provider_entitlement"] == {
+            "gate": "provider_entitlement",
+            "passed": True,
+            "reason_code": "provider_entitlement_verified",
+        }
+        assert licensed_payload["decision"] == "blocked"
+        assert licensed_payload["execution_enabled"] is False
+        assert {
+            (item["scope"], item["event_hash"])
+            for item in licensed_payload["entitlement_event_refs"]
+        } == {("platform", platform_hash), ("workspace", workspace_hash)}
 
         changed = {**body, "reason": "A changed request cannot reuse this assessment key."}
         assert client.post(route, json=changed, headers=headers).status_code == 409

@@ -1350,6 +1350,8 @@ export interface components {
       providers: string[];
       /** License Refs */
       license_refs: string[];
+      /** Entitlement Event Refs */
+      entitlement_event_refs: components["schemas"]["PaperActivationEntitlementRef"][];
       /** Gate Results */
       gate_results: components["schemas"]["PaperActivationGateResult"][];
       /**
@@ -1378,6 +1380,22 @@ export interface components {
        * @constant
        */
       execution_enabled: false;
+    };
+    /** PaperActivationEntitlementRef */
+    PaperActivationEntitlementRef: {
+      /** Event Id */
+      event_id: string;
+      /** Event Hash */
+      event_hash: string;
+      /**
+       * Scope
+       * @enum {string}
+       */
+      scope: "platform" | "workspace";
+      /** Provider */
+      provider: string;
+      /** License Ref */
+      license_ref: string;
     };
     /** @enum {string} */
     PaperActivationGateName:

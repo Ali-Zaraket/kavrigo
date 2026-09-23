@@ -38,6 +38,16 @@ class PaperActivationGateResult(BaseModel):
     reason_code: Annotated[str, Field(min_length=1, max_length=64)]
 
 
+class PaperActivationEntitlementRef(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    event_id: Annotated[str, Field(pattern=r"^dee_[0-9a-f]{32}$")]
+    event_hash: Digest
+    scope: Literal["platform", "workspace"]
+    provider: Annotated[str, Field(min_length=1, max_length=64)]
+    license_ref: Annotated[str, Field(min_length=1, max_length=128)]
+
+
 class PaperActivationAssessmentResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -56,6 +66,7 @@ class PaperActivationAssessmentResponse(BaseModel):
     evaluation_output_hash: Digest | None
     providers: list[str]
     license_refs: list[str]
+    entitlement_event_refs: list[PaperActivationEntitlementRef]
     gate_results: list[PaperActivationGateResult]
     decision: Literal["blocked", "eligible"]
     reason: str

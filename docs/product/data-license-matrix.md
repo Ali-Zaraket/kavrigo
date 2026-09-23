@@ -61,13 +61,18 @@ the API until the corresponding row is completed with written confirmation.
 6. **Point-in-time snapshot retention** (§8.5) may itself require a specific right. If a provider
    forbids storing historical responses, honest backtesting against that source is not possible
    and the limitation must be stated on the performance card rather than hidden.
+7. **Activation reads immutable entitlement events.** Platform contract rights and per-workspace
+   pack access are evaluated at both the evidence and assessment timestamps and bound into the
+   activation receipt. The ledger is implemented but intentionally empty; see
+   [provider entitlement operations](provider-entitlements.md) and ADR 0038.
 
 ## Before public launch
 
 - [ ] Written confirmation of commercial display rights for every provider in use.
 - [ ] Derived-data and retention rights documented per provider.
 - [ ] Attribution implemented and verified in the UI.
-- [ ] Per-tenant entitlement enforcement implemented for paid packs.
+- [x] Point-in-time per-tenant entitlement enforcement implemented for activation assessment.
+- [ ] Compliance operator workflow and billing/plan synchronization implemented.
 - [ ] Retention TTLs replaced with licence-derived values.
 - [ ] A named owner for each provider relationship.
 
