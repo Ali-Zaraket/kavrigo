@@ -38,8 +38,10 @@ from nautilus_trader.model.objects import Price, Quantity
 from nautilus_trader.trading.strategy import Strategy
 
 from kavrigo_backtest import (
+    BacktestBar,
     BacktestResult,
     BacktestRunConfig,
+    BarCatalog,
     EquityPoint,
     PerformanceMetrics,
     ReproducibilityBundle,
@@ -149,10 +151,9 @@ def _fills(orders: list[Any]) -> list[_Fill]:
 
 def _metrics(
     config: BacktestRunConfig,
+    bars: tuple[BacktestBar, ...],
     fills: list[_Fill],
 ) -> tuple[PerformanceMetrics, list[TradeOutcome]]:
-    assert config.inline_data is not None
-    bars = config.inline_data.bars
     currency = config.starting_balance.currency
     cash = config.starting_balance.amount
     position = Decimal(0)
@@ -230,9 +231,16 @@ class NautilusBacktestAdapter:
     name = ENGINE_NAME
     version = nautilus_trader.__version__
 
-    def __init__(self, *, venue: str = "SIM", log_level: str = "ERROR") -> None:
+    def __init__(
+        self,
+        *,
+        venue: str = "SIM",
+        log_level: str = "ERROR",
+        catalog: BarCatalog | None = None,
+    ) -> None:
         self._venue = venue
         self._log_level = log_level
+        self._catalog = catalog
 
     def preflight(self, config: BacktestRunConfig) -> list[str]:
         """Reasons this run must not execute.
@@ -310,14 +318,15 @@ class NautilusBacktestAdapter:
             code_version=code_version,
         )
 
-    def _run_inline(
+    def _run_bars(
         self,
         config: BacktestRunConfig,
         *,
+        source_bars: tuple[BacktestBar, ...],
+        limitations: list[str],
         bundle: ReproducibilityBundle,
         started_at: datetime,
     ) -> BacktestResult:
-        assert config.inline_data is not None
         assert config.strategy is not None
         source_instrument = config.spec.universe.instruments[0]
         strategy_config = config.strategy
@@ -355,7 +364,7 @@ class NautilusBacktestAdapter:
                 ts_init=0,
             )
             engine.add_instrument(instrument)
-            interval = config.inline_data.bars[0].interval_seconds
+            interval = source_bars[0].interval_seconds
             if interval % 3_600 == 0:
                 interval_text = f"{interval // 3_600}-HOUR"
             elif interval % 60 == 0:
@@ -363,7 +372,7 @@ class NautilusBacktestAdapter:
             else:
                 interval_text = f"{interval}-SECOND"
             bar_type = BarType.from_str(f"{internal_id}-{interval_text}-LAST-EXTERNAL")
-            bars = [
+            engine_bars = [
                 Bar(
                     bar_type=bar_type,
                     open=Price(bar.open.quantize(price_quantum), strategy_config.price_precision),
@@ -376,9 +385,9 @@ class NautilusBacktestAdapter:
                     ts_event=_nanoseconds(bar.event_time),
                     ts_init=_nanoseconds(bar.ingested_at),
                 )
-                for bar in config.inline_data.bars
+                for bar in source_bars
             ]
-            raw_quantity = strategy_config.trade_notional.amount / config.inline_data.bars[0].close
+            raw_quantity = strategy_config.trade_notional.amount / source_bars[0].close
             quantity = (raw_quantity // strategy_config.size_increment) * (
                 strategy_config.size_increment
             )
@@ -390,7 +399,7 @@ class NautilusBacktestAdapter:
                 slow_period=strategy_config.slow_period,
                 size_precision=strategy_config.size_precision,
             )
-            engine.add_data(bars)
+            engine.add_data(engine_bars)
             engine.add_strategy(strategy)
             # NautilusTrader 1.231.0 calls the deprecated ``Timestamp.utcnow`` internally.
             # Keep the suppression narrow so all other warnings still fail the test suite.
@@ -402,7 +411,7 @@ class NautilusBacktestAdapter:
                 engine.run()
             orders = list(engine.cache.orders())
             fills = _fills(orders)
-            metrics, _ = _metrics(config, fills)
+            metrics, _ = _metrics(config, source_bars, fills)
             return BacktestResult(
                 run_id=config.run_id,
                 workspace_id=config.workspace_id,
@@ -421,13 +430,7 @@ class NautilusBacktestAdapter:
                 # This diagnostic does not replay Kavrigo's deterministic risk engine. A
                 # simulator rejection is not a risk rejection and must not be relabeled as one.
                 orders_rejected_by_risk=0,
-                limitations=[
-                    "bar_data_execution_limits_intrabar_realism",
-                    "deterministic_risk_policy_not_replayed",
-                    "inline_fixture_not_catalog_dataset",
-                    "provider_entitlement_not_verified",
-                    "reference_strategy_not_agent_runtime",
-                ],
+                limitations=limitations,
             )
         finally:
             engine.dispose()
@@ -454,8 +457,49 @@ class NautilusBacktestAdapter:
                 findings=findings,
             )
 
+        common_limitations = [
+            "bar_data_execution_limits_intrabar_realism",
+            "deterministic_risk_policy_not_replayed",
+            "provider_entitlement_not_verified",
+            "reference_strategy_not_agent_runtime",
+        ]
         if config.inline_data is not None:
-            return self._run_inline(config, bundle=bundle, started_at=started_at)
+            return self._run_bars(
+                config,
+                source_bars=config.inline_data.bars,
+                limitations=sorted([*common_limitations, "inline_fixture_not_catalog_dataset"]),
+                bundle=bundle,
+                started_at=started_at,
+            )
+        if config.catalog_data is not None:
+            if self._catalog is None:
+                return refuse(
+                    config,
+                    reason="The frozen Parquet catalog is not configured for this worker.",
+                    started_at=started_at,
+                    bundle=bundle,
+                    findings=["catalog_unconfigured"],
+                )
+            try:
+                bars = self._catalog.load(config.catalog_data)
+                config.validate_bars(bars)
+            except (OSError, ValueError):
+                return refuse(
+                    config,
+                    reason="The frozen Parquet catalog object failed integrity validation.",
+                    started_at=started_at,
+                    bundle=bundle,
+                    findings=["catalog_integrity_invalid"],
+                )
+            return self._run_bars(
+                config,
+                source_bars=bars,
+                limitations=sorted(
+                    [*common_limitations, "local_parquet_catalog_not_production_snapshot"]
+                ),
+                bundle=bundle,
+                started_at=started_at,
+            )
 
         engine = self.build_engine(config)
         try:

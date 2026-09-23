@@ -5,6 +5,7 @@ import os
 import signal
 from contextlib import suppress
 from datetime import timedelta
+from pathlib import Path
 
 import structlog
 from pydantic import TypeAdapter
@@ -13,6 +14,7 @@ from temporalio.contrib.opentelemetry import TracingInterceptor
 from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.worker import Worker
 
+from kavrigo_backtest import LocalParquetBarCatalog
 from kavrigo_domain.identifiers import WorkspaceId
 from kavrigo_nautilus import NautilusBacktestAdapter
 from kavrigo_observability import telemetry_from_env
@@ -25,6 +27,12 @@ from kavrigo_workflows.runs import RunRepository
 from kavrigo_workflows.workflows import WORKFLOWS
 
 _log = structlog.get_logger("kavrigo.engine.worker")
+
+
+def _backtest_adapter() -> NautilusBacktestAdapter:
+    root = os.getenv("KAVRIGO_BACKTEST_CATALOG_ROOT")
+    catalog = LocalParquetBarCatalog(Path(root)) if root else None
+    return NautilusBacktestAdapter(catalog=catalog)
 
 
 async def _run() -> None:
@@ -58,7 +66,7 @@ async def _run() -> None:
             runs,
             AccountRepository(database),
             runtime=MockRuntimeBackend(),
-            backtest=NautilusBacktestAdapter(),
+            backtest=_backtest_adapter(),
         )
         async with Worker(
             client,
@@ -68,7 +76,13 @@ async def _run() -> None:
             max_concurrent_activities=4,
             graceful_shutdown_timeout=timedelta(seconds=10),
         ):
-            _log.info("worker_started", mode="paper", workflows=4, dispatch_scopes=len(scopes))
+            _log.info(
+                "worker_started",
+                mode="paper",
+                workflows=4,
+                dispatch_scopes=len(scopes),
+                backtest_catalog_configured=bool(os.getenv("KAVRIGO_BACKTEST_CATALOG_ROOT")),
+            )
             while not stop.is_set():
                 for workspace in scopes:
                     try:

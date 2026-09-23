@@ -5,6 +5,7 @@ description = "Kavrigo backtest contracts: dataset manifests, cost models, metri
 requires-python = ">=3.13"
 dependencies = [
   "kavrigo-domain",
+  "pyarrow==25.0.1",
 ]
 
 [tool.uv.sources]

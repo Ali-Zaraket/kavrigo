@@ -9,11 +9,15 @@ import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from uuid import uuid4
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 from kavrigo_backtest import (
+    BAR_PARQUET_SCHEMA,
     BacktestBar,
     BacktestRunConfig,
     CostModel,
@@ -22,10 +26,13 @@ from kavrigo_backtest import (
     FeeSchedule,
     InlineBarDataset,
     LatencyModel,
+    LocalParquetBarCatalog,
     LongOnlyEmaStrategy,
+    ParquetBarDatasetRef,
     SlippageModel,
     TimeBasis,
     bar_dataset_hash,
+    parquet_bytes_hash,
 )
 from kavrigo_domain import (
     AgentSpec,
@@ -181,6 +188,51 @@ def _inline_config(**overrides: object) -> BacktestRunConfig:
     )
 
 
+def _catalog_config(tmp_path: Path, **overrides: object) -> BacktestRunConfig:
+    inline = _inline_config()
+    assert inline.inline_data is not None
+    target = tmp_path / "fixtures" / "btc.parquet"
+    target.parent.mkdir()
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "instrument_id": bar.instrument_id.value,
+                    "interval_seconds": bar.interval_seconds,
+                    "open": bar.open,
+                    "high": bar.high,
+                    "low": bar.low,
+                    "close": bar.close,
+                    "volume": bar.volume,
+                    "event_time": bar.event_time,
+                    "ingested_at": bar.ingested_at,
+                }
+                for bar in inline.inline_data.bars
+            ],
+            schema=BAR_PARQUET_SCHEMA,
+        ),
+        target,
+    )
+    reference = ParquetBarDatasetRef(
+        object_key="fixtures/btc.parquet",
+        content_hash=parquet_bytes_hash(target.read_bytes()),
+        row_count=len(inline.inline_data.bars),
+        instrument_id=inline.spec.universe.instruments[0],
+        interval_seconds=inline.inline_data.bars[0].interval_seconds,
+    )
+    source = inline.dataset.sources[0].model_copy(
+        update={"dataset": "local-parquet-bars-v1", "content_hash": reference.content_hash}
+    )
+    values = inline.model_dump(mode="python")
+    values.update(
+        inline_data=None,
+        catalog_data=reference,
+        dataset=inline.dataset.model_copy(update={"sources": [source]}),
+        **overrides,
+    )
+    return BacktestRunConfig.model_validate(values)
+
+
 pytestmark = pytest.mark.integration
 
 
@@ -258,4 +310,40 @@ async def test_nautilus_workflow_completes_a_meaningful_reference_run(
         assert output["limitations"] == sorted(output["limitations"])
         receipt = runs.stage_ref(ref, saved)
     assert await activities._stage(StageRequest(run=ref, stage="backtest")) == receipt
+    await replay(handle)
+
+
+async def test_nautilus_workflow_resolves_a_frozen_parquet_catalog_object(
+    engine_database, temporal_client, tmp_path: Path
+):
+    config = _catalog_config(tmp_path, workspace_id=WS, run_id="run_" + uuid4().hex)
+    adapter = NautilusBacktestAdapter(catalog=LocalParquetBarCatalog(tmp_path))
+    bundle = adapter.bundle_for(
+        config,
+        spec_hash=content_hash(config.spec),
+        prompt_hash=HASH,
+        feature_manifest_hash=HASH,
+        model_profile="reference_strategy",
+        resolved_model_identifier="no-model",
+        container_image_digest=HASH,
+        code_version="catalog-fixture-v1",
+    )
+    runs = RunRepository(engine_database)
+    ref = await runs.create(
+        RunDefinition(
+            workspace_id=WS, run_id=config.run_id, job=BacktestJob(config=config, bundle=bundle)
+        )
+    )
+    activities = EngineActivities(runs, AccountRepository(engine_database), backtest=adapter)
+    queue = uuid4().hex
+    async with worker(temporal_client, activities, queue):
+        await start_run(temporal_client, runs, ref, queue)
+        handle = temporal_client.get_workflow_handle(workflow_id(ref), result_type=StageRef)
+        assert (await asyncio.wait_for(handle.result(), 30)).status == "completed"
+    async with engine_database.transaction(WS) as connection:
+        saved = await runs.stage(connection, ref, "backtest")
+        output = json.loads(saved["output"])
+        assert output["decisions_evaluated"] == 53
+        assert output["orders_submitted"] == 4
+        assert "local_parquet_catalog_not_production_snapshot" in output["limitations"]
     await replay(handle)

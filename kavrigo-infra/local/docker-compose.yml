@@ -170,6 +170,9 @@ services:
       REDPANDA_BOOTSTRAP_SERVERS: redpanda:9092
       CLICKHOUSE_URL: http://clickhouse:8123
       TEMPORAL_ADDRESS: temporal:7233
+      KAVRIGO_BACKTEST_CATALOG_ROOT: /var/lib/kavrigo/backtest-catalog
+    volumes:
+      - ../../.local/backtest-catalog:/var/lib/kavrigo/backtest-catalog:ro
     depends_on:
       postgres: { condition: service_healthy }
       temporal: { condition: service_healthy }

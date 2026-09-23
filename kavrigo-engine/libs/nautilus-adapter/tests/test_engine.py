@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import nautilus_trader
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 from pydantic import ValidationError
 
 from kavrigo_backtest import (
+    BAR_PARQUET_SCHEMA,
     BacktestBar,
     BacktestRunConfig,
     CostModel,
@@ -23,12 +27,15 @@ from kavrigo_backtest import (
     FeeSchedule,
     InlineBarDataset,
     LatencyModel,
+    LocalParquetBarCatalog,
     LongOnlyEmaStrategy,
+    ParquetBarDatasetRef,
     ReproducibilityBundle,
     RunStatus,
     SlippageModel,
     TimeBasis,
     bar_dataset_hash,
+    parquet_bytes_hash,
 )
 from kavrigo_domain import (
     AgentSpec,
@@ -171,6 +178,51 @@ def _inline_config() -> BacktestRunConfig:
         inline_data=inline_data,
         strategy=LongOnlyEmaStrategy(trade_notional=Money(amount=Decimal("100"), currency="USDT")),
     )
+
+
+def _catalog_config(tmp_path: Path) -> BacktestRunConfig:
+    inline = _inline_config()
+    assert inline.inline_data is not None
+    target = tmp_path / "fixtures" / "btc.parquet"
+    target.parent.mkdir()
+    table = pa.Table.from_pylist(
+        [
+            {
+                "instrument_id": bar.instrument_id.value,
+                "interval_seconds": bar.interval_seconds,
+                "open": bar.open,
+                "high": bar.high,
+                "low": bar.low,
+                "close": bar.close,
+                "volume": bar.volume,
+                "event_time": bar.event_time,
+                "ingested_at": bar.ingested_at,
+            }
+            for bar in inline.inline_data.bars
+        ],
+        schema=BAR_PARQUET_SCHEMA,
+    )
+    pq.write_table(table, target)
+    reference = ParquetBarDatasetRef(
+        object_key="fixtures/btc.parquet",
+        content_hash=parquet_bytes_hash(target.read_bytes()),
+        row_count=len(inline.inline_data.bars),
+        instrument_id=inline.spec.universe.instruments[0],
+        interval_seconds=inline.inline_data.bars[0].interval_seconds,
+    )
+    source = inline.dataset.sources[0].model_copy(
+        update={
+            "dataset": "local-parquet-bars-v1",
+            "content_hash": reference.content_hash,
+        }
+    )
+    values = inline.model_dump(mode="python")
+    values.update(
+        inline_data=None,
+        catalog_data=reference,
+        dataset=inline.dataset.model_copy(update={"sources": [source]}),
+    )
+    return BacktestRunConfig.model_validate(values)
 
 
 @pytest.fixture
@@ -333,6 +385,82 @@ class TestRun:
         assert first.metrics == second.metrics
         assert first.decisions_evaluated == second.decisions_evaluated
         assert first.orders_submitted == second.orders_submitted
+
+    def test_a_hash_verified_parquet_catalog_executes_the_same_reference_path(
+        self, tmp_path: Path
+    ) -> None:
+        config = _catalog_config(tmp_path)
+        adapter = NautilusBacktestAdapter(catalog=LocalParquetBarCatalog(tmp_path))
+        bundle = adapter.bundle_for(
+            config,
+            spec_hash=HASH,
+            prompt_hash=HASH,
+            feature_manifest_hash=HASH,
+            model_profile="reference_strategy",
+            resolved_model_identifier="no-model",
+            container_image_digest="sha256:deadbeef",
+            code_version="fixture-v1",
+            created_at=END,
+        )
+
+        result = adapter.run(config, bundle=bundle)
+
+        assert result.status is RunStatus.COMPLETED
+        assert result.decisions_evaluated == 53
+        assert result.orders_submitted == 4
+        assert result.metrics is not None
+        assert result.metrics.trade_count == 2
+        assert "local_parquet_catalog_not_production_snapshot" in result.limitations
+        assert "inline_fixture_not_catalog_dataset" not in result.limitations
+        assert not result.is_publishable
+
+    def test_a_catalog_run_refuses_when_the_worker_has_no_trusted_root(
+        self, tmp_path: Path
+    ) -> None:
+        config = _catalog_config(tmp_path)
+        adapter = NautilusBacktestAdapter()
+        bundle = adapter.bundle_for(
+            config,
+            spec_hash=HASH,
+            prompt_hash=HASH,
+            feature_manifest_hash=HASH,
+            model_profile="reference_strategy",
+            resolved_model_identifier="no-model",
+            container_image_digest="sha256:deadbeef",
+            code_version="fixture-v1",
+            created_at=END,
+        )
+
+        result = adapter.run(config, bundle=bundle)
+
+        assert result.status is RunStatus.REFUSED
+        assert result.leakage_findings == ["catalog_unconfigured"]
+
+    def test_a_catalog_run_refuses_changed_bytes_without_exposing_the_path(
+        self, tmp_path: Path
+    ) -> None:
+        config = _catalog_config(tmp_path)
+        target = tmp_path / "fixtures" / "btc.parquet"
+        target.write_bytes(target.read_bytes() + b"changed")
+        adapter = NautilusBacktestAdapter(catalog=LocalParquetBarCatalog(tmp_path))
+        bundle = adapter.bundle_for(
+            config,
+            spec_hash=HASH,
+            prompt_hash=HASH,
+            feature_manifest_hash=HASH,
+            model_profile="reference_strategy",
+            resolved_model_identifier="no-model",
+            container_image_digest="sha256:deadbeef",
+            code_version="fixture-v1",
+            created_at=END,
+        )
+
+        result = adapter.run(config, bundle=bundle)
+
+        assert result.status is RunStatus.REFUSED
+        assert result.leakage_findings == ["catalog_integrity_invalid"]
+        assert result.refusal_reason is not None
+        assert str(tmp_path) not in result.refusal_reason
 
     def test_two_runs_of_one_configuration_produce_the_same_bundle_hash(
         self, adapter: NautilusBacktestAdapter

@@ -17,8 +17,9 @@ from typing import Annotated, Protocol, Self, runtime_checkable
 
 from pydantic import Field, model_validator
 
+from kavrigo_backtest.catalog import ParquetBarDatasetRef
 from kavrigo_backtest.costs import CostModel
-from kavrigo_backtest.fixture import InlineBarDataset, LongOnlyEmaStrategy
+from kavrigo_backtest.fixture import BacktestBar, InlineBarDataset, LongOnlyEmaStrategy
 from kavrigo_backtest.manifest import DatasetManifest
 from kavrigo_backtest.metrics import PerformanceMetrics
 from kavrigo_domain import AgentSpec, DomainModel, ModelCallRecord, Money, UtcDatetime, content_hash
@@ -55,6 +56,7 @@ class BacktestRunConfig(DomainModel):
     starting_balance: Money
     benchmark_instrument: Annotated[str | None, Field(default=None, max_length=64)] = None
     inline_data: InlineBarDataset | None = None
+    catalog_data: ParquetBarDatasetRef | None = None
     strategy: LongOnlyEmaStrategy | None = None
     random_seed: Annotated[int, Field(ge=0, le=2**31 - 1)] = 0
     """Pinned even where the engine is deterministic: fill models and any sampling must not
@@ -71,58 +73,89 @@ class BacktestRunConfig(DomainModel):
                 f"dataset does not cover every instrument in the agent's universe: "
                 f"{sorted(missing)}"
             )
-        if (self.inline_data is None) != (self.strategy is None):
-            raise ValueError("inline data and its reference strategy must be supplied together")
-        if self.inline_data is not None and self.strategy is not None:
+        data_count = int(self.inline_data is not None) + int(self.catalog_data is not None)
+        if data_count > 1:
+            raise ValueError("a backtest run may select only one historical data source")
+        if (data_count == 0) != (self.strategy is None):
+            raise ValueError("historical data and its reference strategy must be supplied together")
+        if self.strategy is not None:
             if len(self.spec.universe.instruments) != 1:
-                raise ValueError("the inline reference strategy supports exactly one instrument")
+                raise ValueError("the reference strategy supports exactly one instrument")
             instrument = self.spec.universe.instruments[0]
-            bars = self.inline_data.bars
-            if {bar.instrument_id for bar in bars} != {instrument}:
-                raise ValueError("inline bars must cover exactly the configured instrument")
-            if len(bars) < self.strategy.slow_period + 2:
-                raise ValueError("inline dataset is too short for the configured EMA periods")
-            if any(
-                bar.event_time < self.dataset.period_start
-                or bar.event_time > self.dataset.period_end
-                or bar.ingested_at > self.dataset.created_at
-                for bar in bars
-            ):
-                raise ValueError("inline bars fall outside the point-in-time dataset manifest")
-            matching_sources = [
-                source
-                for source in self.dataset.sources
-                if source.content_hash == self.inline_data.content_hash
-            ]
-            if not matching_sources or all(
-                source.row_count != len(bars) for source in matching_sources
-            ):
-                raise ValueError("inline dataset is not bound to a matching manifest source")
             if self.strategy.trade_notional.currency != instrument.quote:
                 raise ValueError("strategy notional currency must match the instrument quote")
             if self.starting_balance.currency != instrument.quote:
                 raise ValueError("starting balance currency must match the instrument quote")
             if instrument.quote != "USDT":
-                raise ValueError("the current inline Nautilus slice supports USDT spot only")
+                raise ValueError("the current reference Nautilus slice supports USDT spot only")
             if self.benchmark_instrument != instrument.value:
-                raise ValueError(
-                    "inline reference runs require the configured instrument benchmark"
-                )
-            if len({bar.interval_seconds for bar in bars}) != 1:
-                raise ValueError("inline reference bars must share one interval")
-            price_quantum = Decimal(1).scaleb(-self.strategy.price_precision)
-            size_quantum = Decimal(1).scaleb(-self.strategy.size_precision)
-            if any(
-                value.quantize(price_quantum) != value
-                for bar in bars
-                for value in (bar.open, bar.high, bar.low, bar.close)
-            ) or any(bar.volume.quantize(size_quantum) != bar.volume for bar in bars):
-                raise ValueError("inline bars exceed the configured price or size precision")
-            if self.strategy.trade_notional.amount < bars[0].close * self.strategy.size_increment:
-                raise ValueError("trade notional cannot buy one configured size increment")
-            if all(source.last_ingested_at < bars[-1].ingested_at for source in matching_sources):
-                raise ValueError("manifest source does not cover the final inline ingestion time")
+                raise ValueError("reference runs require the configured instrument benchmark")
+            if self.catalog_data is not None:
+                if self.catalog_data.instrument_id != instrument:
+                    raise ValueError("catalog reference must identify the configured instrument")
+                if not any(
+                    source.content_hash == self.catalog_data.content_hash
+                    and source.row_count == self.catalog_data.row_count
+                    for source in self.dataset.sources
+                ):
+                    raise ValueError("catalog dataset is not bound to a matching manifest source")
+            if self.inline_data is not None:
+                self.validate_bars(self.inline_data.bars)
         return self
+
+    def validate_bars(self, bars: tuple[BacktestBar, ...]) -> None:
+        """Validate bytes-loaded bars against the immutable run definition.
+
+        Inline data is checked during model construction. Catalog data is checked after the
+        service has resolved and hash-verified the object, before an engine is created.
+        """
+        if self.strategy is None or (self.inline_data is None and self.catalog_data is None):
+            raise ValueError("reference bars require a configured historical data source")
+        instrument = self.spec.universe.instruments[0]
+        if self.inline_data is not None:
+            expected_hash = self.inline_data.content_hash
+            expected_rows = len(self.inline_data.bars)
+        else:
+            assert self.catalog_data is not None
+            expected_hash = self.catalog_data.content_hash
+            expected_rows = self.catalog_data.row_count
+        matching_sources = [
+            source for source in self.dataset.sources if source.content_hash == expected_hash
+        ]
+        if (
+            len(bars) != expected_rows
+            or not matching_sources
+            or all(source.row_count != len(bars) for source in matching_sources)
+        ):
+            raise ValueError("historical dataset is not bound to a matching manifest source")
+        if {bar.instrument_id for bar in bars} != {instrument}:
+            raise ValueError("historical bars must cover exactly the configured instrument")
+        if len(bars) < self.strategy.slow_period + 2:
+            raise ValueError("historical dataset is too short for the configured EMA periods")
+        if any(
+            bar.event_time < self.dataset.period_start
+            or bar.event_time > self.dataset.period_end
+            or bar.ingested_at > self.dataset.created_at
+            for bar in bars
+        ):
+            raise ValueError("historical bars fall outside the point-in-time dataset manifest")
+        intervals = {bar.interval_seconds for bar in bars}
+        if len(intervals) != 1:
+            raise ValueError("reference bars must share one interval")
+        if self.catalog_data is not None and intervals != {self.catalog_data.interval_seconds}:
+            raise ValueError("catalog bar interval does not match its reference")
+        price_quantum = Decimal(1).scaleb(-self.strategy.price_precision)
+        size_quantum = Decimal(1).scaleb(-self.strategy.size_precision)
+        if any(
+            value.quantize(price_quantum) != value
+            for bar in bars
+            for value in (bar.open, bar.high, bar.low, bar.close)
+        ) or any(bar.volume.quantize(size_quantum) != bar.volume for bar in bars):
+            raise ValueError("historical bars exceed the configured price or size precision")
+        if self.strategy.trade_notional.amount < bars[0].close * self.strategy.size_increment:
+            raise ValueError("trade notional cannot buy one configured size increment")
+        if all(source.last_ingested_at < bars[-1].ingested_at for source in matching_sources):
+            raise ValueError("manifest source does not cover the final historical ingestion time")
 
     @property
     def config_hash(self) -> str:
@@ -137,6 +170,7 @@ class BacktestRunConfig(DomainModel):
                 "inline_data": (
                     self.inline_data.content_hash if self.inline_data is not None else None
                 ),
+                "catalog_data": self.catalog_data,
                 "strategy": self.strategy,
                 "seed": self.random_seed,
             }

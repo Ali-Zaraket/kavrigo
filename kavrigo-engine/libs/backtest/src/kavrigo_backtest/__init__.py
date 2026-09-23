@@ -7,6 +7,13 @@ run configuration and the reproducibility bundle. The NautilusTrader implementat
 
 from __future__ import annotations
 
+from kavrigo_backtest.catalog import (
+    BAR_PARQUET_SCHEMA,
+    BarCatalog,
+    LocalParquetBarCatalog,
+    ParquetBarDatasetRef,
+    parquet_bytes_hash,
+)
 from kavrigo_backtest.costs import (
     CostModel,
     FeeSchedule,
@@ -46,10 +53,12 @@ from kavrigo_backtest.run import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "BAR_PARQUET_SCHEMA",
     "BacktestBar",
     "BacktestEngine",
     "BacktestResult",
     "BacktestRunConfig",
+    "BarCatalog",
     "CostModel",
     "DatasetManifest",
     "DatasetSource",
@@ -59,7 +68,9 @@ __all__ = [
     "LatencyModel",
     "LeakageFinding",
     "LiquidityAssumption",
+    "LocalParquetBarCatalog",
     "LongOnlyEmaStrategy",
+    "ParquetBarDatasetRef",
     "PerformanceMetrics",
     "ReproducibilityBundle",
     "RunStatus",
@@ -71,5 +82,6 @@ __all__ = [
     "bar_dataset_hash",
     "compute_metrics",
     "cost_model_hash",
+    "parquet_bytes_hash",
     "refuse",
 ]

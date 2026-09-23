@@ -924,10 +924,14 @@ version = "0.1.0"
 source = { editable = "kavrigo-engine/libs/backtest" }
 dependencies = [
     { name = "kavrigo-domain" },
+    { name = "pyarrow" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "kavrigo-domain", editable = "kavrigo-engine/libs/domain" }]
+requires-dist = [
+    { name = "kavrigo-domain", editable = "kavrigo-engine/libs/domain" },
+    { name = "pyarrow", specifier = "==25.0.1" },
+]
 
 [[package]]
 name = "kavrigo-domain"
@@ -945,6 +949,7 @@ name = "kavrigo-engine-worker"
 version = "0.1.0"
 source = { editable = "kavrigo-engine/services/engine-worker" }
 dependencies = [
+    { name = "kavrigo-backtest" },
     { name = "kavrigo-domain" },
     { name = "kavrigo-nautilus-adapter" },
     { name = "kavrigo-observability" },
@@ -954,6 +959,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "kavrigo-backtest", editable = "kavrigo-engine/libs/backtest" },
     { name = "kavrigo-domain", editable = "kavrigo-engine/libs/domain" },
     { name = "kavrigo-nautilus-adapter", editable = "kavrigo-engine/libs/nautilus-adapter" },
     { name = "kavrigo-observability", editable = "kavrigo-engine/libs/observability" },

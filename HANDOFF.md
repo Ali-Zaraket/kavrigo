@@ -31,6 +31,13 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-23:** ADR 0040 adds a worker-owned, read-only local Parquet catalog boundary for
+> reference backtests. Exact object bytes, schema, row count, instrument, interval, ordering and
+> point-in-time bounds are verified before Nautilus starts; path escape and tampering fail
+> closed. The durable catalog workflow passes. No licensed provider data is present, and all
+> promotion/activation gates remain closed. Full regression: 990 passed; Ruff covers 320 files
+> and strict typing covers 145 sources.
+
 > **2026-09-23:** ADR 0039 adds a bounded, hash-bound BTC/ETH reference backtest through pinned
 > NautilusTrader and the durable Temporal workflow. It produces actual decisions, cash-account
 > fills, after-cost metrics and a benchmark. Five mandatory limitations keep it non-publishable
@@ -52,7 +59,7 @@
 > applied locally; 939 tests pass with 25 expected integration skips. The next slice is licensed
 > real-market evidence plus explicit entitlement records, still without enabling orders.
 
-**Updated:** 2026-09-23 · **Position:** step 15 plus a bounded reference backtest and point-in-time entitlement-gated activation assessment · **Next:** licensed catalog data, agent/risk replay, promotable evaluation evidence and supervised paper activation
+**Updated:** 2026-09-23 · **Position:** step 15 plus a frozen local backtest catalog and point-in-time entitlement-gated activation assessment · **Next:** licensed catalog data, agent/risk replay, promotable evaluation evidence and supervised paper activation
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -86,7 +93,7 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 4 | Auth / tenant control plane | done |
 | 5 | Market ingestion | public WebSocket transport and ephemeral sample verified; licensed durable collection and Redpanda producer remain — see §5 |
 | 6 | Feature engine | done |
-| 7 | Backtest engine | bounded reference strategy/data path done; licensed catalog and actual agent/risk replay remain — see §5 |
+| 7 | Backtest engine | bounded reference strategy and local frozen Parquet catalog done; licensed production catalog and actual agent/risk replay remain — see §5 |
 | 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
 | 9 | News intelligence | local synthetic-feed slice done — see §5 |
 | 10 | Agent runtime | local decision/allocation slice; destination stack verified — see §5 |
@@ -251,14 +258,19 @@ are scoped-out work with a reason.
   `add_instrument()`, `add_data()` and a long-only EMA diagnostic strategy in pinned
   NautilusTrader 1.231.0. The durable workflow records decisions, accepted cash-account orders,
   fills, after-cost Decimal metrics and a buy-and-hold benchmark.
-- **Reference output is not promotion evidence.** Five mandatory limitations identify bar-level
-  fidelity, absent deterministic risk replay, inline rather than catalog data, unverified
-  provider entitlement and the internal strategy rather than the versioned agent runtime. Any
+- **The local catalog boundary is implemented.** A worker-owned read-only root resolves canonical
+  relative Parquet keys. Exact bytes, fixed-point schema, row count, instrument, interval,
+  ordering and point-in-time bounds are verified before engine construction. Tampered,
+  unconfigured and path-escaping objects fail closed. It is not production object storage.
+- **Reference output is not promotion evidence.** Mandatory limitations identify bar-level
+  fidelity, absent deterministic risk replay, unverified provider entitlement, local/inline
+  fixture status and the internal strategy rather than the versioned agent runtime. Any
   limitation makes the result non-publishable and activation-ineligible.
 - **One instrument per engine run.** BTC and ETH fixtures run independently because an upstream
   1.231.0 issue reports registration-order-dependent fills in multi-instrument cash backtests.
-- **No dataset builder.** `DatasetManifest` is a contract with leakage detection and a content
-  hash. Nothing yet *constructs* one from ClickHouse rows.
+- **No licensed dataset builder or production catalog.** `DatasetManifest` is a contract with
+  leakage detection and a content hash. Nothing yet constructs one from entitled ClickHouse rows
+  or writes an immutable, versioned production S3 object.
 
 ### From step 8 — model gateway
 
@@ -418,9 +430,10 @@ are scoped-out work with a reason.
 - Data health consumes frozen observations and emits an outbox event. Supervision runs 1-20
   reconciliation cycles. Live provider reconnect, incident delivery and automatic rescheduling
   are not implemented. Only run creation events have an outbox consumer in this slice.
-- Backtest workflow now completes the bounded BTC/ETH reference strategy/data/benchmark run and
-  still refuses legacy zero-decision diagnostics. Its mandatory limitations prevent publishing
-  or using it as paper-activation evidence.
+- Backtest workflow now completes both inline and frozen local Parquet versions of the bounded
+  BTC/ETH reference strategy/data/benchmark run and still refuses legacy zero-decision
+  diagnostics. Its mandatory limitations prevent publishing or using it as paper-activation
+  evidence.
 - Temporal Cloud auth, deployment identity/separation, encryption/retention, hosted exporters,
   production performance and independent security review remain. The local worker is trusted
   internal code; references and hashes do not replace tenant authentication.
@@ -630,7 +643,8 @@ activation; do not relax the production provider-rights gate.
 
 ADR 0039 adds a deterministic, bounded Nautilus reference backtest for BTC/ETH. It validates
 engine and Temporal plumbing with synthetic, hash-bound bars and an internal long-only strategy.
-Do not use its performance for promotion: licensed catalog extraction, actual runtime decision
+ADR 0040 moves those bars behind a hash-verified, worker-owned local Parquet catalog boundary.
+Do not use its performance for promotion: licensed production-catalog extraction, actual runtime decision
 and risk replay, and out-of-sample evidence remain required.
 
 ---

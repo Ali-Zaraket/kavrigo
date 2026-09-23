@@ -88,6 +88,7 @@ artifacts must remain readable before deploying such a rollback outside local de
 ## Consequences
 
 The durable backtest workflow can now complete a real engine run with decisions, orders, fills,
-costs and a benchmark. It still does not prove an AI agent's edge or satisfy promotion. The next
-backtest slice must load licensed catalog data, replay the actual agent decision and deterministic
-risk policies, add out-of-sample separation, and only then feed a promotion gate.
+costs and a benchmark. ADR 0040 adds the frozen local Parquet boundary, but it still does not
+prove an AI agent's edge or satisfy promotion. A later slice must load licensed catalog data,
+replay the actual agent decision and deterministic risk policies, add out-of-sample separation,
+and only then feed a promotion gate.
