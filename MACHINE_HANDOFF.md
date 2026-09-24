@@ -1,6 +1,6 @@
 # Resume Kavrigo on another machine
 
-Updated 2026-09-23 after ADR 0040's frozen local Parquet catalog slice. The detailed transfer
+Updated 2026-09-24 after ADR 0041's deterministic-risk replay slice. The detailed transfer
 instructions below retain their original step-13 checkpoint; use PROGRESS.md and git log for
 current implementation and test counts.
 This file, `PROGRESS.md`, `HANDOFF.md`, `HANDOFF_PROMPT.md` and Git history are the portable project memory.
@@ -25,14 +25,15 @@ No account memory or previous chat is required. No background build is intended 
   replay reconciliation. Single-generation batch; no continuous operation or process-restart durability.
 - Step 13: PostgreSQL account/run authority, four Temporal workflows, real worker and bounded
   paper supervision; local/mock only, independent review pending.
-- Steps 14-15 and the post-step slices through ADR 0040 are on main. These include the local
+- Steps 14-15 and the post-step slices through ADR 0041 are on main. These include the local
   execution-disabled rehearsal, reviewed policy candidates, entitlement-gated activation
-  assessments, the bounded Nautilus reference path and its hash-verified local Parquet catalog.
+  assessments, the bounded Nautilus reference path, its hash-verified local Parquet catalog and
+  the deterministic risk gate for synthetic USD reference orders.
   Migration 0007 is applied to the local application database.
   Studio creates paper drafts and launches a synthetic Temporal run; Pulse labels the receipts.
   Real-data policy-approved paper activation remains open.
-- Existing carry-overs include licensed durable market collection, meaningful Nautilus strategy
-  and risk replay, production object storage, provider rights and hosted integrations. See
+- Existing carry-overs include licensed durable market collection, actual agent-runtime replay,
+  multi-day risk accounting, production object storage, provider rights and hosted integrations. See
   `HANDOFF.md` §5 for scope and reasons; the product milestone is not yet complete.
 
 ## Transfer and restore

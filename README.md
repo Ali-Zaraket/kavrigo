@@ -70,10 +70,11 @@ Local slices cover steps 1-15 of `AGENTS.md`: Studio paper drafts, a synthetic e
 rehearsal, durable Temporal receipts, deterministic risk and paper accounting, local observability,
 and immutable policy candidates with independent review recommendations. A public market-data
 WebSocket transport is available for brief, explicitly enabled local samples that discard feed
-data. The end-to-end product milestone still needs licensed real-data persistence, meaningful
-agent/risk replay in Nautilus, approval gates, and an approved paper launch. A bounded synthetic
-reference strategy now verifies Nautilus decisions, fills, costs and benchmark metrics from
-inline fixtures or a hash-verified local Parquet catalog, but remains explicitly non-promotable.
+data. The end-to-end product milestone still needs licensed real-data persistence, versioned
+agent-runtime replay in Nautilus, approval gates, and an approved paper launch. A bounded
+synthetic reference strategy now verifies Nautilus decisions, deterministic risk approvals and
+rejections, fills, costs and benchmark metrics from inline fixtures or a hash-verified local
+Parquet catalog, but remains explicitly non-promotable.
 The repository contains no licensed provider dataset.
 
 See [`PROGRESS.md`](PROGRESS.md) for current verification counts and remaining work, and

@@ -28,6 +28,7 @@ from kavrigo_backtest.fixture import (
     LongOnlyEmaStrategy,
     bar_dataset_hash,
 )
+from kavrigo_backtest.governance import ReferenceRiskReplay
 from kavrigo_backtest.manifest import (
     DatasetManifest,
     DatasetSource,
@@ -72,6 +73,7 @@ __all__ = [
     "LongOnlyEmaStrategy",
     "ParquetBarDatasetRef",
     "PerformanceMetrics",
+    "ReferenceRiskReplay",
     "ReproducibilityBundle",
     "RunStatus",
     "SlippageModel",

@@ -1029,6 +1029,8 @@ source = { editable = "kavrigo-engine/libs/nautilus-adapter" }
 dependencies = [
     { name = "kavrigo-backtest" },
     { name = "kavrigo-domain" },
+    { name = "kavrigo-risk" },
+    { name = "kavrigo-runtime" },
     { name = "nautilus-trader" },
 ]
 
@@ -1036,6 +1038,8 @@ dependencies = [
 requires-dist = [
     { name = "kavrigo-backtest", editable = "kavrigo-engine/libs/backtest" },
     { name = "kavrigo-domain", editable = "kavrigo-engine/libs/domain" },
+    { name = "kavrigo-risk", editable = "kavrigo-engine/services/risk-engine" },
+    { name = "kavrigo-runtime", editable = "kavrigo-engine/services/agent-runtime" },
     { name = "nautilus-trader", specifier = "==1.231.0" },
 ]
 

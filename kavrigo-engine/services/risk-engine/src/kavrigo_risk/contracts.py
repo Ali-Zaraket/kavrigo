@@ -16,6 +16,7 @@ from kavrigo_domain import (
     OrderIntent,
     Quantity,
     RiskEvaluation,
+    RiskExecutionPolicy,
     RiskPolicy,
     RiskReasonCode,
     RiskScope,
@@ -29,26 +30,10 @@ from kavrigo_runtime.contracts import Allocation
 Digest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
 Name = Annotated[str, Field(pattern=r"^[A-Za-z0-9_.:-]{1,128}$")]
 Duration = Annotated[int, Field(strict=True, ge=1, le=86_400_000)]
-Bps = Annotated[ExactDecimal, Field(ge=0, le=10_000)]
 
 
 def policy_hash(policy: RiskPolicy) -> str:
     return content_hash(policy.model_dump(mode="python", exclude={"content_hash"}))
-
-
-class RiskExecutionPolicy(DomainModel):
-    """Local USD-spot MARKET/IOC only. Assumptions are operator configuration, not venue facts."""
-
-    execution_policy_id: Annotated[str, Field(pattern=r"^ep_[0-9a-f]{32}$")]
-    version: Name
-    fee_bps: Bps
-    slippage_bps: Bps
-    notional_increment_usd: Annotated[ExactDecimal, Field(gt=0)]
-    max_snapshot_age_ms: Duration
-    max_portfolio_age_ms: Duration
-    max_reconciliation_age_ms: Duration
-    max_market_age_ms: Duration
-    max_approval_age_ms: Duration
 
 
 class RiskRegistration(DomainModel):

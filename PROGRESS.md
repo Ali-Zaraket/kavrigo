@@ -1,5 +1,18 @@
 # Kavrigo progress
 
+**2026-09-24 deterministic-risk replay slice:** ADR 0041 routes every synthetic USD reference
+order signal through the real deterministic risk evaluator and one-time handoff before Nautilus
+can receive it. The immutable run binds the approved agent version, global/workspace/agent policy
+hashes, execution assumptions, network and supervisor controls. Risk inputs use Nautilus-owned
+cash, position, P&L and open-order state; peak equity is marked on every bar. Rejections never
+reach execution, and results persist evaluation/approval counts, reason codes and the replay
+hash through PostgreSQL/Temporal. The bounded path refuses multi-day bars, non-candle freshness,
+minimum fees and ADV impact. It is still a synthetic reference strategy with no licensed data,
+so it remains non-publishable and activation-ineligible. No-signal runs complete with zero orders
+and retain the replay hash. Full regression: **1002 passed** against the local stack; Ruff covers
+324 files and strict typing covers 147 sources. Rebuilt API and worker started successfully;
+API health/readiness and Studio return HTTP 200.
+
 **2026-09-23 frozen-catalog slice:** ADR 0040 adds a worker-owned, read-only local Parquet
 catalog for deterministic reference backtests. Run definitions carry only a canonical relative
 object key plus exact byte hash, row count, instrument and interval. The loader caps object size,
@@ -131,7 +144,7 @@ Temporal histories carry references; uncertain model dispatch stops without retr
 
 The UI now supports versioned paper drafts and inspection of stored runs/evidence/accounts.
 The full paper product milestone is **not achieved**. Order-capable paper run-launch/account commands,
-hosted sign-in, licensed production-catalog agent/risk replay backtests, licensed durable data
+hosted sign-in, licensed production-catalog agent-runtime backtests, licensed durable data
 collection, paid providers, shared billing, continuous production
 operation, hosted security/retention and independent review remain open. See
 [ADR 0027](docs/adr/0027-durable-paper-workflows.md),
@@ -147,7 +160,7 @@ operation, hosted security/retention and independent review remain open. See
 | 4. Auth / tenants | Implemented slice | Real Clerk config and membership mutation routes deferred |
 | 5. Market ingestion | Recorded replay and ephemeral public WebSocket sample | Licensed storage and Redpanda producer deferred |
 | 6. Features | Deterministic point-in-time slice | Stored-window loader deferred |
-| 7. Backtest | Bounded BTC/ETH reference strategy plus hash-verified local Parquet catalog through Nautilus and Temporal | Licensed dataset builder/object storage, actual agent/risk replay and out-of-sample evidence pending |
+| 7. Backtest | Bounded BTC/ETH reference strategy, frozen Parquet catalog and deterministic risk replay through Nautilus and Temporal | Licensed dataset builder/object storage, actual agent-runtime replay, multi-day risk accounting and out-of-sample evidence pending |
 | 8. Model gateway | Local/mock | No paid provider or durable ledger |
 | 9. News intelligence | Local synthetic feed | No live/durable collector |
 | 10. Agent runtime | Local decisions/allocations | Mock workflow backend wired; hosted/authenticated routes pending |
@@ -204,6 +217,7 @@ Destination checks used Linux Docker Python 3.13.11 and the equivalent Python co
 | ADR 0035 | Live Binance Spot Testnet → API → Temporal → agent smoke | Completed `testnet_rehearsal`; labeled evidence persisted, `no_candidates`, account sequence 0, no positions |
 | ADR 0039, 2026-09-23 | Full pytest with PostgreSQL/ClickHouse/Temporal; Ruff/format; strict mypy | 977 passed; 316 Python files formatted; 144 typed sources; bounded reference workflow integration passed |
 | ADR 0040, 2026-09-23 | Full pytest with PostgreSQL/ClickHouse/Temporal; Ruff/format; strict mypy | 990 passed; 320 Python files formatted; 145 typed sources; catalog workflow and tamper refusal passed |
+| ADR 0041, 2026-09-24 | Full pytest with PostgreSQL/ClickHouse/Temporal; Ruff/format; strict mypy; lock/Compose | 1002 passed; 324 Python files formatted; 147 typed sources; approved, rejected, no-signal and fail-closed risk paths passed; rebuilt API/worker and Studio healthy |
 | Historical source step 10 `c46b315` | `make check` | 680 passed / 50 integration skips; Docker unavailable |
 | Historical source step 9 `3abe65d` | Full check, stack/migrations/integrations | 676 full-suite passes; dedicated 50 integrations passed |
 
@@ -217,7 +231,7 @@ The numbered plan has local slices through step 15, with substantial explicit ca
 The next product slice should add evidence-backed approval of reviewed policy candidates and wire authenticated, approved
 real-data paper launch to stored decisions/risk/results. Local synthetic rehearsal already
 works with placeholder draft policy IDs; it is execution-disabled. Preserve all earlier
-carry-overs, notably licensed production-catalog agent/risk replay backtests, hosted auth, licensed
+carry-overs, notably licensed production-catalog agent-runtime backtests, hosted auth, licensed
 market-data retention and operational review. No hosted telemetry
 account or paid model is configured; synthetic eval passes do not measure model accuracy.
 

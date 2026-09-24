@@ -29,6 +29,7 @@ __all__ = [
     "FreshnessPolicy",
     "RiskDecision",
     "RiskEvaluation",
+    "RiskExecutionPolicy",
     "RiskLimits",
     "RiskPolicy",
     "RiskReasonCode",
@@ -107,6 +108,27 @@ class RiskScope(StrEnum):
 
 
 Percent = Annotated[ExactDecimal, Field(ge=0, le=100)]
+Duration = Annotated[int, Field(strict=True, ge=1, le=86_400_000)]
+Bps = Annotated[ExactDecimal, Field(ge=0, le=10_000)]
+
+
+class RiskExecutionPolicy(DomainModel):
+    """Versioned execution assumptions consumed by deterministic risk.
+
+    This is a domain contract because paper operation and historical replay must use the same
+    fee, slippage, precision and freshness semantics. It contains no venue command or secret.
+    """
+
+    execution_policy_id: Annotated[str, Field(pattern=r"^ep_[0-9a-f]{32}$")]
+    version: Annotated[str, Field(pattern=r"^[A-Za-z0-9_.:-]{1,128}$")]
+    fee_bps: Bps
+    slippage_bps: Bps
+    notional_increment_usd: Annotated[ExactDecimal, Field(gt=0)]
+    max_snapshot_age_ms: Duration
+    max_portfolio_age_ms: Duration
+    max_reconciliation_age_ms: Duration
+    max_market_age_ms: Duration
+    max_approval_age_ms: Duration
 
 
 class FreshnessPolicy(DomainModel):

@@ -27,7 +27,7 @@ from nautilus_trader.backtest.engine import BacktestEngine as NautilusBacktestEn
 from nautilus_trader.backtest.models import MakerTakerFeeModel
 from nautilus_trader.config import BacktestEngineConfig, LoggingConfig
 from nautilus_trader.indicators import ExponentialMovingAverage
-from nautilus_trader.model.currencies import USDT, Currency  # type: ignore[attr-defined]
+from nautilus_trader.model.currencies import Currency  # type: ignore[attr-defined]
 from nautilus_trader.model.data import Bar, BarType
 from nautilus_trader.model.enums import AccountType, OmsType, OrderSide
 from nautilus_trader.model.identifiers import InstrumentId as NautilusInstrumentId
@@ -51,6 +51,7 @@ from kavrigo_backtest import (
     refuse,
 )
 from kavrigo_domain import Money
+from kavrigo_nautilus.risk_replay import ReferenceRiskGate
 from kavrigo_nautilus.translation import to_nautilus_fill_model, to_nautilus_latency_model
 
 __all__ = ["ENGINE_NAME", "NautilusBacktestAdapter"]
@@ -70,12 +71,16 @@ class _LongOnlyEma(Strategy):  # type: ignore[misc]
         fast_period: int,
         slow_period: int,
         size_precision: int,
+        trade_notional: Decimal,
+        risk_gate: ReferenceRiskGate | None = None,
     ) -> None:
         super().__init__()
         self.instrument_id = instrument_id
         self.bar_type = bar_type
         self.quantity = quantity
         self.size_precision = size_precision
+        self.trade_notional = trade_notional
+        self.risk_gate = risk_gate
         self.fast = ExponentialMovingAverage(fast_period)
         self.slow = ExponentialMovingAverage(slow_period)
         self.decisions = 0
@@ -93,6 +98,8 @@ class _LongOnlyEma(Strategy):  # type: ignore[misc]
         self.subscribe_bars(self.bar_type)
 
     def on_bar(self, bar: Bar) -> None:
+        if self.risk_gate is not None:
+            self.risk_gate.observe(self, bar)
         if not self.indicators_initialized() or self.instrument is None:
             return
         self.decisions += 1
@@ -100,18 +107,47 @@ class _LongOnlyEma(Strategy):  # type: ignore[misc]
             self.signal_long = True
             if not self.portfolio.is_flat(self.instrument_id):
                 return
+            quantity = self.quantity
+            if self.risk_gate is not None:
+                approved = self.risk_gate.approve(
+                    strategy=self,
+                    bar=bar,
+                    side=OrderSide.BUY,
+                    requested_notional=self.trade_notional,
+                )
+                if approved is None:
+                    return
+                quantity = approved
             self.submit_order(
                 self.order_factory.market(
                     instrument_id=self.instrument_id,
                     order_side=OrderSide.BUY,
-                    quantity=Quantity(self.quantity, self.size_precision),
+                    quantity=Quantity(quantity, self.size_precision),
                 )
             )
         elif self.fast.value < self.slow.value and self.signal_long:
             self.signal_long = False
             if not self.portfolio.is_net_long(self.instrument_id):
                 return
-            self.close_all_positions(self.instrument_id)
+            if self.risk_gate is None:
+                self.close_all_positions(self.instrument_id)
+                return
+            held = Decimal(self.portfolio.net_position(self.instrument_id))
+            approved = self.risk_gate.approve(
+                strategy=self,
+                bar=bar,
+                side=OrderSide.SELL,
+                requested_notional=held * bar.close.as_decimal(),
+            )
+            if approved is None:
+                return
+            self.submit_order(
+                self.order_factory.market(
+                    instrument_id=self.instrument_id,
+                    order_side=OrderSide.SELL,
+                    quantity=Quantity(min(held, approved), self.size_precision),
+                )
+            )
 
 
 @dataclass(frozen=True)
@@ -271,7 +307,10 @@ class NautilusBacktestAdapter:
             # CASH rather than MARGIN: V1 is spot-only and non-custodial (ADR 0002), and a
             # margin account would let a simulation take leverage the product cannot.
             starting_balances=[
-                NautilusMoney(config.starting_balance.amount, USDT),
+                NautilusMoney(
+                    config.starting_balance.amount,
+                    Currency.from_str(config.starting_balance.currency),
+                ),
             ],
             base_currency=None,
             fee_model=MakerTakerFeeModel(),
@@ -391,6 +430,20 @@ class NautilusBacktestAdapter:
             quantity = (raw_quantity // strategy_config.size_increment) * (
                 strategy_config.size_increment
             )
+            risk_gate = (
+                ReferenceRiskGate(
+                    config=config,
+                    instrument_id=internal_id,
+                    venue=Venue(self._venue),
+                    bars=source_bars,
+                    price_precision=strategy_config.price_precision,
+                    size_precision=strategy_config.size_precision,
+                    price_increment=strategy_config.price_increment,
+                    size_increment=strategy_config.size_increment,
+                )
+                if config.risk_replay is not None
+                else None
+            )
             strategy = _LongOnlyEma(
                 instrument_id=internal_id,
                 bar_type=bar_type,
@@ -398,6 +451,8 @@ class NautilusBacktestAdapter:
                 fast_period=strategy_config.fast_period,
                 slow_period=strategy_config.slow_period,
                 size_precision=strategy_config.size_precision,
+                trade_notional=strategy_config.trade_notional.amount,
+                risk_gate=risk_gate,
             )
             engine.add_data(engine_bars)
             engine.add_strategy(strategy)
@@ -427,9 +482,15 @@ class NautilusBacktestAdapter:
                 leakage_findings=[],
                 decisions_evaluated=strategy.decisions,
                 orders_submitted=len(orders),
-                # This diagnostic does not replay Kavrigo's deterministic risk engine. A
-                # simulator rejection is not a risk rejection and must not be relabeled as one.
-                orders_rejected_by_risk=0,
+                orders_rejected_by_risk=risk_gate.rejections if risk_gate is not None else 0,
+                risk_evaluations=risk_gate.evaluations if risk_gate is not None else 0,
+                risk_approvals=risk_gate.approvals if risk_gate is not None else 0,
+                risk_replay_hash=(
+                    config.risk_replay.replay_hash if config.risk_replay is not None else None
+                ),
+                risk_reason_counts=(
+                    dict(sorted(risk_gate.reason_counts.items())) if risk_gate is not None else {}
+                ),
                 limitations=limitations,
             )
         finally:
@@ -457,12 +518,31 @@ class NautilusBacktestAdapter:
                 findings=findings,
             )
 
+        if config.risk_replay is not None:
+            version = config.risk_replay.agent_version
+            if (
+                bundle.agent_version_id != version.agent_version_id
+                or bundle.spec_hash != version.spec_hash
+                or bundle.prompt_hash != version.prompt_hash
+                or bundle.risk_policy_id != version.spec.risk_policy_ref
+                or bundle.execution_policy_id != version.spec.execution_policy_ref
+                or bundle.config_hash != config.config_hash
+            ):
+                return refuse(
+                    config,
+                    reason="The risk replay does not match the reproducibility bundle.",
+                    started_at=started_at,
+                    bundle=bundle,
+                    findings=["risk_replay_bundle_mismatch"],
+                )
+
         common_limitations = [
             "bar_data_execution_limits_intrabar_realism",
-            "deterministic_risk_policy_not_replayed",
             "provider_entitlement_not_verified",
             "reference_strategy_not_agent_runtime",
         ]
+        if config.risk_replay is None:
+            common_limitations.append("deterministic_risk_policy_not_replayed")
         if config.inline_data is not None:
             return self._run_bars(
                 config,

@@ -1,10 +1,10 @@
 """Deterministic local paper risk. No venue command, private credential or model tool."""
 
+from kavrigo_domain import RiskExecutionPolicy
 from kavrigo_risk.contracts import (
     PaperRiskPermit,
     RiskAuditEvent,
     RiskControls,
-    RiskExecutionPolicy,
     RiskMarket,
     RiskRecord,
     RiskRegistration,

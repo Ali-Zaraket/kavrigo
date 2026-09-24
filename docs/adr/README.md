@@ -53,3 +53,4 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0038](0038-point-in-time-data-entitlement-ledger.md) | Point-in-time platform and workspace data entitlements | Accepted for local control plane |
 | [0039](0039-bounded-nautilus-reference-backtest.md) | Bounded deterministic Nautilus reference backtest | Accepted for local validation |
 | [0040](0040-frozen-local-parquet-backtest-catalog.md) | Frozen local Parquet backtest catalog | Accepted for local validation |
+| [0041](0041-deterministic-risk-gated-reference-backtest.md) | Deterministic-risk-gated reference backtest | Accepted for local validation |

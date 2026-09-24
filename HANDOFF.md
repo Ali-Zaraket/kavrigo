@@ -31,6 +31,15 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-24:** ADR 0041 adds a bounded synthetic USD reference path in which the real
+> deterministic evaluator and one-time handoff gate every Nautilus order. Exact version/policy
+> hashes, engine-owned portfolio state, per-bar peak equity, approval/rejection counts and reason
+> codes are replayed and persisted through the durable workflow. Multi-day bars, non-candle
+> freshness and unsupported cost terms refuse. The diagnostic strategy and data are still
+> synthetic, so results remain non-publishable and activation-ineligible. Full regression:
+> 1002 passed; Ruff covers 324 files and strict typing covers 147 sources. No-signal runs retain
+> their replay hash and complete without orders. API and worker rebuilt; API/Studio return 200.
+
 > **2026-09-23:** ADR 0040 adds a worker-owned, read-only local Parquet catalog boundary for
 > reference backtests. Exact object bytes, schema, row count, instrument, interval, ordering and
 > point-in-time bounds are verified before Nautilus starts; path escape and tampering fail
@@ -59,7 +68,7 @@
 > applied locally; 939 tests pass with 25 expected integration skips. The next slice is licensed
 > real-market evidence plus explicit entitlement records, still without enabling orders.
 
-**Updated:** 2026-09-23 · **Position:** step 15 plus a frozen local backtest catalog and point-in-time entitlement-gated activation assessment · **Next:** licensed catalog data, agent/risk replay, promotable evaluation evidence and supervised paper activation
+**Updated:** 2026-09-24 · **Position:** step 15 plus frozen local backtests with deterministic risk replay and point-in-time entitlement-gated activation assessment · **Next:** licensed catalog data, agent-runtime replay, promotable evaluation evidence and supervised paper activation
 
 Step 13's full regression passed **885 tests with zero skips**, including 82 integrations.
 Ruff covers 255 files; strict typing passes 120 sources. Isolated migration rollback and both
@@ -93,7 +102,7 @@ blocked by a concrete dependency. Completed steps are committed separately; read
 | 4 | Auth / tenant control plane | done |
 | 5 | Market ingestion | public WebSocket transport and ephemeral sample verified; licensed durable collection and Redpanda producer remain — see §5 |
 | 6 | Feature engine | done |
-| 7 | Backtest engine | bounded reference strategy and local frozen Parquet catalog done; licensed production catalog and actual agent/risk replay remain — see §5 |
+| 7 | Backtest engine | bounded reference strategy, local frozen Parquet catalog and deterministic risk replay done; licensed production catalog and actual agent-runtime replay remain — see §5 |
 | 8 | Model gateway | local/mock slice done — paid routing is gated; see §5 |
 | 9 | News intelligence | local synthetic-feed slice done — see §5 |
 | 10 | Agent runtime | local decision/allocation slice; destination stack verified — see §5 |
@@ -644,8 +653,10 @@ activation; do not relax the production provider-rights gate.
 ADR 0039 adds a deterministic, bounded Nautilus reference backtest for BTC/ETH. It validates
 engine and Temporal plumbing with synthetic, hash-bound bars and an internal long-only strategy.
 ADR 0040 moves those bars behind a hash-verified, worker-owned local Parquet catalog boundary.
-Do not use its performance for promotion: licensed production-catalog extraction, actual runtime decision
-and risk replay, and out-of-sample evidence remain required.
+ADR 0041 gates the synthetic USD variant with the real deterministic evaluator and records the
+exact replay inputs and outcomes. Do not use its performance for promotion: licensed
+production-catalog extraction, actual runtime decisions, multi-day accounting and out-of-sample
+evidence remain required.
 
 ---
 

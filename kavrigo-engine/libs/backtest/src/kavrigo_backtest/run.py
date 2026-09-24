@@ -20,6 +20,7 @@ from pydantic import Field, model_validator
 from kavrigo_backtest.catalog import ParquetBarDatasetRef
 from kavrigo_backtest.costs import CostModel
 from kavrigo_backtest.fixture import BacktestBar, InlineBarDataset, LongOnlyEmaStrategy
+from kavrigo_backtest.governance import ReferenceRiskReplay
 from kavrigo_backtest.manifest import DatasetManifest
 from kavrigo_backtest.metrics import PerformanceMetrics
 from kavrigo_domain import AgentSpec, DomainModel, ModelCallRecord, Money, UtcDatetime, content_hash
@@ -58,6 +59,7 @@ class BacktestRunConfig(DomainModel):
     inline_data: InlineBarDataset | None = None
     catalog_data: ParquetBarDatasetRef | None = None
     strategy: LongOnlyEmaStrategy | None = None
+    risk_replay: ReferenceRiskReplay | None = None
     random_seed: Annotated[int, Field(ge=0, le=2**31 - 1)] = 0
     """Pinned even where the engine is deterministic: fill models and any sampling must not
     vary between two runs claiming the same configuration (``MASTER_BUILD_SPEC.md`` §12.2)."""
@@ -86,8 +88,11 @@ class BacktestRunConfig(DomainModel):
                 raise ValueError("strategy notional currency must match the instrument quote")
             if self.starting_balance.currency != instrument.quote:
                 raise ValueError("starting balance currency must match the instrument quote")
-            if instrument.quote != "USDT":
-                raise ValueError("the current reference Nautilus slice supports USDT spot only")
+            supported_quote = "USD" if self.risk_replay is not None else "USDT"
+            if instrument.quote != supported_quote:
+                raise ValueError(
+                    f"the current reference path requires {supported_quote} spot for this run"
+                )
             if self.benchmark_instrument != instrument.value:
                 raise ValueError("reference runs require the configured instrument benchmark")
             if self.catalog_data is not None:
@@ -101,6 +106,34 @@ class BacktestRunConfig(DomainModel):
                     raise ValueError("catalog dataset is not bound to a matching manifest source")
             if self.inline_data is not None:
                 self.validate_bars(self.inline_data.bars)
+        if self.risk_replay is not None:
+            if self.strategy is None:
+                raise ValueError("risk replay requires historical data and a reference strategy")
+            replay = self.risk_replay
+            version = replay.agent_version
+            if (
+                version.workspace_id != self.workspace_id
+                or version.agent_version_id != self.agent_version_id
+                or version.spec != self.spec
+            ):
+                raise ValueError("risk replay agent version does not match the run")
+            if version.created_at > self.dataset.period_start or any(
+                policy.created_at > self.dataset.period_start for policy in replay.policies
+            ):
+                raise ValueError("risk replay versions must exist before the historical period")
+            if replay.execution.fee_bps != self.costs.fees.taker_bps:
+                raise ValueError("risk replay fee assumptions must match the backtest cost model")
+            if replay.execution.slippage_bps != self.costs.slippage.slippage_bps():
+                raise ValueError(
+                    "risk replay slippage assumptions must match the backtest cost model"
+                )
+            if (
+                self.costs.fees.minimum_fee is not None
+                or self.costs.slippage.impact_bps_per_unit_adv != 0
+            ):
+                raise ValueError(
+                    "reference risk replay does not yet model minimum fees or ADV impact"
+                )
         return self
 
     def validate_bars(self, bars: tuple[BacktestBar, ...]) -> None:
@@ -156,6 +189,8 @@ class BacktestRunConfig(DomainModel):
             raise ValueError("trade notional cannot buy one configured size increment")
         if all(source.last_ingested_at < bars[-1].ingested_at for source in matching_sources):
             raise ValueError("manifest source does not cover the final historical ingestion time")
+        if self.risk_replay is not None and len({bar.ingested_at.date() for bar in bars}) != 1:
+            raise ValueError("reference risk replay currently supports one UTC day")
 
     @property
     def config_hash(self) -> str:
@@ -172,6 +207,7 @@ class BacktestRunConfig(DomainModel):
                 ),
                 "catalog_data": self.catalog_data,
                 "strategy": self.strategy,
+                "risk_replay": self.risk_replay,
                 "seed": self.random_seed,
             }
         )
@@ -270,6 +306,12 @@ class BacktestResult(DomainModel):
     decisions_evaluated: Annotated[int, Field(ge=0)] = 0
     orders_submitted: Annotated[int, Field(ge=0)] = 0
     orders_rejected_by_risk: Annotated[int, Field(ge=0)] = 0
+    risk_evaluations: Annotated[int, Field(ge=0)] = 0
+    risk_approvals: Annotated[int, Field(ge=0)] = 0
+    risk_replay_hash: Annotated[
+        str | None, Field(default=None, pattern=r"^sha256:[0-9a-f]{64}$")
+    ] = None
+    risk_reason_counts: dict[str, Annotated[int, Field(ge=1)]] = {}
     limitations: Annotated[list[str], Field(max_length=16)] = []
 
     @model_validator(mode="after")
@@ -287,6 +329,14 @@ class BacktestResult(DomainModel):
                 raise ValueError("a refused run must not carry metrics")
         if self.finished_at is not None and self.finished_at < self.started_at:
             raise ValueError("finished_at precedes started_at")
+        if self.risk_approvals > self.risk_evaluations:
+            raise ValueError("risk approvals cannot exceed evaluations")
+        if self.orders_rejected_by_risk != self.risk_evaluations - self.risk_approvals:
+            raise ValueError("risk rejection count does not match evaluations and approvals")
+        if self.risk_evaluations > 0 and self.risk_replay_hash is None:
+            raise ValueError("risk-evaluated results must identify the replay configuration")
+        if self.risk_evaluations == 0 and self.risk_reason_counts:
+            raise ValueError("results without risk evaluations cannot carry risk reason counts")
         return self
 
     @property
