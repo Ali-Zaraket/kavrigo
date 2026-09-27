@@ -81,6 +81,14 @@ reachable.
 JWKS keys are cached with a bounded lifespan and re-fetched on an unknown key id, so provider
 key rotation neither causes an outage nor a fetch on every request.
 
+**2026-09-27 key-rotation correction:** Pinned PyJWT 2.13.0 documents two cache tiers. The JWKS
+set has a 600-second TTL here; the optional per-signing-key LRU has **no time-based expiry**.
+The verifier now disables the per-key cache, so removal or replacement in a refreshed JWKS takes
+effect after the bounded set TTL. A regression test replaces a key under the same `kid` and proves
+the old signature is rejected while the new signature is accepted. This does not provide instant
+token revocation; that trade-off remains as documented above. See the [PyJWT `PyJWKClient`
+reference](https://pyjwt.readthedocs.io/en/latest/api.html#jwt.PyJWKClient).
+
 **2026-09-27 operational amendment:** `PyJWKClient.get_signing_key_from_jwt` is synchronous and
 may fetch keys on a cache miss. The async verifier runs that lookup in `asyncio.to_thread` so an
 identity-provider delay does not stall unrelated API requests. This follows the [Python asyncio

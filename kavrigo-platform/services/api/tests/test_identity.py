@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import threading
 import time
+from types import SimpleNamespace
 from typing import Any
 
 import jwt
@@ -44,7 +45,7 @@ def provider(monkeypatch: pytest.MonkeyPatch, rsa_key: rsa.RSAPrivateKey) -> Jwk
     return p
 
 
-def _token(rsa_key: rsa.RSAPrivateKey, **overrides: Any) -> str:
+def _token(rsa_key: rsa.RSAPrivateKey, *, kid: str | None = None, **overrides: Any) -> str:
     now = int(time.time())
     claims: dict[str, Any] = {
         "sub": "user_abc",
@@ -57,10 +58,32 @@ def _token(rsa_key: rsa.RSAPrivateKey, **overrides: Any) -> str:
     }
     claims.update(overrides)
     algorithm = overrides.pop("_alg", "RS256")
-    return jwt.encode(claims, rsa_key, algorithm=algorithm)
+    return jwt.encode(claims, rsa_key, algorithm=algorithm, headers={"kid": kid} if kid else None)
 
 
 class TestJwksVerification:
+    async def test_removed_signing_key_is_not_trusted_after_jwks_refresh(
+        self, rsa_key: rsa.RSAPrivateKey, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        provider = JwksIdentityProvider(
+            issuer=ISSUER, jwks_url=f"{ISSUER}/.well-known/jwks.json", audience=AUDIENCE
+        )
+        rotated_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        active_keys = [SimpleNamespace(key=rsa_key.public_key(), key_id="rotation")]
+        monkeypatch.setattr(
+            provider._jwk_client, "get_signing_keys", lambda refresh=False: active_keys
+        )
+
+        old_token = _token(rsa_key, kid="rotation")
+        assert (await provider.verify(old_token)).subject == "user_abc"
+
+        # A refreshed JWKS now serves a different public key under the same kid. A stale
+        # per-key LRU would still accept the old signature and reject the new one.
+        active_keys[0] = SimpleNamespace(key=rotated_key.public_key(), key_id="rotation")
+        with pytest.raises(IdentityVerificationError):
+            await provider.verify(old_token)
+        assert (await provider.verify(_token(rotated_key, kid="rotation"))).subject == "user_abc"
+
     async def test_slow_jwks_lookup_does_not_block_other_coroutines(
         self,
         provider: JwksIdentityProvider,

@@ -1,5 +1,13 @@
 # Kavrigo progress
 
+**2026-09-27 bounded-JWKS-key slice:** Pinned PyJWT 2.13.0's optional per-key LRU has no TTL,
+which could keep accepting a removed signing key after the JWKS set refreshes. The verifier now
+caches only the JWKS set for 600 seconds. A rotation test replaces a key under the same `kid`,
+rejects the old signature and accepts the new one. ADR 0021 records the bounded revocation
+semantics. Full Python regression: **1038 passed** against the local stack; Ruff check/format
+passes 328 files, mypy covers 148 sources, and the rebuilt local API is healthy. This does not
+provide immediate session revocation or hosted identity setup.
+
 **2026-09-27 secure-identity-endpoint slice:** Outside local development, JWKS authentication
 now refuses to start unless both issuer and JWKS URLs are valid, credential-free HTTPS endpoints
 without fragments. Local HTTP mock identity providers remain available for development. This

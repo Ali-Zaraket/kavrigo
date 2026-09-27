@@ -31,6 +31,12 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** Disabled PyJWT's unbounded per-signing-key LRU while retaining the 600-second
+> JWKS-set TTL. A same-`kid` rotation test proves old signatures fail after a refreshed key set
+> and new signatures pass. ADR 0021 documents the bounded effect and lack of instant revocation.
+> Full regression: 1038 passed; Ruff checks 328 files and mypy covers 148 sources. The rebuilt
+> local API is healthy. Hosted identity configuration remains open.
+>
 > **2026-09-27:** Nonlocal JWKS auth now rejects plaintext, malformed, credential-bearing or
 > fragment-bearing issuer/JWKS URLs at startup; local HTTP mocks remain allowed. ADR 0021 records
 > the guard. Full Python regression: 1037 passed; Ruff checks 328 files and mypy covers 148
