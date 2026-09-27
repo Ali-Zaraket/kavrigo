@@ -7,6 +7,7 @@ run configuration and the reproducibility bundle. The NautilusTrader implementat
 
 from __future__ import annotations
 
+from kavrigo_backtest.audit import BacktestRiskAudit, BacktestRiskReceipt
 from kavrigo_backtest.catalog import (
     BAR_PARQUET_SCHEMA,
     BarCatalog,
@@ -58,6 +59,8 @@ __all__ = [
     "BacktestBar",
     "BacktestEngine",
     "BacktestResult",
+    "BacktestRiskAudit",
+    "BacktestRiskReceipt",
     "BacktestRunConfig",
     "BarCatalog",
     "CostModel",

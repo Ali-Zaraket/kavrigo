@@ -1,6 +1,6 @@
 # Resume Kavrigo on another machine
 
-Updated 2026-09-24 after ADR 0041's deterministic-risk replay slice. The detailed transfer
+Updated 2026-09-27 after ADR 0042's per-signal risk-audit slice. The detailed transfer
 instructions below retain their original step-13 checkpoint; use PROGRESS.md and git log for
 current implementation and test counts.
 This file, `PROGRESS.md`, `HANDOFF.md`, `HANDOFF_PROMPT.md` and Git history are the portable project memory.
@@ -25,10 +25,11 @@ No account memory or previous chat is required. No background build is intended 
   replay reconciliation. Single-generation batch; no continuous operation or process-restart durability.
 - Step 13: PostgreSQL account/run authority, four Temporal workflows, real worker and bounded
   paper supervision; local/mock only, independent review pending.
-- Steps 14-15 and the post-step slices through ADR 0041 are on main. These include the local
+- Steps 14-15 and the post-step slices through ADR 0042 are on main. These include the local
   execution-disabled rehearsal, reviewed policy candidates, entitlement-gated activation
   assessments, the bounded Nautilus reference path, its hash-verified local Parquet catalog and
-  the deterministic risk gate for synthetic USD reference orders.
+  the deterministic risk gate for synthetic USD reference orders and its bounded per-signal
+  risk-receipt journal.
   Migration 0007 is applied to the local application database.
   Studio creates paper drafts and launches a synthetic Temporal run; Pulse labels the receipts.
   Real-data policy-approved paper activation remains open.

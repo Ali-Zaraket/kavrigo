@@ -4671,7 +4671,7 @@
           "max_approval_age_ms"
         ],
         "title": "RiskExecutionPolicy",
-        "description": "Local USD-spot MARKET/IOC only. Assumptions are operator configuration, not venue facts."
+        "description": "Versioned execution assumptions consumed by deterministic risk.\n\nThis is a domain contract because paper operation and historical replay must use the same\nfee, slippage, precision and freshness semantics. It contains no venue command or secret."
       },
       "RiskLimits-Input": {
         "properties": {

@@ -20,6 +20,9 @@ from pydantic import ValidationError
 from kavrigo_backtest import (
     BAR_PARQUET_SCHEMA,
     BacktestBar,
+    BacktestResult,
+    BacktestRiskAudit,
+    BacktestRiskReceipt,
     BacktestRunConfig,
     CostModel,
     DatasetManifest,
@@ -58,6 +61,7 @@ from kavrigo_domain import (
 )
 from kavrigo_domain.snapshot import DataFamily
 from kavrigo_nautilus import NautilusBacktestAdapter
+from kavrigo_risk import LocalRiskSession, RiskRegistration
 
 START = datetime(2026, 1, 1, tzinfo=UTC)
 END = datetime(2026, 2, 1, tzinfo=UTC)
@@ -579,6 +583,8 @@ class TestRun:
         assert result.risk_reason_counts == {}
         assert config.risk_replay is not None
         assert result.risk_replay_hash == config.risk_replay.replay_hash
+        assert result.risk_audit is not None
+        assert result.risk_audit.receipts == ()
 
     def test_a_clean_run_completes_and_reports_no_activity(
         self, adapter: NautilusBacktestAdapter, bundle: ReproducibilityBundle
@@ -748,6 +754,9 @@ class TestRun:
         assert "deterministic_risk_policy_not_replayed" not in result.limitations
         assert "reference_strategy_not_agent_runtime" in result.limitations
         assert result.risk_reason_counts["approved"] == 4
+        assert result.risk_audit is not None
+        assert len(result.risk_audit.receipts) == 4
+        assert all(item.outcome == "handed_off" for item in result.risk_audit.receipts)
         assert not result.is_publishable
 
     def test_risk_rejection_never_reaches_nautilus_execution(
@@ -763,6 +772,9 @@ class TestRun:
         assert result.orders_rejected_by_risk == result.risk_evaluations
         assert result.orders_submitted == 0
         assert result.risk_reason_counts["kill_switch_active"] == result.risk_evaluations
+        assert result.risk_audit is not None
+        assert all(item.outcome == "risk_rejected" for item in result.risk_audit.receipts)
+        assert all(item.handed_off_quantity is None for item in result.risk_audit.receipts)
 
     def test_risk_evaluator_failure_never_reaches_nautilus_execution(
         self, adapter: NautilusBacktestAdapter, monkeypatch: pytest.MonkeyPatch
@@ -784,6 +796,134 @@ class TestRun:
         assert result.orders_rejected_by_risk == result.risk_evaluations
         assert result.orders_submitted == 0
         assert result.risk_reason_counts["unknown_account_state"] == result.risk_evaluations
+        assert result.risk_audit is not None
+        assert all(item.record is None for item in result.risk_audit.receipts)
+        assert all(item.outcome == "unavailable" for item in result.risk_audit.receipts)
+        assert "synthetic evaluator failure" not in result.model_dump_json()
+
+
+class TestRiskAudit:
+    def test_saved_inputs_reproduce_the_exact_risk_records(
+        self, adapter: NautilusBacktestAdapter
+    ) -> None:
+        config = _risk_config()
+        result = adapter.run(config, bundle=_risk_bundle(adapter, config))
+        assert result.risk_audit is not None
+        assert config.risk_replay is not None
+        replay = config.risk_replay
+        registration = RiskRegistration(
+            agent_version=replay.agent_version,
+            policies=replay.policies,
+            execution=replay.execution,
+            networks=replay.networks,
+        )
+        restored = BacktestResult.model_validate_json(result.model_dump_json())
+        assert restored.risk_audit == result.risk_audit
+        for item in restored.risk_audit.receipts:
+            assert item.request is not None
+            assert item.portfolio is not None
+            assert item.controls is not None
+            assert item.record is not None
+            session = LocalRiskSession(
+                environment="local",
+                portfolio=item.portfolio,
+                controls=item.controls,
+                registrations=(registration,),
+                clock=lambda at=item.at: at,
+                capacity=1,
+            )
+            assert session.evaluate(item.request) == item.record
+            assert content_hash(registration) == item.record.registration_hash
+        again = adapter.run(config, bundle=_risk_bundle(adapter, config))
+        assert again.risk_audit == result.risk_audit
+
+    @pytest.mark.parametrize("target", ["portfolio", "request", "controls", "workspace"])
+    def test_tampered_receipt_inputs_fail_validation(
+        self, adapter: NautilusBacktestAdapter, target: str
+    ) -> None:
+        config = _risk_config()
+        result = adapter.run(config, bundle=_risk_bundle(adapter, config))
+        assert result.risk_audit is not None
+        values = result.risk_audit.receipts[0].model_dump(mode="json")
+        if target == "portfolio":
+            values["portfolio"]["cash"]["amount"] = "1"
+        elif target == "request":
+            values["request"]["decision"]["rationale"] = "Altered rationale"
+        elif target == "controls":
+            values["controls"]["connectivity_ok"] = False
+        else:
+            values["workspace_id"] = oid("ws", 123)
+        with pytest.raises(ValidationError, match="mismatch"):
+            BacktestRiskReceipt.model_validate(values)
+
+    def test_audit_hash_and_result_counters_are_verified(
+        self, adapter: NautilusBacktestAdapter
+    ) -> None:
+        config = _risk_config()
+        result = adapter.run(config, bundle=_risk_bundle(adapter, config))
+        assert result.risk_audit is not None
+        values = result.risk_audit.model_dump(mode="python")
+        with pytest.raises(ValidationError, match="content hash mismatch"):
+            BacktestRiskAudit.model_validate(values | {"content_hash": HASH})
+        with pytest.raises(ValidationError, match="result totals"):
+            BacktestResult.model_validate(
+                result.model_dump(mode="python") | {"risk_reason_counts": {"approved": 3}}
+            )
+        with pytest.raises(ValidationError, match="result identity"):
+            BacktestResult.model_validate(
+                result.model_dump(mode="python") | {"workspace_id": oid("ws", 999)}
+            )
+        with pytest.raises(ValidationError, match="contiguous"):
+            BacktestRiskAudit.seal(result.risk_audit.receipts[1:])
+        first = result.risk_audit.receipts[0]
+        with pytest.raises(ValidationError, match="duplicate intents"):
+            BacktestRiskAudit.seal((first, first.model_copy(update={"sequence": 2})))
+        assert first.record is not None
+        oversized = first.record.max_quantity.model_copy(
+            update={"value": first.record.max_quantity.value + Decimal(1)}
+        )
+        with pytest.raises(ValidationError, match="quantity exceeds"):
+            BacktestRiskReceipt.model_validate(
+                first.model_dump(mode="python") | {"handed_off_quantity": oversized}
+            )
+
+    def test_handoff_failure_keeps_approval_distinct_from_execution(
+        self, adapter: NautilusBacktestAdapter, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        config = _risk_config()
+        monkeypatch.setattr(LocalRiskSession, "handoff", lambda *_args, **_kwargs: None)
+        result = adapter.run(config, bundle=_risk_bundle(adapter, config))
+        assert result.status is RunStatus.COMPLETED
+        assert result.orders_submitted == 0
+        assert result.risk_approvals == 0
+        assert result.risk_audit is not None
+        assert result.risk_audit.receipts
+        for item in result.risk_audit.receipts:
+            assert item.outcome == "handoff_refused"
+            assert item.record is not None
+            assert item.record.evaluation.is_approved
+            assert item.handed_off_quantity is None
+
+    @pytest.mark.parametrize("budget", ["MAX_RISK_RECEIPTS", "MAX_RISK_AUDIT_BYTES"])
+    def test_audit_exhaustion_refuses_performance_without_truncation(
+        self, adapter: NautilusBacktestAdapter, monkeypatch: pytest.MonkeyPatch, budget: str
+    ) -> None:
+        config = _risk_config()
+        monkeypatch.setattr("kavrigo_nautilus.risk_replay." + budget, 1)
+        result = adapter.run(config, bundle=_risk_bundle(adapter, config))
+        assert result.status is RunStatus.REFUSED
+        assert result.metrics is None
+        assert result.leakage_findings == ["risk_audit_unavailable"]
+        assert result.risk_audit is None
+
+    def test_legacy_result_without_audit_remains_readable(
+        self, adapter: NautilusBacktestAdapter
+    ) -> None:
+        config = _risk_config()
+        result = adapter.run(config, bundle=_risk_bundle(adapter, config))
+        values = result.model_dump(mode="json")
+        values.pop("risk_audit")
+        assert BacktestResult.model_validate(values).risk_audit is None
 
     def test_risk_replay_refuses_a_bundle_from_another_configuration(
         self, adapter: NautilusBacktestAdapter

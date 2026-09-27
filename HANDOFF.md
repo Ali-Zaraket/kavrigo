@@ -31,6 +31,13 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** ADR 0042 adds per-signal typed risk receipts to the tenant-scoped durable
+> reference-backtest result. Receipts retain evaluated inputs, portfolio and supervisor controls,
+> deterministic outcome, reason codes and quantity handed to Nautilus, with journal ordering,
+> size, count and content-hash validation. Audit failure prevents further order handoffs. The
+> synthetic reference path remains diagnostic, non-publishable and activation-ineligible. Full
+> regression: 1013 passed; Ruff covers 326 files and strict typing covers 148 sources.
+
 > **2026-09-24:** ADR 0041 adds a bounded synthetic USD reference path in which the real
 > deterministic evaluator and one-time handoff gate every Nautilus order. Exact version/policy
 > hashes, engine-owned portfolio state, per-bar peak equity, approval/rejection counts and reason

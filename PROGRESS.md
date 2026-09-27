@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-09-27 per-signal risk-audit slice:** ADR 0042 saves a typed, bounded receipt for each
+attempted synthetic USD reference order. Each receipt binds the frozen risk request, portfolio,
+supervisor controls, evaluator record, safe reason codes and any quantity handed to Nautilus.
+The sealed journal validates order, identity, counts and hashes and persists with the tenant-scoped
+backtest result; Temporal still carries only stage references. Audit failure refuses further order
+handoffs. Historical results remain readable. These receipts are diagnostic, not broker permits;
+the reference strategy remains synthetic, non-publishable and activation-ineligible. Full regression:
+**1013 passed**; Ruff covers 326 files and strict typing covers 148 sources. Generated API client
+description was synchronized with OpenAPI.
+
 **2026-09-24 deterministic-risk replay slice:** ADR 0041 routes every synthetic USD reference
 order signal through the real deterministic risk evaluator and one-time handoff before Nautilus
 can receive it. The immutable run binds the approved agent version, global/workspace/agent policy

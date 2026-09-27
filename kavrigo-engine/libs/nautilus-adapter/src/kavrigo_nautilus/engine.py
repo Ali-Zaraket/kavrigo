@@ -464,6 +464,14 @@ class NautilusBacktestAdapter:
                     message="Timestamp.utcnow is deprecated.*",
                 )
                 engine.run()
+            if risk_gate is not None and risk_gate.audit_failed:
+                return refuse(
+                    config,
+                    reason="The reference risk audit could not be retained completely.",
+                    started_at=started_at,
+                    bundle=bundle,
+                    findings=["risk_audit_unavailable"],
+                )
             orders = list(engine.cache.orders())
             fills = _fills(orders)
             metrics, _ = _metrics(config, source_bars, fills)
@@ -491,6 +499,7 @@ class NautilusBacktestAdapter:
                 risk_reason_counts=(
                     dict(sorted(risk_gate.reason_counts.items())) if risk_gate is not None else {}
                 ),
+                risk_audit=risk_gate.audit if risk_gate is not None else None,
                 limitations=limitations,
             )
         finally:

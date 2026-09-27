@@ -1789,7 +1789,10 @@ export interface components {
     };
     /**
      * RiskExecutionPolicy
-     * @description Local USD-spot MARKET/IOC only. Assumptions are operator configuration, not venue facts.
+     * @description Versioned execution assumptions consumed by deterministic risk.
+     *
+     *     This is a domain contract because paper operation and historical replay must use the same
+     *     fee, slippage, precision and freshness semantics. It contains no venue command or secret.
      */
     RiskExecutionPolicy: {
       /** Execution Policy Id */

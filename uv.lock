@@ -924,12 +924,14 @@ version = "0.1.0"
 source = { editable = "kavrigo-engine/libs/backtest" }
 dependencies = [
     { name = "kavrigo-domain" },
+    { name = "kavrigo-risk" },
     { name = "pyarrow" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "kavrigo-domain", editable = "kavrigo-engine/libs/domain" },
+    { name = "kavrigo-risk", editable = "kavrigo-engine/services/risk-engine" },
     { name = "pyarrow", specifier = "==25.0.1" },
 ]
 

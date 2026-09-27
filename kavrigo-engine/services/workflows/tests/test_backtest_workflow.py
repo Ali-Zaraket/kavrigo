@@ -19,6 +19,7 @@ import pytest
 from kavrigo_backtest import (
     BAR_PARQUET_SCHEMA,
     BacktestBar,
+    BacktestResult,
     BacktestRunConfig,
     CostModel,
     DatasetManifest,
@@ -439,11 +440,19 @@ async def test_nautilus_workflow_completes_a_meaningful_reference_run(
     await replay(handle)
 
 
+@pytest.mark.parametrize("killed", [False, True])
 async def test_nautilus_workflow_persists_deterministic_risk_replay_receipts(
-    engine_database, temporal_client
+    engine_database, temporal_client, killed
 ):
     adapter = NautilusBacktestAdapter()
     config = _risk_config(workspace_id=WS, run_id="run_" + uuid4().hex)
+    assert config.risk_replay is not None
+    if killed:
+        config = config.model_copy(
+            update={
+                "risk_replay": config.risk_replay.model_copy(update={"active_kills": ("global",)})
+            }
+        )
     assert config.risk_replay is not None
     version = config.risk_replay.agent_version
     bundle = adapter.bundle_for(
@@ -471,13 +480,24 @@ async def test_nautilus_workflow_persists_deterministic_risk_replay_receipts(
     async with engine_database.transaction(WS) as connection:
         saved = await runs.stage(connection, ref, "backtest")
         output = json.loads(saved["output"])
-        assert output["risk_evaluations"] == 4
-        assert output["risk_approvals"] == 4
-        assert output["orders_rejected_by_risk"] == 0
-        assert output["orders_submitted"] == 4
+        restored = BacktestResult.model_validate(output)
+        assert restored.risk_audit is not None
+        assert len(restored.risk_audit.receipts) == restored.risk_evaluations > 0
+        if killed:
+            assert restored.risk_approvals == restored.orders_submitted == 0
+            assert restored.orders_rejected_by_risk == restored.risk_evaluations
+            assert all(r.outcome == "risk_rejected" for r in restored.risk_audit.receipts)
+        else:
+            assert restored.risk_evaluations == restored.risk_approvals == 4
+            assert restored.orders_rejected_by_risk == 0
+            assert restored.orders_submitted == 4
+            assert all(r.outcome == "handed_off" for r in restored.risk_audit.receipts)
+        assert all(r.workspace_id == WS for r in restored.risk_audit.receipts)
         assert output["risk_replay_hash"] == config.risk_replay.replay_hash
         assert "deterministic_risk_policy_not_replayed" not in output["limitations"]
         receipt = runs.stage_ref(ref, saved)
+    async with engine_database.transaction("ws_" + "f" * 32) as connection:
+        assert await runs.stage(connection, ref, "backtest") is None
     assert await activities._stage(StageRequest(run=ref, stage="backtest")) == receipt
     await replay(handle)
 

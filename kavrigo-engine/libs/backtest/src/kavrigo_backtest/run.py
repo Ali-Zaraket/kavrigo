@@ -17,6 +17,7 @@ from typing import Annotated, Protocol, Self, runtime_checkable
 
 from pydantic import Field, model_validator
 
+from kavrigo_backtest.audit import BacktestRiskAudit
 from kavrigo_backtest.catalog import ParquetBarDatasetRef
 from kavrigo_backtest.costs import CostModel
 from kavrigo_backtest.fixture import BacktestBar, InlineBarDataset, LongOnlyEmaStrategy
@@ -312,6 +313,7 @@ class BacktestResult(DomainModel):
         str | None, Field(default=None, pattern=r"^sha256:[0-9a-f]{64}$")
     ] = None
     risk_reason_counts: dict[str, Annotated[int, Field(ge=1)]] = {}
+    risk_audit: BacktestRiskAudit | None = None
     limitations: Annotated[list[str], Field(max_length=16)] = []
 
     @model_validator(mode="after")
@@ -337,6 +339,24 @@ class BacktestResult(DomainModel):
             raise ValueError("risk-evaluated results must identify the replay configuration")
         if self.risk_evaluations == 0 and self.risk_reason_counts:
             raise ValueError("results without risk evaluations cannot carry risk reason counts")
+        if self.risk_audit is not None:
+            audit = self.risk_audit
+            if self.risk_replay_hash is None:
+                raise ValueError("risk audit requires a replay hash")
+            if (
+                len(audit.receipts) != self.risk_evaluations
+                or audit.approvals != self.risk_approvals
+                or audit.reason_counts != self.risk_reason_counts
+            ):
+                raise ValueError("risk audit does not match result totals")
+            if any(
+                item.run_id != self.run_id
+                or item.workspace_id != self.workspace_id
+                or item.agent_version_id != self.bundle.agent_version_id
+                or item.risk_replay_hash != self.risk_replay_hash
+                for item in audit.receipts
+            ):
+                raise ValueError("risk audit does not match result identity")
         return self
 
     @property

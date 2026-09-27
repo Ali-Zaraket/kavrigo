@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 
 from nautilus_trader.model.data import Bar
@@ -13,7 +13,8 @@ from nautilus_trader.model.identifiers import Venue
 from nautilus_trader.model.objects import Price as NautilusPrice
 from nautilus_trader.trading.strategy import Strategy
 
-from kavrigo_backtest import BacktestBar, BacktestRunConfig
+from kavrigo_backtest import BacktestBar, BacktestRiskAudit, BacktestRiskReceipt, BacktestRunConfig
+from kavrigo_backtest.audit import MAX_RISK_AUDIT_BYTES, MAX_RISK_RECEIPTS, RiskReplayOutcome
 from kavrigo_domain import (
     AgentDecision,
     BookTicker,
@@ -40,6 +41,7 @@ from kavrigo_risk import (
     LocalRiskSession,
     RiskControls,
     RiskMarket,
+    RiskRecord,
     RiskRegistration,
     RiskRequest,
 )
@@ -90,6 +92,9 @@ class ReferenceRiskGate:
         self.evaluations = 0
         self.approvals = 0
         self.reason_counts: Counter[str] = Counter()
+        self.receipts: list[BacktestRiskReceipt] = []
+        self.audit_failed = False
+        self._audit_bytes = 256  # Reserve the journal envelope and hash.
 
     @staticmethod
     def _nanoseconds(value: datetime) -> int:
@@ -370,11 +375,82 @@ class ReferenceRiskGate:
         side: NautilusOrderSide,
         requested_notional: Decimal,
     ) -> Decimal | None:
-        self.evaluations += 1
-        source = self.bars.get(bar.ts_init)
-        if source is None:
-            self.reason_counts["stale_data"] += 1
+        if self.audit_failed:
             return None
+        try:
+            if len(self.receipts) >= MAX_RISK_RECEIPTS:
+                raise ValueError("risk audit capacity")
+            receipt = self._attempt(
+                strategy=strategy, bar=bar, side=side, requested_notional=requested_notional
+            )
+            encoded = receipt.model_dump_json()
+            self._audit_bytes += len(encoded.encode("utf-8")) + 1
+            if self._audit_bytes > MAX_RISK_AUDIT_BYTES:
+                raise ValueError("risk audit capacity")
+            # Detach from the mutable lists/dictionaries nested in the original request.
+            receipt = BacktestRiskReceipt.model_validate_json(encoded)
+            self.receipts.append(receipt)
+            self.evaluations += 1
+            self.reason_counts.update(receipt.reason_codes)
+            if receipt.handed_off_quantity is not None:
+                self.approvals += 1
+                return receipt.handed_off_quantity.value
+        except Exception:
+            # A run without a complete audit cannot report performance or hand off more orders.
+            self.audit_failed = True
+        return None
+
+    @property
+    def audit(self) -> BacktestRiskAudit:
+        return BacktestRiskAudit.seal(tuple(self.receipts))
+
+    def _attempt(
+        self,
+        *,
+        strategy: Strategy,
+        bar: Bar,
+        side: NautilusOrderSide,
+        requested_notional: Decimal,
+    ) -> BacktestRiskReceipt:
+        source = self.bars.get(bar.ts_init)
+        portfolio: PortfolioSnapshot | None = None
+        request: RiskRequest | None = None
+        controls: RiskControls | None = None
+        record: RiskRecord | None = None
+
+        def receipt(
+            outcome: RiskReplayOutcome,
+            *,
+            failure: str | None = None,
+            quantity: Decimal | None = None,
+        ) -> BacktestRiskReceipt:
+            reasons = tuple(r.value for r in record.evaluation.reason_codes) if record else ()
+            if failure is not None:
+                reasons += (failure,)
+            return BacktestRiskReceipt(
+                sequence=len(self.receipts) + 1,
+                run_id=self.config.run_id,
+                workspace_id=self.config.workspace_id,
+                agent_version_id=self.config.agent_version_id,
+                risk_replay_hash=self.replay.replay_hash,
+                at=datetime(1970, 1, 1, tzinfo=UTC) + timedelta(microseconds=bar.ts_init // 1000),
+                instrument_id=self.source_instrument,
+                side=OrderSide.BUY if side is NautilusOrderSide.BUY else OrderSide.SELL,
+                outcome=outcome,
+                reason_codes=reasons,
+                request=request,
+                portfolio=portfolio,
+                controls=controls,
+                record=record,
+                handed_off_quantity=(
+                    Quantity(value=quantity, asset=self.source_instrument.base)
+                    if quantity is not None
+                    else None
+                ),
+            )
+
+        if source is None:
+            return receipt("unavailable", failure="stale_data")
         try:
             portfolio = self._portfolio(strategy, source)
             action = ProposedAction.BUY if side is NautilusOrderSide.BUY else ProposedAction.CLOSE
@@ -431,31 +507,25 @@ class ReferenceRiskGate:
                 capacity=1,
             )
             record = session.evaluate(request)
-            for reason in record.evaluation.reason_codes:
-                self.reason_counts[reason.value] += 1
             if record.evaluation.decision is RiskDecision.REJECTED:
-                return None
+                return receipt("risk_rejected")
             permit = session.handoff(
                 workspace_id=self.config.workspace_id,
                 order_intent_id=request.intent.order_intent_id,
                 fencing_token=1,
             )
             if permit is None:
-                self.reason_counts["handoff_refused"] += 1
-                return None
+                return receipt("handoff_refused", failure="handoff_refused")
             quantity = permit.record.max_quantity.value
             quantity = (quantity // self.size_increment) * self.size_increment
             quantity = quantity.quantize(
                 Decimal(1).scaleb(-self.size_precision), rounding=ROUND_DOWN
             )
             if quantity <= 0:
-                self.reason_counts["below_minimum_order_size"] += 1
-                return None
-            self.approvals += 1
-            return quantity
+                return receipt("below_minimum_order_size", failure="below_minimum_order_size")
+            return receipt("handed_off", quantity=quantity)
         except Exception:
-            self.reason_counts["unknown_account_state"] += 1
-            return None
+            return receipt("unavailable", failure="unknown_account_state")
 
     @property
     def rejections(self) -> int:
