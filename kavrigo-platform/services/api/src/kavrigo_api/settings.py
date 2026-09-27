@@ -11,10 +11,23 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, HttpUrl, TypeAdapter, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = ["Settings", "get_settings"]
+
+_HTTP_URL = TypeAdapter(HttpUrl)
+
+
+def _secure_identity_url(value: str) -> bool:
+    """Reject insecure or credential-bearing identity endpoints outside local development."""
+    try:
+        url = _HTTP_URL.validate_python(value)
+    except ValidationError:
+        return False
+    return (
+        url.scheme == "https" and url.username is None and url.password is None and not url.fragment
+    )
 
 
 class Settings(BaseSettings):
@@ -96,6 +109,15 @@ class Settings(BaseSettings):
             ]
             if missing:
                 raise ValueError(f"AUTH_PROVIDER=jwks requires {', '.join(missing)}")
+            if self.kavrigo_env != "local":
+                for name, value in (
+                    ("AUTH_ISSUER", self.auth_issuer),
+                    ("AUTH_JWKS_URL", self.auth_jwks_url),
+                ):
+                    if value is not None and not _secure_identity_url(value):
+                        raise ValueError(
+                            f"{name} must be a credential-free HTTPS URL outside local"
+                        )
         return self
 
     @property

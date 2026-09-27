@@ -65,6 +65,39 @@ class TestAuthConfigurationGate:
         )
         assert settings.auth_provider == "jwks"
 
+    @pytest.mark.parametrize("environment", ["dev", "staging", "paper-prod"])
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("auth_issuer", "http://identity.example.test"),
+            ("auth_jwks_url", "http://identity.example.test/jwks.json"),
+            ("auth_jwks_url", "https://user:password@identity.example.test/jwks.json"),
+            ("auth_jwks_url", "https://identity.example.test/jwks.json#fragment"),
+            ("auth_jwks_url", "not-a-url"),
+        ],
+    )
+    def test_nonlocal_jwks_rejects_insecure_endpoints(
+        self, environment: str, field: str, value: str
+    ) -> None:
+        config = {
+            "kavrigo_env": environment,
+            "auth_provider": "jwks",
+            "auth_issuer": "https://identity.example.test",
+            "auth_jwks_url": "https://identity.example.test/jwks.json",
+        }
+        config[field] = value
+        with pytest.raises(ValidationError, match="credential-free HTTPS URL"):
+            Settings(**config)
+
+    def test_local_jwks_can_use_http_for_development(self) -> None:
+        settings = Settings(
+            kavrigo_env="local",
+            auth_provider="jwks",
+            auth_issuer="http://localhost:4000",
+            auth_jwks_url="http://localhost:4000/jwks.json",
+        )
+        assert settings.auth_provider == "jwks"
+
     def test_platform_mode_is_server_authoritative(self, client: TestClient) -> None:
         response = client.get("/v1/platform/mode")
         assert response.status_code == 200

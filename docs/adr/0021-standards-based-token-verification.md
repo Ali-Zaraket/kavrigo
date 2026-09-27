@@ -71,6 +71,10 @@ reachable.
   is an authentication bypass, not a convenience.
 - Verification failure reasons are logged and never returned; the client is told only that the
   session is invalid.
+- Outside local development, issuer and JWKS endpoints must be credential-free HTTPS URLs.
+  Startup rejects HTTP, malformed URLs, fragments and embedded credentials so a deployed
+  verifier cannot fetch signing keys over a plaintext or credential-bearing endpoint. Local
+  development can use an HTTP mock identity provider.
 
 ## Operational impact
 

@@ -31,6 +31,12 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** Nonlocal JWKS auth now rejects plaintext, malformed, credential-bearing or
+> fragment-bearing issuer/JWKS URLs at startup; local HTTP mocks remain allowed. ADR 0021 records
+> the guard. Full Python regression: 1037 passed; Ruff checks 328 files and mypy covers 148
+> sources. The rebuilt API is healthy. Actual hosted identity configuration and first-token claim
+> verification remain open.
+>
 > **2026-09-27:** The async JWT verifier moves synchronous PyJWT JWKS lookup to a worker thread,
 > preserving event-loop responsiveness during key-cache misses or provider delay. A held-lookup
 > concurrency test passes; signature, issuer, audience, expiry and MFA checks remain unchanged.

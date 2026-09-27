@@ -1,5 +1,13 @@
 # Kavrigo progress
 
+**2026-09-27 secure-identity-endpoint slice:** Outside local development, JWKS authentication
+now refuses to start unless both issuer and JWKS URLs are valid, credential-free HTTPS endpoints
+without fragments. Local HTTP mock identity providers remain available for development. This
+closes a configuration path that could otherwise fetch signing keys over plaintext transport;
+it does not assert that hosted identity or claim mappings are configured. ADR 0021 records the
+security rule. Full Python regression: **1037 passed** against the local stack; Ruff check/format
+passes 328 files, strict mypy covers 148 sources, and the rebuilt local API is healthy.
+
 **2026-09-27 nonblocking identity-verification slice:** The standards-based JWT verifier now
 runs synchronous PyJWT JWKS key resolution off the API event loop. A concurrency test holds the
 lookup and proves another coroutine can progress before it is released. Signature, issuer,
