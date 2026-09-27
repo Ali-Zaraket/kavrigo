@@ -30,7 +30,8 @@ $env:KAVRIGO_API_HOST_PORT='58300'
 docker compose -f kavrigo-infra/local/docker-compose.yml up -d --wait
 ```
 
-Use `http://localhost:58300/healthz` for that override and set it again for subsequent Compose
+Use `http://localhost:58300/readyz` to check database-backed API readiness (`/healthz` checks
+process liveness only), and set the override again for subsequent Compose
 commands in a new shell. This uses official [Compose interpolation](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
 (verified 2026-09-09); no Windows reserved ranges or unrelated services need changing.
 

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -69,6 +72,7 @@ class TestAuthConfigurationGate:
         assert body["live_trading_enabled"] is False
         assert body["default_trading_mode"] == "paper"
         assert "Simulated results only" in body["disclosure"]
+        assert "synthetic or testnet evidence" in body["disclosure"]
 
 
 class TestProbes:
@@ -79,8 +83,31 @@ class TestProbes:
 
     def test_readyz_reports_unconfigured_dependencies_honestly(self, client: TestClient) -> None:
         response = client.get("/readyz")
-        assert response.status_code == 200
+        assert response.status_code == 503
+        assert response.json()["status"] == "degraded"
         assert response.json()["checks"]["postgres"] == "not_configured"
+
+    def test_readyz_does_not_call_configured_services_healthy(self, settings: Settings) -> None:
+        configured = settings.model_copy(
+            update={
+                "clickhouse_url": "http://clickhouse.test:8123",
+                "redpanda_bootstrap_servers": "redpanda.test:9092",
+                "temporal_address": "temporal.test:7233",
+                "valkey_url": "redis://valkey.test:6379",
+            }
+        )
+        response = TestClient(create_app(configured)).get("/readyz")
+        assert response.status_code == 503
+        for service in ("clickhouse", "redpanda", "temporal", "valkey"):
+            assert response.json()["checks"][service] == "configured_unverified"
+
+    @pytest.mark.parametrize("available", [True, False])
+    def test_readyz_http_status_tracks_postgres(self, settings: Settings, available: bool) -> None:
+        database = SimpleNamespace(ping=AsyncMock(return_value=available), dispose=AsyncMock())
+        response = TestClient(create_app(settings, database=database)).get("/readyz")
+        assert response.status_code == (200 if available else 503)
+        assert response.json()["status"] == ("ready" if available else "degraded")
+        assert response.json()["checks"]["postgres"] == ("ok" if available else "unavailable")
 
     def test_every_response_carries_a_request_id(self, client: TestClient) -> None:
         response = client.get("/healthz")
@@ -137,6 +164,7 @@ class TestOpenApi:
         schema = client.get("/openapi.json").json()
         assert schema["info"]["title"] == "Kavrigo Control Plane"
         assert "/v1/platform/mode" in schema["paths"]
+        assert "503" in schema["paths"]["/readyz"]["get"]["responses"]
 
     def test_description_carries_the_simulation_disclosure(self, client: TestClient) -> None:
         schema = client.get("/openapi.json").json()

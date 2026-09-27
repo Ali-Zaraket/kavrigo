@@ -2155,7 +2155,8 @@ export interface components {
       status: "ready" | "degraded";
       /** Checks */
       checks: {
-        [key: string]: "ok" | "unavailable" | "not_configured";
+        [key: string]:
+          "ok" | "unavailable" | "not_configured" | "configured_unverified";
       };
     };
     /** RehearsalLaunch */
@@ -2837,6 +2838,15 @@ export interface operations {
     responses: {
       /** @description Successful Response */
       200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ReadinessResponse"];
+        };
+      };
+      /** @description Control plane is not ready */
+      503: {
         headers: {
           [name: string]: unknown;
         };

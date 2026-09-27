@@ -56,3 +56,4 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0041](0041-deterministic-risk-gated-reference-backtest.md) | Deterministic-risk-gated reference backtest | Accepted for local validation |
 | [0042](0042-reference-backtest-risk-receipts.md) | Per-signal risk receipts for reference backtests | Accepted for local validation |
 | [0043](0043-reference-risk-receipt-inspection.md) | Workspace-scoped inspection of reference risk receipts | Accepted for local product inspection |
+| [0044](0044-honest-control-plane-readiness.md) | Honest control-plane readiness and simulation disclosure | Accepted for local validation |

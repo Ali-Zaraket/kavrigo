@@ -44,6 +44,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Control plane is not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -5466,7 +5476,8 @@
               "enum": [
                 "ok",
                 "unavailable",
-                "not_configured"
+                "not_configured",
+                "configured_unverified"
               ]
             },
             "type": "object",

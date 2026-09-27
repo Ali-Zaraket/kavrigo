@@ -31,6 +31,14 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** ADR 0044 corrects `/readyz` to return HTTP 503 on absent/failing/timed-out
+> PostgreSQL and labels other configured services `configured_unverified`. The local Compose API
+> healthcheck now uses readiness. Platform mode accurately calls current rehearsal/reference data
+> synthetic or testnet. Full Python regression: 1020 passed; Ruff checks 328 files and strict
+> typing covers 148 sources. OpenAPI/client and web checks/build pass. Local API readiness is 200
+> with PostgreSQL `ok`. This is not a production readiness claim; licensed ingestion, supervised
+> paper activation and release gates remain open.
+>
 > **2026-09-27:** ADR 0043 exposes ADR 0042's sealed risk receipts through a bounded,
 > `RUN_READ`-gated workspace API and a Research inspection view. Stage and journal hashes are
 > verified server-side; each signal remains a synthetic diagnostic, not an order or paper

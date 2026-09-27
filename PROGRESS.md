@@ -1,5 +1,17 @@
 # Kavrigo progress
 
+**2026-09-27 honest-readiness slice:** ADR 0044 makes `/readyz` return HTTP 503 when the
+PostgreSQL tenant authority is absent, unreachable or exceeds a two-second probe bound. Configured
+ClickHouse, Redpanda, Temporal and Valkey endpoints are `configured_unverified` instead of
+claiming health from configuration alone. Local Compose now uses `/readyz` for the API healthcheck;
+`/healthz` remains liveness. The server's paper-mode disclosure identifies current local
+synthetic/testnet evidence. Full Python regression: **1020 passed** against PostgreSQL, Temporal
+and ClickHouse; Ruff checks 328 files and strict typing covers 148 sources. Generated OpenAPI and
+TypeScript client, web lint/format/types/three tests and production build pass. The rebuilt local
+API reports readiness HTTP 200 with PostgreSQL `ok`; downstream service health remains separately
+unverified by this endpoint. Licensed market data, supervised paper activation and production
+release gates remain open.
+
 **2026-09-27 reference-risk inspection slice:** ADR 0043 adds a read-only, workspace-scoped,
 cursor-paginated API for the sealed reference-backtest risk journal. It rechecks the stage hash
 and typed artifact before returning up to 25 receipts, their cost assumptions, reproducibility
