@@ -31,6 +31,12 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** Generic list-shaped MFA claims now fail closed. Clerk `fva=[7, -1]` means no
+> verified second factor; a configured-`fva` regression test prevents the former length-only
+> interpretation from unlocking high-impact permissions. ADR 0021 documents this correction.
+> Full regression: 1039 passed; Ruff checks 328 files and mypy covers 148 sources. The rebuilt
+> local API is healthy. Hosted Clerk claim mapping and a freshness policy remain open.
+>
 > **2026-09-27:** Disabled PyJWT's unbounded per-signing-key LRU while retaining the 600-second
 > JWKS-set TTL. A same-`kid` rotation test proves old signatures fail after a refreshed key set
 > and new signatures pass. ADR 0021 documents the bounded effect and lack of instant revocation.

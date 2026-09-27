@@ -172,6 +172,23 @@ class TestJwksVerification:
 
 
 class TestMfaClaimInterpretation:
+    async def test_clerk_factor_age_array_does_not_grant_mfa_without_age_policy(
+        self, rsa_key: rsa.RSAPrivateKey, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        provider = JwksIdentityProvider(
+            issuer=ISSUER,
+            jwks_url=f"{ISSUER}/.well-known/jwks.json",
+            audience=AUDIENCE,
+            mfa_claim="fva",
+        )
+        monkeypatch.setattr(
+            provider._jwk_client,
+            "get_signing_key_from_jwt",
+            lambda _token: SimpleNamespace(key=rsa_key.public_key()),
+        )
+        identity = await provider.verify(_token(rsa_key, fva=[7, -1]))
+        assert not identity.mfa_verified
+
     async def test_boolean_true_is_verified(
         self, provider: JwksIdentityProvider, rsa_key: rsa.RSAPrivateKey
     ) -> None:
@@ -187,7 +204,7 @@ class TestMfaClaimInterpretation:
         self, provider: JwksIdentityProvider, rsa_key: rsa.RSAPrivateKey
     ) -> None:
         """Guessing permissively would silently unlock exactly what MFA protects."""
-        for value in ({"nested": "object"}, "maybe", 0, []):
+        for value in ({"nested": "object"}, "maybe", 0, [], [7, -1], [0, 0], ["pwd", "otp"]):
             identity = await provider.verify(_token(rsa_key, mfa=value))
             assert not identity.mfa_verified
 

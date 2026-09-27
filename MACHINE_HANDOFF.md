@@ -1,6 +1,6 @@
 # Resume Kavrigo on another machine
 
-Updated 2026-09-27 after the bounded-JWKS-key slice. The detailed transfer
+Updated 2026-09-27 after the list-shaped-MFA fail-closed slice. The detailed transfer
 instructions below retain their original step-13 checkpoint; use PROGRESS.md and git log for
 current implementation and test counts.
 This file, `PROGRESS.md`, `HANDOFF.md`, `HANDOFF_PROMPT.md` and Git history are the portable project memory.
@@ -33,7 +33,8 @@ No account memory or previous chat is required. No background build is intended 
   now gates on PostgreSQL and the local paper-mode disclosure names synthetic/testnet evidence.
   The JWKS verifier now resolves keys off the API event loop, and nonlocal identity endpoints
   must be credential-free HTTPS URLs. Its set cache has a 600-second TTL; the unbounded per-key
-  cache is disabled. Full regression reached 1038 tests.
+  cache is disabled. List-shaped MFA claims now fail closed, including Clerk `fva=[7, -1]`.
+  Full regression reached 1039 tests.
   Migration 0007 is applied to the local application database.
   Studio creates paper drafts and launches a synthetic Temporal run; Pulse labels the receipts.
   Real-data policy-approved paper activation remains open.

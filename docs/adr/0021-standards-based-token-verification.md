@@ -66,6 +66,12 @@ reachable.
 - An unrecognised MFA claim shape is treated as **not** verified. Guessing permissively would
   silently unlock exactly the operations MFA protects (`Permission` members in
   `MFA_REQUIRED_PERMISSIONS`).
+- **2026-09-27 MFA correction:** Generic list-shaped claims always fail closed. Clerk's current
+  [`fva` claim](https://clerk.com/docs/guides/sessions/session-tokens) is a two-element array of
+  first- and second-factor ages; `[7, -1]` means no second factor has ever been verified. The
+  previous length-only interpretation would have granted MFA for that value if mapped to `fva`.
+  Production claim mapping needs an explicit provider-specific age and freshness policy before
+  it can enable high-impact actions.
 - The development provider accepts unsigned tokens, so `Settings` refuses to start with it
   enabled outside `KAVRIGO_ENV=local`. A development bypass reachable in a deployed environment
   is an authentication bypass, not a convenience.

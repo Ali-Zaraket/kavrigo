@@ -208,10 +208,10 @@ def _optional_int(value: Any) -> int | None:
 def _coerce_mfa(value: Any) -> bool:
     """Interpret a second-factor claim conservatively.
 
-    Providers express this differently — a boolean, a count of verified factors, or a list of
-    completed authentication methods. Anything unrecognised is treated as *not* verified,
-    because guessing in the permissive direction would silently unlock the operations that MFA
-    is meant to protect.
+    Providers express this differently. Only an explicit boolean, positive count or known
+    affirmative string is accepted here. Lists are ambiguous: Clerk's ``fva`` uses two numbers,
+    and ``[7, -1]`` means the second factor was *never* verified. Treat every list as unverified
+    until a provider-specific, freshness-aware policy is implemented.
     """
     if isinstance(value, bool):
         return value
@@ -219,6 +219,4 @@ def _coerce_mfa(value: Any) -> bool:
         return value > 0
     if isinstance(value, str):
         return value.lower() in {"true", "verified", "mfa"}
-    if isinstance(value, list):
-        return len(value) > 1
     return False

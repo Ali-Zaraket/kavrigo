@@ -1,5 +1,14 @@
 # Kavrigo progress
 
+**2026-09-27 list-shaped-MFA fail-closed slice:** The generic JWT MFA interpreter no longer
+equates a two-element list with a verified second factor. Current Clerk session tokens use `fva`
+as factor ages, where `[7, -1]` means the second factor was never verified; mapping that to the
+old generic parser would have unlocked high-impact permissions. Lists now abstain until a
+provider-specific freshness policy exists. ADR 0021 and a configured-`fva` regression test record
+the behavior. Full Python regression: **1039 passed** against the local stack; Ruff check/format
+passes 328 files, mypy covers 148 sources, and the rebuilt local API is healthy. Hosted Clerk
+claim mapping and a measured second-factor-age policy remain open.
+
 **2026-09-27 bounded-JWKS-key slice:** Pinned PyJWT 2.13.0's optional per-key LRU has no TTL,
 which could keep accepting a removed signing key after the JWKS set refreshes. The verifier now
 caches only the JWKS set for 600 seconds. A rotation test replaces a key under the same `kid`,
