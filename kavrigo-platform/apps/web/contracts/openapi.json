@@ -5477,7 +5477,8 @@
                 "ok",
                 "unavailable",
                 "not_configured",
-                "configured_unverified"
+                "configured_unverified",
+                "mismatch"
               ]
             },
             "type": "object",

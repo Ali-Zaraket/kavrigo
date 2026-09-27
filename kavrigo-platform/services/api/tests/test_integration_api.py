@@ -88,6 +88,13 @@ def client(clean_database: None) -> Iterator[TestClient]:
         yield test_client
 
 
+def test_app_role_reports_migrated_schema_ready(client: TestClient) -> None:
+    response = client.get("/readyz")
+    assert response.status_code == 200
+    assert response.json()["checks"]["postgres"] == "ok"
+    assert response.json()["checks"]["schema"] == "ok"
+
+
 def run_sql(
     statement: str,
     params: dict[str, Any] | None = None,

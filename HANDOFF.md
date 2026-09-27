@@ -31,6 +31,14 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** ADR 0044 extends `/readyz` to require the expected Alembic revision as well as
+> PostgreSQL connectivity. An older, absent or branched revision returns HTTP 503 with a typed
+> coarse state; a missing version table also fails closed. The pinned revision is tested against
+> Alembic's head, and the application role passes a real migrated-database probe. Full regression:
+> 1044 passed; Ruff checks 328 files,
+> mypy covers 148 sources, and OpenAPI/client plus web checks/build pass. The rebuilt local API
+> reports `postgres=ok`, `schema=ok`. Other production gates remain open.
+>
 > **2026-09-27:** The API factory refuses an injected unsigned-token development identity
 > provider outside local mode, even when JWKS settings otherwise validate. ADR 0021 and a
 > paper-prod startup test record the gate. A transient PostgreSQL timeout affected one unrelated

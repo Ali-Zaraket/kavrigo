@@ -36,7 +36,9 @@ class HealthResponse(BaseModel):
 
 class ReadinessResponse(BaseModel):
     status: Literal["ready", "degraded"]
-    checks: dict[str, Literal["ok", "unavailable", "not_configured", "configured_unverified"]]
+    checks: dict[
+        str, Literal["ok", "unavailable", "not_configured", "configured_unverified", "mismatch"]
+    ]
 
 
 class PlatformModeResponse(BaseModel):
@@ -70,30 +72,37 @@ async def healthz(settings: SettingsDep) -> HealthResponse:
 async def readyz(request: Request, response: Response, settings: SettingsDep) -> ReadinessResponse:
     # A configured address is not a successful dependency probe. Downstream service health
     # belongs to their own supervision; this API's tenant authority is PostgreSQL.
-    checks: dict[str, Literal["ok", "unavailable", "not_configured", "configured_unverified"]] = {
+    checks: dict[
+        str, Literal["ok", "unavailable", "not_configured", "configured_unverified", "mismatch"]
+    ] = {
         "clickhouse": "configured_unverified" if settings.clickhouse_url else "not_configured",
         "redpanda": (
             "configured_unverified" if settings.redpanda_bootstrap_servers else "not_configured"
         ),
         "temporal": "configured_unverified" if settings.temporal_address else "not_configured",
         "valkey": "configured_unverified" if settings.valkey_url else "not_configured",
+        "postgres": "not_configured",
+        "schema": "not_configured",
     }
 
     database: Database | None = getattr(request.app.state, "database", None)
-    if database is None:
-        checks["postgres"] = "not_configured"
-    else:
+    if database is not None:
         try:
-            checks["postgres"] = (
-                "ok" if await asyncio.wait_for(database.ping(), timeout=2) else "unavailable"
-            )
+            async with asyncio.timeout(2):
+                if await database.ping():
+                    checks["postgres"] = "ok"
+                    checks["schema"] = await database.schema_status()
+                else:
+                    checks["postgres"] = "unavailable"
+                    checks["schema"] = "unavailable"
         except TimeoutError:
-            checks["postgres"] = "unavailable"
+            if checks["postgres"] != "ok":
+                checks["postgres"] = "unavailable"
+            checks["schema"] = "unavailable"
             _log.warning("database_readiness_timed_out")
 
-    # The control plane cannot serve authenticated requests without its database, so an
-    # unreachable database is "degraded" and should take the pod out of rotation.
-    degraded = checks["postgres"] != "ok"
+    # Tenant authority requires both connectivity and the schema expected by this API image.
+    degraded = checks["postgres"] != "ok" or checks["schema"] != "ok"
     if degraded:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return ReadinessResponse(status="degraded" if degraded else "ready", checks=checks)

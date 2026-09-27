@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from kavrigo_api.app import create_app
 from kavrigo_api.auth.identity import DevIdentityProvider
+from kavrigo_api.db.session import EXPECTED_SCHEMA_REVISION
 from kavrigo_api.errors import ApiError, ErrorCode
 from kavrigo_api.settings import Settings
 
@@ -130,6 +134,7 @@ class TestProbes:
         assert response.status_code == 503
         assert response.json()["status"] == "degraded"
         assert response.json()["checks"]["postgres"] == "not_configured"
+        assert response.json()["checks"]["schema"] == "not_configured"
 
     def test_readyz_does_not_call_configured_services_healthy(self, settings: Settings) -> None:
         configured = settings.model_copy(
@@ -147,11 +152,41 @@ class TestProbes:
 
     @pytest.mark.parametrize("available", [True, False])
     def test_readyz_http_status_tracks_postgres(self, settings: Settings, available: bool) -> None:
-        database = SimpleNamespace(ping=AsyncMock(return_value=available), dispose=AsyncMock())
+        database = SimpleNamespace(
+            ping=AsyncMock(return_value=available),
+            schema_status=AsyncMock(return_value="ok"),
+            dispose=AsyncMock(),
+        )
         response = TestClient(create_app(settings, database=database)).get("/readyz")
         assert response.status_code == (200 if available else 503)
         assert response.json()["status"] == ("ready" if available else "degraded")
         assert response.json()["checks"]["postgres"] == ("ok" if available else "unavailable")
+        assert response.json()["checks"]["schema"] == ("ok" if available else "unavailable")
+        if available:
+            database.schema_status.assert_awaited_once()
+        else:
+            database.schema_status.assert_not_awaited()
+
+    @pytest.mark.parametrize("schema_state", ["mismatch", "unavailable"])
+    def test_readyz_rejects_a_database_without_usable_schema(
+        self, settings: Settings, schema_state: str
+    ) -> None:
+        database = SimpleNamespace(
+            ping=AsyncMock(return_value=True),
+            schema_status=AsyncMock(return_value=schema_state),
+            dispose=AsyncMock(),
+        )
+        response = TestClient(create_app(settings, database=database)).get("/readyz")
+        assert response.status_code == 503
+        assert response.json()["status"] == "degraded"
+        assert response.json()["checks"]["postgres"] == "ok"
+        assert response.json()["checks"]["schema"] == schema_state
+
+    def test_expected_schema_revision_is_the_migration_head(self) -> None:
+        configuration = Config()
+        migration_dir = Path(__file__).resolve().parents[1] / "migrations"
+        configuration.set_main_option("script_location", str(migration_dir))
+        assert ScriptDirectory.from_config(configuration).get_heads() == [EXPECTED_SCHEMA_REVISION]
 
     def test_every_response_carries_a_request_id(self, client: TestClient) -> None:
         response = client.get("/healthz")

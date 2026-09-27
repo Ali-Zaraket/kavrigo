@@ -2156,7 +2156,11 @@ export interface components {
       /** Checks */
       checks: {
         [key: string]:
-          "ok" | "unavailable" | "not_configured" | "configured_unverified";
+          | "ok"
+          | "unavailable"
+          | "not_configured"
+          | "configured_unverified"
+          | "mismatch";
       };
     };
     /** RehearsalLaunch */

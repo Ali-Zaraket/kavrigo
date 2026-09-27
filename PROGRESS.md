@@ -1,5 +1,16 @@
 # Kavrigo progress
 
+**2026-09-27 migration-aware readiness slice:** ADR 0044 now requires the application-role
+PostgreSQL connection and the expected Alembic revision before `/readyz` returns HTTP 200.
+Absent/older/branched revision rows yield a typed `schema=mismatch` and HTTP 503; a missing
+version table or probe failure is `unavailable`, all within the existing two-second bound. A
+test pins the expected revision to the migration head, and a real least-privilege integration
+test checks the migrated database.
+Full Python regression: **1044 passed** against the local stack; Ruff check/format passes 328
+files and mypy covers 148 sources. Generated OpenAPI/client, web lint/format/types/three tests
+and production build pass. The rebuilt local API reports PostgreSQL and schema `ok`. Worker,
+provider and data-health supervision, licensed data and paper activation remain release gates.
+
 **2026-09-27 injected-dev-provider startup slice:** The API factory now refuses an explicitly
 injected `DevIdentityProvider` outside local mode, preserving the unsigned-token startup gate
 even for alternate entry points. A paper-prod construction test passes. One full regression run

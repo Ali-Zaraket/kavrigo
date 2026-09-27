@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Self
+from typing import Literal, Self
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -34,6 +34,9 @@ from kavrigo_api.logging import get_logger
 __all__ = ["USER_SETTING", "WORKSPACE_SETTING", "Database"]
 
 _log = get_logger(__name__)
+
+EXPECTED_SCHEMA_REVISION = "0007"
+"""Control-plane Alembic head expected by this API image; guarded by a migration-head test."""
 
 WORKSPACE_SETTING = "kavrigo.workspace_id"
 """The PostgreSQL session variable the tenant-isolation policies read."""
@@ -75,6 +78,22 @@ class Database:
             _log.warning("database_ping_failed", error_type=type(exc).__name__)
             return False
         return True
+
+    async def schema_status(self) -> Literal["ok", "mismatch", "unavailable"]:
+        """Read the bounded Alembic revision set through the application role."""
+        try:
+            async with self._engine.connect() as conn:
+                result = await conn.execute(
+                    text("SELECT version_num FROM kavrigo.alembic_version LIMIT 2")
+                )
+                revisions = list(result.scalars())
+        except Exception as exc:
+            _log.warning("database_schema_probe_failed", error_type=type(exc).__name__)
+            return "unavailable"
+        at_head = revisions == [EXPECTED_SCHEMA_REVISION]
+        if not at_head:
+            _log.warning("database_schema_revision_mismatch", revision_count=len(revisions))
+        return "ok" if at_head else "mismatch"
 
     @asynccontextmanager
     async def workspace_session(self, workspace_id: str) -> AsyncIterator[AsyncSession]:
