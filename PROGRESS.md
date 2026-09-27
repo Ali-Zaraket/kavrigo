@@ -1,5 +1,14 @@
 # Kavrigo progress
 
+**2026-09-27 nonblocking identity-verification slice:** The standards-based JWT verifier now
+runs synchronous PyJWT JWKS key resolution off the API event loop. A concurrency test holds the
+lookup and proves another coroutine can progress before it is released. Signature, issuer,
+audience, expiry and MFA validation are unchanged; provider outage still fails closed. ADR 0021's
+operational notes record the decision and remaining rate/capacity concern. Full Python regression:
+**1021 passed** against the local PostgreSQL, Temporal and ClickHouse stack; Ruff check/format
+passes 328 files and strict mypy covers 148 sources. The rebuilt API reports readiness HTTP 200.
+Hosted identity configuration and deployment rate controls remain release work.
+
 **2026-09-27 honest-readiness slice:** ADR 0044 makes `/readyz` return HTTP 503 when the
 PostgreSQL tenant authority is absent, unreachable or exceeds a two-second probe bound. Configured
 ClickHouse, Redpanda, Temporal and Valkey endpoints are `configured_unverified` instead of

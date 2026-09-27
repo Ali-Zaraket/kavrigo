@@ -1,6 +1,6 @@
 # Resume Kavrigo on another machine
 
-Updated 2026-09-27 after ADR 0044's honest-readiness slice. The detailed transfer
+Updated 2026-09-27 after the nonblocking identity-verification slice. The detailed transfer
 instructions below retain their original step-13 checkpoint; use PROGRESS.md and git log for
 current implementation and test counts.
 This file, `PROGRESS.md`, `HANDOFF.md`, `HANDOFF_PROMPT.md` and Git history are the portable project memory.
@@ -31,6 +31,7 @@ No account memory or previous chat is required. No background build is intended 
   the deterministic risk gate for synthetic USD reference orders and its bounded per-signal
   risk-receipt journal and a read-only Research view of its typed, bounded receipts. API readiness
   now gates on PostgreSQL and the local paper-mode disclosure names synthetic/testnet evidence.
+  The JWKS verifier now resolves keys off the API event loop; full regression reached 1021 tests.
   Migration 0007 is applied to the local application database.
   Studio creates paper drafts and launches a synthetic Temporal run; Pulse labels the receipts.
   Real-data policy-approved paper activation remains open.

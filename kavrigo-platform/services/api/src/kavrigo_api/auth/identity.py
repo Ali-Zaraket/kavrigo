@@ -23,6 +23,7 @@ Security properties this module is responsible for:
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any, Protocol, runtime_checkable
 
@@ -121,7 +122,9 @@ class JwksIdentityProvider:
 
     async def verify(self, token: str) -> ExternalIdentity:
         try:
-            signing_key = self._jwk_client.get_signing_key_from_jwt(token)
+            # PyJWKClient can fetch the issuer's JWKS on cache miss or key rotation. Its
+            # synchronous network call must not block unrelated requests on the API event loop.
+            signing_key = await asyncio.to_thread(self._jwk_client.get_signing_key_from_jwt, token)
             claims: dict[str, Any] = jwt.decode(
                 token,
                 signing_key.key,

@@ -31,6 +31,13 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** The async JWT verifier moves synchronous PyJWT JWKS lookup to a worker thread,
+> preserving event-loop responsiveness during key-cache misses or provider delay. A held-lookup
+> concurrency test passes; signature, issuer, audience, expiry and MFA checks remain unchanged.
+> ADR 0021 documents the operational amendment. Full regression: 1021 passed; Ruff checks 328
+> files and strict typing covers 148 sources. The rebuilt local API is healthy. Hosted identity
+> configuration, rate controls and the broader paper-production gates remain open.
+>
 > **2026-09-27:** ADR 0044 corrects `/readyz` to return HTTP 503 on absent/failing/timed-out
 > PostgreSQL and labels other configured services `configured_unverified`. The local Compose API
 > healthcheck now uses readiness. Platform mode accurately calls current rehearsal/reference data

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import threading
 import time
 from typing import Any
 
@@ -59,6 +61,32 @@ def _token(rsa_key: rsa.RSAPrivateKey, **overrides: Any) -> str:
 
 
 class TestJwksVerification:
+    async def test_slow_jwks_lookup_does_not_block_other_coroutines(
+        self,
+        provider: JwksIdentityProvider,
+        rsa_key: rsa.RSAPrivateKey,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        lookup = provider._jwk_client.get_signing_key_from_jwt
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_lookup(token: str) -> Any:
+            started.set()
+            if not release.wait(timeout=2):
+                raise TimeoutError("test JWKS lookup was not released")
+            return lookup(token)
+
+        monkeypatch.setattr(provider._jwk_client, "get_signing_key_from_jwt", slow_lookup)
+        verification = asyncio.create_task(provider.verify(_token(rsa_key)))
+        try:
+            assert await asyncio.wait_for(asyncio.to_thread(started.wait, 0.5), timeout=1)
+            await asyncio.wait_for(asyncio.sleep(0), timeout=0.1)
+            assert not verification.done()
+        finally:
+            release.set()
+        assert (await verification).subject == "user_abc"
+
     async def test_a_valid_token_is_accepted(
         self, provider: JwksIdentityProvider, rsa_key: rsa.RSAPrivateKey
     ) -> None:

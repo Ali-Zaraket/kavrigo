@@ -77,6 +77,15 @@ reachable.
 JWKS keys are cached with a bounded lifespan and re-fetched on an unknown key id, so provider
 key rotation neither causes an outage nor a fetch on every request.
 
+**2026-09-27 operational amendment:** `PyJWKClient.get_signing_key_from_jwt` is synchronous and
+may fetch keys on a cache miss. The async verifier runs that lookup in `asyncio.to_thread` so an
+identity-provider delay does not stall unrelated API requests. This follows the [Python asyncio
+guidance for blocking I/O](https://docs.python.org/3/library/asyncio-task.html#asyncio.to_thread)
+and retains PyJWT's existing [JWKS cache behaviour](https://pyjwt.readthedocs.io/en/latest/api.html#jwt.PyJWKClient).
+The configured PyJWT fetch timeout and key cache remain unchanged; provider outage still fails
+authentication closed. Capacity/rate controls for abusive unknown-key traffic remain a deployment
+concern.
+
 ## Migration and rollback
 
 Switching provider, or moving to a vendor SDK, means adding an `IdentityProvider`
