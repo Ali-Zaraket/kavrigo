@@ -45,6 +45,26 @@ def provider(monkeypatch: pytest.MonkeyPatch, rsa_key: rsa.RSAPrivateKey) -> Jwk
     return p
 
 
+@pytest.fixture
+def clerk_provider(
+    monkeypatch: pytest.MonkeyPatch, rsa_key: rsa.RSAPrivateKey
+) -> JwksIdentityProvider:
+    provider = JwksIdentityProvider(
+        issuer=ISSUER,
+        jwks_url=f"{ISSUER}/.well-known/jwks.json",
+        audience=AUDIENCE,
+        session_profile="clerk_v2",
+        mfa_max_age_seconds=300,
+        allowed_parties=("https://app.example.test",),
+    )
+    monkeypatch.setattr(
+        provider._jwk_client,
+        "get_signing_key_from_jwt",
+        lambda _token: SimpleNamespace(key=rsa_key.public_key()),
+    )
+    return provider
+
+
 def _token(rsa_key: rsa.RSAPrivateKey, *, kid: str | None = None, **overrides: Any) -> str:
     now = int(time.time())
     claims: dict[str, Any] = {
@@ -207,6 +227,62 @@ class TestMfaClaimInterpretation:
         for value in ({"nested": "object"}, "maybe", 0, [], [7, -1], [0, 0], ["pwd", "otp"]):
             identity = await provider.verify(_token(rsa_key, mfa=value))
             assert not identity.mfa_verified
+
+
+class TestClerkSessionProfile:
+    async def test_recent_second_factor_and_allowed_party(
+        self, clerk_provider: JwksIdentityProvider, rsa_key: rsa.RSAPrivateKey
+    ) -> None:
+        identity = await clerk_provider.verify(
+            _token(rsa_key, v=2, fva=[0, 2], azp="https://app.example.test")
+        )
+        assert identity.mfa_verified
+        assert identity.session_id == "sess_1"
+
+    @pytest.mark.parametrize(
+        "fva",
+        [[7, -1], [0, -1], [0, 5], [0, 6], [0, True], [0], [], ["0", "0"], None],
+    )
+    async def test_missing_stale_or_malformed_factor_fails_closed(
+        self, clerk_provider: JwksIdentityProvider, rsa_key: rsa.RSAPrivateKey, fva: Any
+    ) -> None:
+        identity = await clerk_provider.verify(_token(rsa_key, v=2, fva=fva))
+        assert not identity.mfa_verified
+
+    async def test_elapsed_token_age_counts_against_second_factor(
+        self, clerk_provider: JwksIdentityProvider, rsa_key: rsa.RSAPrivateKey
+    ) -> None:
+        now = int(time.time())
+        identity = await clerk_provider.verify(
+            _token(rsa_key, v=2, fva=[0, 4], iat=now - 90, exp=now + 30)
+        )
+        assert not identity.mfa_verified
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"v": 1},
+            {"v": True},
+            {"v": 2, "sid": ""},
+            {"v": 2, "sts": "pending"},
+            {"v": 2, "azp": "https://untrusted.example.test"},
+            {"v": 2, "azp": ["https://app.example.test"]},
+        ],
+    )
+    async def test_non_session_pending_and_wrong_party_are_rejected(
+        self,
+        clerk_provider: JwksIdentityProvider,
+        rsa_key: rsa.RSAPrivateKey,
+        overrides: dict[str, Any],
+    ) -> None:
+        with pytest.raises(IdentityVerificationError):
+            await clerk_provider.verify(_token(rsa_key, **overrides))
+
+    async def test_generic_mfa_claim_cannot_override_clerk_factor_age(
+        self, clerk_provider: JwksIdentityProvider, rsa_key: rsa.RSAPrivateKey
+    ) -> None:
+        identity = await clerk_provider.verify(_token(rsa_key, v=2, mfa=True, fva=[0, -1]))
+        assert not identity.mfa_verified
 
 
 class TestDevProvider:

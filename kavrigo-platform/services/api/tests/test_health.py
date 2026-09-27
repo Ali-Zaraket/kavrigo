@@ -62,6 +62,8 @@ class TestAuthConfigurationGate:
             auth_provider="jwks",
             auth_issuer="https://identity.example.test",
             auth_jwks_url="https://identity.example.test/.well-known/jwks.json",
+            auth_session_profile="clerk_v2",
+            auth_allowed_parties=["https://app.example.test"],
         )
         with pytest.raises(ValueError, match="development identity provider is refused"):
             create_app(settings, identity_provider=DevIdentityProvider())
@@ -112,6 +114,43 @@ class TestAuthConfigurationGate:
             auth_jwks_url="http://localhost:4000/jwks.json",
         )
         assert settings.auth_provider == "jwks"
+
+    def test_paper_prod_requires_clerk_session_profile_and_allowed_party(self) -> None:
+        config = {
+            "kavrigo_env": "paper-prod",
+            "auth_provider": "jwks",
+            "auth_issuer": "https://identity.example.test",
+            "auth_jwks_url": "https://identity.example.test/.well-known/jwks.json",
+        }
+        with pytest.raises(ValidationError, match="Clerk v2 session profile"):
+            Settings(**config)
+        with pytest.raises(ValidationError, match="AUTH_ALLOWED_PARTIES"):
+            Settings(**config, auth_session_profile="clerk_v2")
+        settings = Settings(
+            **config,
+            auth_session_profile="clerk_v2",
+            auth_allowed_parties=["https://app.example.test"],
+        )
+        assert settings.auth_session_profile == "clerk_v2"
+
+    @pytest.mark.parametrize(
+        "party",
+        [
+            "http://app.example.test",
+            "https://app.example.test/path",
+            "https://user:pass@app.example.test",
+        ],
+    )
+    def test_paper_prod_rejects_insecure_authorized_parties(self, party: str) -> None:
+        with pytest.raises(ValidationError, match="AUTH_ALLOWED_PARTIES"):
+            Settings(
+                kavrigo_env="paper-prod",
+                auth_provider="jwks",
+                auth_issuer="https://identity.example.test",
+                auth_jwks_url="https://identity.example.test/.well-known/jwks.json",
+                auth_session_profile="clerk_v2",
+                auth_allowed_parties=[party],
+            )
 
     def test_platform_mode_is_server_authoritative(self, client: TestClient) -> None:
         response = client.get("/v1/platform/mode")
@@ -256,6 +295,8 @@ class TestOpenApi:
                 auth_provider="jwks",
                 auth_issuer="https://identity.example.test",
                 auth_jwks_url="https://identity.example.test/.well-known/jwks.json",
+                auth_session_profile="clerk_v2",
+                auth_allowed_parties=["https://app.example.test"],
             )
         )
         assert app.docs_url is None

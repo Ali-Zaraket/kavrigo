@@ -31,6 +31,14 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** Paper-production startup now requires the Clerk v2 session profile and a
+> configured HTTPS authorized-party list. The verifier accepts only signed v2 session tokens,
+> refuses pending/unknown session status and wrong present `azp`, and derives MFA from a recent
+> second-factor `fva` age including elapsed token time and rounding uncertainty. Generic arrays
+> still fail closed. Full Python regression: 1066 passed with zero skips; Ruff and strict mypy
+> pass. This is a backend prerequisite only. Hosted Clerk configuration, real-token verification,
+> web sign-in and deployment review remain open.
+>
 > **2026-09-27:** ADR 0044 extends `/readyz` to require the expected Alembic revision as well as
 > PostgreSQL connectivity. An older, absent or branched revision returns HTTP 503 with a typed
 > coarse state; a missing version table also fails closed. The pinned revision is tested against

@@ -60,6 +60,9 @@ def build_identity_provider(settings: Settings) -> IdentityProvider:
         audience=settings.auth_audience,
         organization_claim=settings.auth_organization_claim,
         mfa_claim=settings.auth_mfa_claim,
+        session_profile=settings.auth_session_profile,
+        mfa_max_age_seconds=settings.auth_mfa_max_age_seconds,
+        allowed_parties=tuple(settings.auth_allowed_parties),
     )
 
 

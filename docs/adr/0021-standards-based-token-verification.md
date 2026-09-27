@@ -72,6 +72,17 @@ reachable.
   previous length-only interpretation would have granted MFA for that value if mapped to `fva`.
   Production claim mapping needs an explicit provider-specific age and freshness policy before
   it can enable high-impact actions.
+- **2026-09-27 Clerk v2 session profile:** The optional `clerk_v2` verifier now requires a signed
+  v2 session token with a session id, refuses pending/unknown session status, and checks a present
+  `azp` against configured application origins. Only a two-integer `fva` with a recent verified
+  second factor can satisfy MFA; elapsed time since `iat` counts against the five-minute default
+  window. Missing, negative and malformed ages abstain. `paper-prod` requires this explicit
+  profile and a nonempty HTTPS origin allowlist. The generic profile remains for local/tests and
+  cannot be selected in `paper-prod`. Missing `azp` is accepted as Clerk documents that it can be
+  omitted; all product requests must continue to use bearer authorization rather than ambient
+  cookies. A real hosted Clerk token, origin, instance issuer and JWKS still need deployment
+  verification before public access. This follows [Clerk session-token claims](https://clerk.com/docs/guides/sessions/session-tokens)
+  and [manual JWT verification](https://clerk.com/docs/guides/sessions/manual-jwt-verification).
 - The development provider accepts unsigned tokens, so `Settings` refuses to start with it
   enabled outside `KAVRIGO_ENV=local`. A development bypass reachable in a deployed environment
   is an authentication bypass, not a convenience.

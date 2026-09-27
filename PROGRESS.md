@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-09-27 Clerk session-verification slice:** `paper-prod` now requires an explicit Clerk v2
+session profile and HTTPS authorized-party allowlist. Signed v2 session tokens must carry `sid`;
+pending/unknown status and a present but unlisted `azp` are refused. MFA-gated actions require a
+recent second factor in Clerk's `fva`, with token elapsed time and minute-granularity uncertainty
+counted against the 300-second default. The generic profile still fails closed on arrays. Local
+mock sign-in remains unchanged. Full Python regression: **1066 passed, zero skips** against the
+local PostgreSQL/ClickHouse/Temporal stack; Ruff check/format and strict mypy pass in the
+verification container. Hosted Clerk instance setup, a real-token smoke, web sign-in and
+deployment controls remain open; no public release is implied.
+
 **2026-09-27 migration-aware readiness slice:** ADR 0044 now requires the application-role
 PostgreSQL connection and the expected Alembic revision before `/readyz` returns HTTP 200.
 Absent/older/branched revision rows yield a typed `schema=mismatch` and HTTP 503; a missing

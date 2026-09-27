@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
 import jwt
@@ -103,6 +103,9 @@ class JwksIdentityProvider:
         session_claim: str = "sid",
         leeway_seconds: int = 30,
         cache_lifespan_seconds: int = 600,
+        session_profile: Literal["generic", "clerk_v2"] = "generic",
+        mfa_max_age_seconds: int = 300,
+        allowed_parties: tuple[str, ...] = (),
     ) -> None:
         self._issuer = issuer
         self._audience = audience
@@ -111,6 +114,9 @@ class JwksIdentityProvider:
         self._email_claim = email_claim
         self._session_claim = session_claim
         self._leeway = leeway_seconds
+        self._session_profile = session_profile
+        self._mfa_max_age_seconds = mfa_max_age_seconds
+        self._allowed_parties = frozenset(allowed_parties)
         # PyJWKClient caches keys and re-fetches on an unknown `kid`, which is what makes key
         # rotation survivable without either an outage or a fetch on every request.
         self._jwk_client = PyJWKClient(
@@ -152,12 +158,30 @@ class JwksIdentityProvider:
         if not isinstance(subject, str) or not subject:
             raise IdentityVerificationError("token has no usable subject claim")
 
+        if self._session_profile == "clerk_v2":
+            if type(claims.get("v")) is not int or claims["v"] != 2:
+                raise IdentityVerificationError("unsupported Clerk session version")
+            if not _optional_str(claims.get("sid")):
+                raise IdentityVerificationError("token is not a Clerk session token")
+            if claims.get("sts") not in (None, "active"):
+                raise IdentityVerificationError("Clerk session is not active")
+            azp = claims.get("azp")
+            if azp is not None and (not isinstance(azp, str) or azp not in self._allowed_parties):
+                raise IdentityVerificationError("Clerk authorized party is not allowed")
+            mfa_verified = _clerk_fva_verified(
+                claims.get("fva"),
+                issued_at=claims.get("iat"),
+                max_age_seconds=self._mfa_max_age_seconds,
+            )
+        else:
+            mfa_verified = _coerce_mfa(claims.get(self._mfa_claim))
+
         return ExternalIdentity(
             subject=subject,
             email=_optional_str(claims.get(self._email_claim)),
             session_id=_optional_str(claims.get(self._session_claim)),
             organization_id=_optional_str(claims.get(self._organization_claim)),
-            mfa_verified=_coerce_mfa(claims.get(self._mfa_claim)),
+            mfa_verified=mfa_verified,
             issued_at=_optional_int(claims.get("iat")),
             expires_at=_optional_int(claims.get("exp")),
         )
@@ -220,3 +244,23 @@ def _coerce_mfa(value: Any) -> bool:
     if isinstance(value, str):
         return value.lower() in {"true", "verified", "mfa"}
     return False
+
+
+def _clerk_fva_verified(value: Any, *, issued_at: Any, max_age_seconds: int) -> bool:
+    """Require a recent second factor in Clerk's signed v2 session token.
+
+    Factor ages are whole minutes at token issuance. Count the unknown fraction of that minute
+    conservatively, then add elapsed token age so an old token cannot extend the MFA window.
+    Missing, negative, malformed or first-factor-only values fail closed.
+    """
+    if (
+        not isinstance(value, list)
+        or len(value) != 2
+        or any(type(age) is not int for age in value)
+        or any(age < 0 for age in value)
+        or type(issued_at) is not int
+    ):
+        return False
+    ages = cast(list[int], value)
+    elapsed_seconds = max(0, time.time() - issued_at)
+    return ages[1] * 60 + 59 + elapsed_seconds <= max_age_seconds

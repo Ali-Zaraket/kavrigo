@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     auth_audience: str | None = None
     auth_organization_claim: str = "org_id"
     auth_mfa_claim: str = "mfa"
+    auth_session_profile: Literal["generic", "clerk_v2"] = "generic"
+    auth_mfa_max_age_seconds: int = Field(default=300, ge=60, le=900)
+    auth_allowed_parties: list[str] = Field(default_factory=list)
 
     # --- Infrastructure ---------------------------------------------------
     postgres_dsn: str | None = None
@@ -118,6 +121,29 @@ class Settings(BaseSettings):
                         raise ValueError(
                             f"{name} must be a credential-free HTTPS URL outside local"
                         )
+        if self.auth_session_profile == "clerk_v2":
+            if self.auth_provider != "jwks":
+                raise ValueError("AUTH_SESSION_PROFILE=clerk_v2 requires AUTH_PROVIDER=jwks")
+            if self.kavrigo_env != "local" and not self.auth_allowed_parties:
+                raise ValueError("Clerk session verification requires AUTH_ALLOWED_PARTIES")
+            for party in self.auth_allowed_parties:
+                try:
+                    url = _HTTP_URL.validate_python(party)
+                except ValidationError as exc:
+                    raise ValueError(
+                        "AUTH_ALLOWED_PARTIES must contain valid HTTPS origins"
+                    ) from exc
+                if (
+                    (self.kavrigo_env != "local" and url.scheme != "https")
+                    or url.username is not None
+                    or url.password is not None
+                    or url.path not in {"", "/"}
+                    or url.query
+                    or url.fragment
+                ):
+                    raise ValueError("AUTH_ALLOWED_PARTIES must contain valid HTTPS origins")
+        if self.kavrigo_env == "paper-prod" and self.auth_session_profile != "clerk_v2":
+            raise ValueError("paper-prod requires an explicit Clerk v2 session profile")
         return self
 
     @property
