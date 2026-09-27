@@ -75,6 +75,9 @@ reachable.
 - The development provider accepts unsigned tokens, so `Settings` refuses to start with it
   enabled outside `KAVRIGO_ENV=local`. A development bypass reachable in a deployed environment
   is an authentication bypass, not a convenience.
+- The app factory also refuses an explicitly injected `DevIdentityProvider` outside local mode.
+  This keeps the startup gate intact when tests, alternate entry points or future deployments
+  supply a provider object directly instead of selecting one from settings.
 - Verification failure reasons are logged and never returned; the client is told only that the
   session is invalid.
 - Outside local development, issuer and JWKS endpoints must be credential-free HTTPS URLs.

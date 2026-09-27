@@ -105,6 +105,9 @@ def create_app(
     resolved = settings or get_settings()
     configure_logging(level=resolved.log_level, fmt=resolved.log_format)
 
+    if resolved.kavrigo_env != "local" and isinstance(identity_provider, DevIdentityProvider):
+        raise ValueError("development identity provider is refused outside local development")
+
     app = FastAPI(
         title="Kavrigo Control Plane",
         version="0.1.0",

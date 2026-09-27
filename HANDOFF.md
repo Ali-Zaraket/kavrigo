@@ -31,6 +31,12 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** The API factory refuses an injected unsigned-token development identity
+> provider outside local mode, even when JWKS settings otherwise validate. ADR 0021 and a
+> paper-prod startup test record the gate. A transient PostgreSQL timeout affected one unrelated
+> full-suite run; the affected test passed alone and a full rerun passed 1040 tests. Ruff checks
+> 328 files, mypy covers 148 sources, and the rebuilt API is healthy.
+>
 > **2026-09-27:** Generic list-shaped MFA claims now fail closed. Clerk `fva=[7, -1]` means no
 > verified second factor; a configured-`fva` regression test prevents the former length-only
 > interpretation from unlocking high-impact permissions. ADR 0021 documents this correction.

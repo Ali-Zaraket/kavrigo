@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from kavrigo_api.app import create_app
+from kavrigo_api.auth.identity import DevIdentityProvider
 from kavrigo_api.errors import ApiError, ErrorCode
 from kavrigo_api.settings import Settings
 
@@ -50,6 +51,16 @@ class TestAuthConfigurationGate:
 
     def test_dev_auth_is_allowed_locally(self) -> None:
         assert Settings(kavrigo_env="local", auth_provider="dev").auth_provider == "dev"
+
+    def test_injected_dev_provider_is_refused_outside_local(self) -> None:
+        settings = Settings(
+            kavrigo_env="paper-prod",
+            auth_provider="jwks",
+            auth_issuer="https://identity.example.test",
+            auth_jwks_url="https://identity.example.test/.well-known/jwks.json",
+        )
+        with pytest.raises(ValueError, match="development identity provider is refused"):
+            create_app(settings, identity_provider=DevIdentityProvider())
 
     def test_jwks_auth_requires_issuer_and_jwks_url(self) -> None:
         with pytest.raises(ValidationError, match="AUTH_ISSUER, AUTH_JWKS_URL"):

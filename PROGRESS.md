@@ -1,5 +1,13 @@
 # Kavrigo progress
 
+**2026-09-27 injected-dev-provider startup slice:** The API factory now refuses an explicitly
+injected `DevIdentityProvider` outside local mode, preserving the unsigned-token startup gate
+even for alternate entry points. A paper-prod construction test passes. One full regression run
+hit a transient PostgreSQL connection timeout in an unrelated integration case; that case passed
+alone and the full rerun passed **1040 tests** against the local stack. Ruff check/format passes
+328 files, mypy covers 148 sources, and the rebuilt local API is healthy. ADR 0021 records the
+defense. Hosted identity validation and broader release gates remain open.
+
 **2026-09-27 list-shaped-MFA fail-closed slice:** The generic JWT MFA interpreter no longer
 equates a two-element list with a verified second factor. Current Clerk session tokens use `fva`
 as factor ages, where `[7, -1]` means the second factor was never verified; mapping that to the
