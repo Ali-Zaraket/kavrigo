@@ -319,7 +319,7 @@ function Runs({
           </h2>
           <p>
             {research
-              ? "Strategy and frozen-data wiring are pending. Zero-decision runs are refused."
+              ? "Reference backtests are synthetic diagnostics. Inspect their frozen risk evidence and limitations."
               : "Stored workflow state · refreshes every 15 seconds"}
           </p>
         </div>
@@ -350,11 +350,13 @@ function Runs({
               accessorKey: "input_kind",
               header: "Input",
               cell: ({ row }) =>
-                row.original.input_kind === "synthetic_rehearsal"
-                  ? "Synthetic rehearsal"
-                  : row.original.input_kind === "testnet_rehearsal"
-                    ? "Testnet rehearsal"
-                    : "Recorded",
+                row.original.kind === "backtest"
+                  ? "Reference fixture"
+                  : row.original.input_kind === "synthetic_rehearsal"
+                    ? "Synthetic rehearsal"
+                    : row.original.input_kind === "testnet_rehearsal"
+                      ? "Testnet rehearsal"
+                      : "Recorded",
             },
             {
               accessorKey: "status",
@@ -401,7 +403,7 @@ function Runs({
             Stored evidence and stage receipts. A decision is a proposal, not an
             execution confirmation.
           </DialogDescription>
-          {selected && <RunDetail id={selected} />}
+          {selected && <RunDetail key={selected} id={selected} />}
         </DialogContent>
       </Dialog>
     </section>
@@ -440,6 +442,13 @@ function RunDetail({ id }: { id: string }) {
           the local model abstains, and execution remains disabled.
         </Notice>
       )}
+      {run.kind === "backtest" && (
+        <Notice>
+          This reference strategy uses synthetic fixtures. Its results are
+          diagnostic, cannot be published as performance, and cannot activate
+          paper trading.
+        </Notice>
+      )}
       <p>Created {utc(run.created_at)}</p>
       <details>
         <summary>Immutable input hash</summary>
@@ -455,13 +464,181 @@ function RunDetail({ id }: { id: string }) {
       {run.reason_codes.length > 0 && (
         <Notice>{run.reason_codes.join(" · ")}</Notice>
       )}
-      {run.decisions.length === 0 && (
+      {run.kind === "backtest" && <BacktestRiskReceipts id={id} />}
+      {run.kind !== "backtest" && run.decisions.length === 0 && (
         <p>No structured decision is present in this receipt.</p>
       )}
       {run.decisions.map((d) => (
         <Decision key={d.decision_id} decision={d} evidence={run.evidence} />
       ))}
     </div>
+  );
+}
+function BacktestRiskReceipts({ id }: { id: string }) {
+  const { api, workspace } = useSession();
+  const [cursor, setCursor] = useState<string>();
+  const result = useQuery({
+    queryKey: [workspace, "risk-receipts", id, cursor],
+    queryFn: async ({ signal }) =>
+      unwrap(
+        await api.GET(
+          "/v1/workspaces/{workspace_id}/runs/{run_id}/risk-receipts",
+          {
+            signal,
+            params: {
+              path: { workspace_id: workspace, run_id: id },
+              query: { limit: 10, cursor },
+            },
+          },
+        ),
+      ),
+  });
+  if (result.isPending) return <Notice>Loading risk receipts…</Notice>;
+  if (result.isError)
+    return (
+      <Notice error>
+        Risk receipts could not be loaded: {result.error.message}
+      </Notice>
+    );
+  const journal = result.data;
+  return (
+    <section aria-label="Backtest risk receipts">
+      <h3>Reference risk receipts</h3>
+      <Notice>
+        Synthetic backtest diagnostics only. A risk handoff is not a submitted
+        or filled order, and these results cannot activate paper trading.
+      </Notice>
+      {journal.journal_state === "pending" ? (
+        <p>The backtest artifact has not been stored yet.</p>
+      ) : journal.journal_state === "unavailable" ? (
+        <p>No per-signal journal is available for this run.</p>
+      ) : (
+        <>
+          <div className="control-row">
+            <span>Evaluations</span>
+            <strong>{journal.risk_evaluations}</strong>
+          </div>
+          <div className="control-row">
+            <span>Risk handoffs</span>
+            <strong>{journal.risk_approvals}</strong>
+          </div>
+          {journal.risk_evaluations === 0 && (
+            <p>No reference strategy signals reached deterministic risk.</p>
+          )}
+          {journal.items.map((receipt) => (
+            <article className="decision" key={receipt.sequence}>
+              <h4>
+                Signal {receipt.sequence} · {receipt.instrument_id.base}/
+                {receipt.instrument_id.quote} · {receipt.side.toUpperCase()}
+              </h4>
+              <p className="mono">{utc(receipt.at)}</p>
+              <div className="decision-facts">
+                <span className="chip">
+                  {receipt.outcome.replaceAll("_", " ")}
+                </span>
+                <span>{receipt.reason_codes.join(" · ")}</span>
+              </div>
+              {receipt.record ? (
+                <>
+                  <p>
+                    Deterministic decision: {receipt.record.evaluation.decision}
+                    . Requested{" "}
+                    {money(receipt.record.evaluation.requested_notional)};
+                    approved{" "}
+                    {money(receipt.record.evaluation.approved_notional)}.
+                  </p>
+                  <p>
+                    Maximum quantity {receipt.record.max_quantity.value}{" "}
+                    {receipt.record.max_quantity.asset}; handed to reference
+                    broker {receipt.handed_off_quantity?.value ?? "none"}.
+                  </p>
+                </>
+              ) : (
+                <p>
+                  Risk evaluation was unavailable; no quantity was handed off.
+                </p>
+              )}
+              <details>
+                <summary>Frozen inputs and integrity references</summary>
+                <p>
+                  Snapshot time:{" "}
+                  {receipt.request
+                    ? utc(receipt.request.snapshot.as_of)
+                    : "Unavailable"}
+                </p>
+                <p>
+                  Portfolio cash:{" "}
+                  {receipt.portfolio
+                    ? money(receipt.portfolio.cash)
+                    : "Unavailable"}
+                </p>
+                <p>
+                  Supervisor controls:{" "}
+                  {receipt.controls
+                    ? `version ${receipt.controls.version}, valid until ${utc(receipt.controls.valid_until)}`
+                    : "Unavailable"}
+                </p>
+                {receipt.record && (
+                  <>
+                    <p className="mono break">
+                      Request: {receipt.record.request_hash}
+                    </p>
+                    <p className="mono break">
+                      Portfolio: {receipt.record.portfolio_hash}
+                    </p>
+                    <p className="mono break">
+                      Controls: {receipt.record.controls_hash}
+                    </p>
+                  </>
+                )}
+              </details>
+            </article>
+          ))}
+          {journal.items.length > 0 && (
+            <div className="pager">
+              <small>10 receipts per page · chronological</small>
+              <Button variant="ghost" onClick={() => setCursor(undefined)}>
+                First page
+              </Button>
+              <Button
+                variant="outline"
+                disabled={!journal.has_more}
+                onClick={() => setCursor(journal.next_cursor ?? undefined)}
+              >
+                Next page <ArrowRight size={15} aria-hidden="true" />
+              </Button>
+            </div>
+          )}
+          <details>
+            <summary>Journal provenance and limitations</summary>
+            <p className="mono break">Journal: {journal.audit_hash}</p>
+            <p className="mono break">
+              Risk replay: {journal.risk_replay_hash}
+            </p>
+            <p className="mono break">
+              Reproducibility bundle: {journal.bundle_hash}
+            </p>
+            <p className="mono break">
+              Frozen dataset: {journal.dataset_manifest_hash}
+            </p>
+            {journal.cost_model && (
+              <p>
+                Cost assumptions: maker {journal.cost_model.fees.maker_bps} bps;
+                taker {journal.cost_model.fees.taker_bps} bps; spread crossing{" "}
+                {journal.cost_model.slippage.spread_crossing_bps} bps;
+                decision-to-venue latency{" "}
+                {journal.cost_model.latency.decision_to_venue_ms} ms.
+              </p>
+            )}
+            <ul className="evidence-list">
+              {journal.limitations.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </details>
+        </>
+      )}
+    </section>
   );
 }
 function Decision({

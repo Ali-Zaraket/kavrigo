@@ -4,27 +4,32 @@ import json
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Path, Query, Response
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import text
 
 from kavrigo_api.auth.dependencies import WorkspaceDep, WorkspaceSession, require
 from kavrigo_api.auth.principal import Permission
 from kavrigo_api.errors import ApiError, ErrorCode
+from kavrigo_api.logging import get_logger
 from kavrigo_api.repositories.agents import decode_cursor, encode_cursor
 from kavrigo_api.schemas.common import Page
 from kavrigo_api.schemas.inspection import (
     AuditSummary,
+    BacktestRiskPage,
     PaperAccountView,
     RunInspection,
     RunSummary,
     StageSummary,
 )
+from kavrigo_backtest import BacktestResult
 from kavrigo_domain import AgentDecision, EvidenceItem, content_hash
 
 router = APIRouter(prefix="/v1/workspaces/{workspace_id}", tags=["inspection"])
+_log = get_logger(__name__)
 Limit = Annotated[int, Query(ge=1, le=50)]
 Cursor = Annotated[str | None, Query(max_length=512)]
 RunPath = Annotated[str, Path(pattern=r"^run_[0-9a-f]{32}$")]
+ReceiptLimit = Annotated[int, Query(ge=1, le=25)]
 
 
 def after(cursor: str | None) -> str:
@@ -160,6 +165,114 @@ async def run_detail(
         decisions=decisions,
         evidence=evidence,
         reason_codes=reasons,
+    )
+
+
+@router.get(
+    "/runs/{run_id}/risk-receipts",
+    response_model=BacktestRiskPage,
+    dependencies=[Depends(require(Permission.RUN_READ))],
+    summary="Inspect bounded reference-backtest risk receipts",
+)
+async def backtest_risk_receipts(
+    run_id: RunPath,
+    context: WorkspaceDep,
+    session: WorkspaceSession,
+    response: Response,
+    limit: ReceiptLimit = 10,
+    cursor: Cursor = None,
+) -> BacktestRiskPage:
+    no_store(response)
+    found = (
+        (
+            await session.execute(
+                text("""SELECT status, definition FROM kavrigo.engine_runs
+            WHERE workspace_id=:ws AND run_id=:run"""),
+                {"ws": context.workspace_id, "run": run_id},
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if found is None:
+        raise ApiError(ErrorCode.NOT_FOUND, "Backtest run not found.", 404)
+    definition = json.loads(found["definition"])
+    if definition.get("workspace_id") != context.workspace_id:
+        raise ApiError(ErrorCode.INTERNAL_ERROR, "Run scope is inconsistent.", 500)
+    if definition.get("job", {}).get("kind") != "backtest":
+        raise ApiError(ErrorCode.NOT_FOUND, "Backtest run not found.", 404)
+    after_sequence = after(cursor)
+    if after_sequence and (
+        not after_sequence.isascii()
+        or not after_sequence.isdecimal()
+        or not 1 <= int(after_sequence) <= 5_000
+    ):
+        raise ApiError(ErrorCode.VALIDATION_FAILED, "Invalid receipt cursor.")
+    start = int(after_sequence) if after_sequence else 0
+    stage = (
+        (
+            await session.execute(
+                text("""SELECT output, output_hash FROM kavrigo.engine_steps
+            WHERE workspace_id=:ws AND run_id=:run AND stage='backtest'"""),
+                {"ws": context.workspace_id, "run": run_id},
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if stage is None or stage["output"] is None:
+        return BacktestRiskPage(
+            run_id=run_id,
+            run_status=found["status"],
+            journal_state="pending" if found["status"] in ("queued", "running") else "unavailable",
+            audit_hash=None,
+            risk_replay_hash=None,
+            bundle_hash=None,
+            dataset_manifest_hash=None,
+            cost_model=None,
+            risk_evaluations=0,
+            risk_approvals=0,
+            risk_reason_counts={},
+            limitations=[],
+            items=[],
+            has_more=False,
+            next_cursor=None,
+        )
+    raw = stage["output"]
+    try:
+        if content_hash(json.loads(raw)) != stage["output_hash"]:
+            raise ValueError("stage hash mismatch")
+        result = BacktestResult.model_validate_json(raw)
+        if result.workspace_id != context.workspace_id or result.run_id != run_id:
+            raise ValueError("stage scope mismatch")
+    except (ValueError, ValidationError) as exc:
+        _log.warning(
+            "backtest_risk_receipt_invalid",
+            workspace_id=context.workspace_id,
+            run_id=run_id,
+            error_type=type(exc).__name__,
+        )
+        raise ApiError(ErrorCode.INTERNAL_ERROR, "Backtest receipt is inconsistent.", 500) from exc
+    audit = result.risk_audit
+    receipts = audit.receipts if audit is not None else ()
+    visible = list(receipts[start : start + limit])
+    more = start + len(visible) < len(receipts)
+    return BacktestRiskPage(
+        run_id=run_id,
+        run_status=found["status"],
+        journal_state="recorded" if audit is not None else "unavailable",
+        audit_hash=audit.content_hash if audit is not None else None,
+        risk_replay_hash=result.risk_replay_hash,
+        bundle_hash=result.bundle.bundle_hash,
+        dataset_manifest_hash=result.bundle.dataset_manifest_hash,
+        cost_model=result.cost_model,
+        risk_evaluations=result.risk_evaluations,
+        risk_approvals=result.risk_approvals,
+        risk_reason_counts=result.risk_reason_counts,
+        limitations=result.limitations,
+        items=visible,
+        has_more=more,
+        next_cursor=encode_cursor(str(start + len(visible))) if more else None,
     )
 
 

@@ -838,6 +838,93 @@
         }
       }
     },
+    "/v1/workspaces/{workspace_id}/runs/{run_id}/risk-receipts": {
+      "get": {
+        "tags": [
+          "inspection"
+        ],
+        "summary": "Inspect bounded reference-backtest risk receipts",
+        "operationId": "backtest_risk_receipts_v1_workspaces__workspace_id__runs__run_id__risk_receipts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^run_[0-9a-f]{32}$",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 25,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestRiskPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/workspaces/{workspace_id}/paper/accounts": {
       "get": {
         "tags": [
@@ -2031,7 +2118,7 @@
           "change_summary"
         ],
         "title": "AgentVersionCreate",
-        "description": "Create a new version of an existing agent.\n\nThere is no update endpoint by design: editing an agent creates a version, it does not mutate\nthe configuration that produced historical decisions (``MASTER_BUILD_SPEC.md`` \u00a73, \u00a738)."
+        "description": "Create a new version of an existing agent.\n\nThere is no update endpoint by design: editing an agent creates a version, it does not mutate\nthe configuration that produced historical decisions (``MASTER_BUILD_SPEC.md`` §3, §38)."
       },
       "AgentVersionResponse": {
         "properties": {
@@ -2190,6 +2277,44 @@
         ],
         "title": "AgentVersionSummary"
       },
+      "Allocation": {
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "pattern": "^dec_[0-9a-f]{32}$",
+            "title": "Decision Id",
+            "description": "dec_ id"
+          },
+          "instrument_id": {
+            "$ref": "#/components/schemas/InstrumentId"
+          },
+          "requested_notional": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "allocated_notional": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision_id",
+          "instrument_id",
+          "requested_notional",
+          "allocated_notional",
+          "reason_codes"
+        ],
+        "title": "Allocation",
+        "description": "Inert proposal; cannot be passed to a broker. Step 11 must evaluate an OrderIntent."
+      },
       "AnalysisConfig": {
         "properties": {
           "market_scanner": {
@@ -2286,7 +2411,390 @@
           "ai_generated"
         ],
         "title": "AuthorKind",
-        "description": "Whether a version's changes were written by a human or generated (\u00a738)."
+        "description": "Whether a version's changes were written by a human or generated (§38)."
+      },
+      "BacktestRiskPage": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "run_status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "refused",
+              "uncertain"
+            ],
+            "title": "Run Status"
+          },
+          "journal_state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "unavailable",
+              "recorded"
+            ],
+            "title": "Journal State"
+          },
+          "audit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit Hash"
+          },
+          "risk_replay_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Replay Hash"
+          },
+          "bundle_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bundle Hash"
+          },
+          "dataset_manifest_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Manifest Hash"
+          },
+          "cost_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "risk_evaluations": {
+            "type": "integer",
+            "title": "Risk Evaluations"
+          },
+          "risk_approvals": {
+            "type": "integer",
+            "title": "Risk Approvals"
+          },
+          "risk_reason_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Risk Reason Counts"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limitations"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestRiskReceipt"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "run_status",
+          "journal_state",
+          "audit_hash",
+          "risk_replay_hash",
+          "bundle_hash",
+          "dataset_manifest_hash",
+          "cost_model",
+          "risk_evaluations",
+          "risk_approvals",
+          "risk_reason_counts",
+          "limitations",
+          "items",
+          "has_more",
+          "next_cursor"
+        ],
+        "title": "BacktestRiskPage",
+        "description": "A bounded view of a stored diagnostic risk journal, never an order permit."
+      },
+      "BacktestRiskReceipt": {
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "maximum": 5000,
+            "minimum": 1,
+            "title": "Sequence"
+          },
+          "run_id": {
+            "type": "string",
+            "pattern": "^run_[0-9a-f]{32}$",
+            "title": "Run Id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id",
+            "description": "ws_ id"
+          },
+          "agent_version_id": {
+            "type": "string",
+            "pattern": "^av_[0-9a-f]{32}$",
+            "title": "Agent Version Id",
+            "description": "av_ id"
+          },
+          "risk_replay_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Risk Replay Hash"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "instrument_id": {
+            "$ref": "#/components/schemas/InstrumentId"
+          },
+          "side": {
+            "$ref": "#/components/schemas/OrderSide"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "handed_off",
+              "risk_rejected",
+              "handoff_refused",
+              "below_minimum_order_size",
+              "unavailable"
+            ],
+            "title": "Outcome"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z_]{1,64}$"
+            },
+            "type": "array",
+            "maxItems": 33,
+            "minItems": 1,
+            "title": "Reason Codes"
+          },
+          "request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "portfolio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortfolioSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "controls": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskControls"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handed_off_quantity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Quantity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sequence",
+          "run_id",
+          "workspace_id",
+          "agent_version_id",
+          "risk_replay_hash",
+          "at",
+          "instrument_id",
+          "side",
+          "outcome",
+          "reason_codes"
+        ],
+        "title": "BacktestRiskReceipt",
+        "description": "Diagnostic receipt, never an executable permit or proof of a fill."
+      },
+      "BookTicker": {
+        "properties": {
+          "instrument_id": {
+            "$ref": "#/components/schemas/InstrumentId"
+          },
+          "bid_price": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "bid_size": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "ask_price": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "ask_size": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "venue_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Venue Time"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "instrument_id",
+          "bid_price",
+          "bid_size",
+          "ask_price",
+          "ask_size",
+          "received_at"
+        ],
+        "title": "BookTicker",
+        "description": "Best bid and ask.\n\nTop of book only. ``MASTER_BUILD_SPEC.md`` §7.2 is explicit that displayed liquidity can be\ncancelled, so this is combined with executed trades rather than trusted on its own."
+      },
+      "CostModel": {
+        "properties": {
+          "fees": {
+            "$ref": "#/components/schemas/FeeSchedule"
+          },
+          "slippage": {
+            "$ref": "#/components/schemas/SlippageModel"
+          },
+          "latency": {
+            "$ref": "#/components/schemas/LatencyModel"
+          },
+          "liquidity": {
+            "$ref": "#/components/schemas/LiquidityAssumption",
+            "default": "always_taker"
+          },
+          "minimum_order_notional": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "partial_fills_enabled": {
+            "type": "boolean",
+            "title": "Partial Fills Enabled",
+            "default": true
+          },
+          "reject_on_insufficient_liquidity": {
+            "type": "boolean",
+            "title": "Reject On Insufficient Liquidity",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fees",
+          "slippage",
+          "latency"
+        ],
+        "title": "CostModel",
+        "description": "The complete execution-reality assumption a run was evaluated under.\n\nRecorded on every result. Two runs are only comparable if they shared a cost model, and a\npublished performance figure without one is not a claim about a strategy — it is a claim\nabout an assumption."
       },
       "DataFamily": {
         "type": "string",
@@ -2302,7 +2810,7 @@
           "reference"
         ],
         "title": "DataFamily",
-        "description": "Data families that carry independent freshness budgets (``MASTER_BUILD_SPEC.md`` \u00a711.3)."
+        "description": "Data families that carry independent freshness budgets (``MASTER_BUILD_SPEC.md`` §11.3)."
       },
       "DataPack": {
         "type": "string",
@@ -2322,7 +2830,72 @@
           "relative_strength"
         ],
         "title": "DataPack",
-        "description": "Explicitly enabled data families (``MASTER_BUILD_SPEC.md`` \u00a77).\n\nPacks are opt-in per agent because they carry both cost and licence entitlement (\u00a78.3)."
+        "description": "Explicitly enabled data families (``MASTER_BUILD_SPEC.md`` §7).\n\nPacks are opt-in per agent because they carry both cost and licence entitlement (§8.3)."
+      },
+      "DataQuality": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Score"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/FreshnessReport"
+          },
+          "provider_health_ok": {
+            "type": "boolean",
+            "title": "Provider Health Ok",
+            "default": true
+          },
+          "sequence_complete": {
+            "type": "boolean",
+            "title": "Sequence Complete",
+            "default": true
+          },
+          "cross_provider_agreement": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cross Provider Agreement"
+          },
+          "missing_feature_ratio": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Missing Feature Ratio",
+            "default": 0
+          },
+          "contains_revised_data": {
+            "type": "boolean",
+            "title": "Contains Revised Data",
+            "default": false
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "title": "Notes",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "score",
+          "freshness"
+        ],
+        "title": "DataQuality",
+        "description": "Snapshot quality score and its components (``MASTER_BUILD_SPEC.md`` §43)."
       },
       "DecisionState": {
         "type": "string",
@@ -2334,21 +2907,21 @@
           "unknown"
         ],
         "title": "DecisionState",
-        "description": "The agent's read of the situation (``MASTER_BUILD_SPEC.md`` \u00a76.7)."
+        "description": "The agent's read of the situation (``MASTER_BUILD_SPEC.md`` §6.7)."
       },
       "EventRiskPolicy-Input": {
         "properties": {
           "block_new_positions_before_macro_minutes": {
             "type": "integer",
-            "maximum": 1440.0,
-            "minimum": 0.0,
+            "maximum": 1440,
+            "minimum": 0,
             "title": "Block New Positions Before Macro Minutes",
             "default": 10
           },
           "block_new_positions_after_macro_minutes": {
             "type": "integer",
-            "maximum": 1440.0,
-            "minimum": 0.0,
+            "maximum": 1440,
+            "minimum": 0,
             "title": "Block New Positions After Macro Minutes",
             "default": 5
           },
@@ -2371,21 +2944,21 @@
         "additionalProperties": false,
         "type": "object",
         "title": "EventRiskPolicy",
-        "description": "Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` \u00a77.13)."
+        "description": "Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` §7.13)."
       },
       "EventRiskPolicy-Output": {
         "properties": {
           "block_new_positions_before_macro_minutes": {
             "type": "integer",
-            "maximum": 1440.0,
-            "minimum": 0.0,
+            "maximum": 1440,
+            "minimum": 0,
             "title": "Block New Positions Before Macro Minutes",
             "default": 10
           },
           "block_new_positions_after_macro_minutes": {
             "type": "integer",
-            "maximum": 1440.0,
-            "minimum": 0.0,
+            "maximum": 1440,
+            "minimum": 0,
             "title": "Block New Positions After Macro Minutes",
             "default": 5
           },
@@ -2401,7 +2974,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "EventRiskPolicy",
-        "description": "Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` \u00a77.13)."
+        "description": "Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` §7.13)."
       },
       "EvidenceItem": {
         "properties": {
@@ -2476,14 +3049,14 @@
           },
           "quality": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Quality"
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence"
           },
           "is_contradictory_candidate": {
@@ -2562,14 +3135,14 @@
           "relative_strength"
         ],
         "title": "EvidenceKind",
-        "description": "What family of evidence this is, matching the signal families in \u00a77."
+        "description": "What family of evidence this is, matching the signal families in §7."
       },
       "EvidenceRequirements": {
         "properties": {
           "min_source_quality": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Min Source Quality",
             "default": 0.65
           },
@@ -2585,8 +3158,8 @@
           },
           "min_evidence_items": {
             "type": "integer",
-            "maximum": 64.0,
-            "minimum": 1.0,
+            "maximum": 64,
+            "minimum": 1,
             "title": "Min Evidence Items",
             "default": 2
           }
@@ -2594,7 +3167,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "EvidenceRequirements",
-        "description": "What an agent must have before it is permitted to act (``MASTER_BUILD_SPEC.md`` \u00a79)."
+        "description": "What an agent must have before it is permitted to act (``MASTER_BUILD_SPEC.md`` §9)."
       },
       "ExecutionCandidate": {
         "properties": {
@@ -2641,32 +3214,32 @@
           },
           "max_snapshot_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Snapshot Age Ms"
           },
           "max_portfolio_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Portfolio Age Ms"
           },
           "max_reconciliation_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Reconciliation Age Ms"
           },
           "max_market_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Market Age Ms"
           },
           "max_approval_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Approval Age Ms"
           }
         },
@@ -2684,12 +3257,90 @@
         ],
         "title": "ExecutionCandidate"
       },
+      "FeatureVector": {
+        "properties": {
+          "instrument_id": {
+            "$ref": "#/components/schemas/InstrumentId"
+          },
+          "feature_set_version": {
+            "type": "string",
+            "pattern": "^v\\d+(\\.\\d+)*$",
+            "title": "Feature Set Version"
+          },
+          "values": {
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+            },
+            "type": "object",
+            "title": "Values"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Content Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "instrument_id",
+          "feature_set_version",
+          "values",
+          "content_hash"
+        ],
+        "title": "FeatureVector",
+        "description": "Deterministic, versioned features for one instrument at snapshot time.\n\nFeature values are ``Decimal``: they feed sizing and threshold comparisons, and a float that\nrounds differently between the backtest and the live path is a reproducibility bug."
+      },
+      "FeeSchedule": {
+        "properties": {
+          "venue": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Venue"
+          },
+          "maker_bps": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Maker Bps",
+            "ge": "-50",
+            "le": "500"
+          },
+          "taker_bps": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Taker Bps",
+            "ge": "0",
+            "le": "500"
+          },
+          "minimum_fee": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "venue",
+          "maker_bps",
+          "taker_bps"
+        ],
+        "title": "FeeSchedule",
+        "description": "Venue fee tiers in basis points of notional.\n\nNegative maker fees (rebates) are representable because some venues pay them, but a backtest\nrelying on a rebate should say so loudly — see :attr:`CostModel.optimism_warnings`."
+      },
       "FreshnessPolicy": {
         "properties": {
           "max_age_ms": {
             "additionalProperties": {
               "type": "integer",
-              "minimum": 0.0
+              "minimum": 0
             },
             "propertyNames": {
               "$ref": "#/components/schemas/DataFamily"
@@ -2708,8 +3359,8 @@
           },
           "min_data_quality": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Min Data Quality",
             "default": 0.6
           }
@@ -2720,7 +3371,46 @@
           "max_age_ms"
         ],
         "title": "FreshnessPolicy",
-        "description": "Maximum tolerated data age per family, in milliseconds (``MASTER_BUILD_SPEC.md`` \u00a711.3).\n\nData freshness is part of risk (``AGENTS.md`` domain rule 5): a correct decision on stale\ndata is still a wrong trade."
+        "description": "Maximum tolerated data age per family, in milliseconds (``MASTER_BUILD_SPEC.md`` §11.3).\n\nData freshness is part of risk (``AGENTS.md`` domain rule 5): a correct decision on stale\ndata is still a wrong trade."
+      },
+      "FreshnessReport": {
+        "properties": {
+          "age_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/DataFamily"
+            },
+            "type": "object",
+            "title": "Age Ms"
+          },
+          "stale_families": {
+            "items": {
+              "$ref": "#/components/schemas/DataFamily"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Stale Families",
+            "default": []
+          },
+          "missing_families": {
+            "items": {
+              "$ref": "#/components/schemas/DataFamily"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Missing Families",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "age_ms"
+        ],
+        "title": "FreshnessReport",
+        "description": "Observed data age per family at snapshot time."
       },
       "HTTPValidationError": {
         "properties": {
@@ -2769,7 +3459,7 @@
           "index"
         ],
         "title": "InstrumentClass",
-        "description": "What kind of contract an instrument is.\n\nOnly ``SPOT`` is executable in V1 (ADR 0002). Derivatives appear here because their *data*\nis a first-class signal source (``MASTER_BUILD_SPEC.md`` \u00a77.3) even though the platform does\nnot trade them."
+        "description": "What kind of contract an instrument is.\n\nOnly ``SPOT`` is executable in V1 (ADR 0002). Derivatives appear here because their *data*\nis a first-class signal source (``MASTER_BUILD_SPEC.md`` §7.3) even though the platform does\nnot trade them."
       },
       "InstrumentId": {
         "properties": {
@@ -2804,7 +3494,48 @@
           "venue"
         ],
         "title": "InstrumentId",
-        "description": "A tradable or observable instrument, unambiguous across venues and contract types.\n\nCanonical string form is ``BASE-QUOTE.VENUE`` for spot, and ``BASE-QUOTE.VENUE:CLASS`` for\neverything else \u2014 for example ``BTC-USDT.BINANCE`` and ``BTC-USDT.BINANCE:perpetual``."
+        "description": "A tradable or observable instrument, unambiguous across venues and contract types.\n\nCanonical string form is ``BASE-QUOTE.VENUE`` for spot, and ``BASE-QUOTE.VENUE:CLASS`` for\neverything else — for example ``BTC-USDT.BINANCE`` and ``BTC-USDT.BINANCE:perpetual``."
+      },
+      "LatencyModel": {
+        "properties": {
+          "decision_to_venue_ms": {
+            "type": "integer",
+            "maximum": 60000,
+            "minimum": 0,
+            "title": "Decision To Venue Ms"
+          },
+          "venue_ack_ms": {
+            "type": "integer",
+            "maximum": 60000,
+            "minimum": 0,
+            "title": "Venue Ack Ms",
+            "default": 0
+          },
+          "market_data_ms": {
+            "type": "integer",
+            "maximum": 60000,
+            "minimum": 0,
+            "title": "Market Data Ms",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision_to_venue_ms"
+        ],
+        "title": "LatencyModel",
+        "description": "Delay between deciding and the order reaching the venue.\n\nLatency is not a performance detail in a backtest, it is a correctness one: with zero\nlatency a strategy fills at the price that triggered it, which is the single most flattering\nassumption available. ``decision_to_venue_ms`` is the number that matters."
+      },
+      "LiquidityAssumption": {
+        "type": "string",
+        "enum": [
+          "always_taker",
+          "always_maker",
+          "order_type"
+        ],
+        "title": "LiquidityAssumption",
+        "description": "What the simulation assumes about how orders fill.\n\n``ALWAYS_MAKER`` is deliberately available *and* deliberately flagged as optimistic: a\nstrategy assuming it earns rebates on every fill is assuming its resting orders are always\nhit, which is exactly the assumption that does not survive contact with a real venue."
       },
       "MarketRegime": {
         "type": "string",
@@ -2821,7 +3552,92 @@
           "unknown"
         ],
         "title": "MarketRegime",
-        "description": "Regime labels from ``MASTER_BUILD_SPEC.md`` \u00a744.\n\nThe label set is closed on purpose: a model may interpret regime context, but it may not\ninvent unbounded regime labels during execution, because downstream policy keys off them."
+        "description": "Regime labels from ``MASTER_BUILD_SPEC.md`` §44.\n\nThe label set is closed on purpose: a model may interpret regime context, but it may not\ninvent unbounded regime labels during execution, because downstream policy keys off them."
+      },
+      "MarketSnapshot": {
+        "properties": {
+          "snapshot_id": {
+            "type": "string",
+            "pattern": "^snap_[0-9a-f]{32}$",
+            "title": "Snapshot Id",
+            "description": "snap_ id"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentId"
+            },
+            "type": "array",
+            "maxItems": 512,
+            "minItems": 1,
+            "title": "Instruments"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureVector"
+            },
+            "type": "array",
+            "maxItems": 512,
+            "title": "Features",
+            "default": []
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string",
+              "pattern": "^ev_[0-9a-f]{32}$",
+              "description": "ev_ id"
+            },
+            "type": "array",
+            "maxItems": 512,
+            "title": "Evidence Refs",
+            "default": []
+          },
+          "regime": {
+            "$ref": "#/components/schemas/MarketRegime",
+            "default": "unknown"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/DataQuality"
+          },
+          "dataset_manifest_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Manifest Ref"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Content Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "snapshot_id",
+          "as_of",
+          "created_at",
+          "instruments",
+          "quality",
+          "content_hash"
+        ],
+        "title": "MarketSnapshot",
+        "description": "An immutable point-in-time view: features, evidence, regime and quality.\n\n``as_of`` is the decision time. Nothing in a snapshot may carry information that was not\navailable at ``as_of`` — that single rule is what separates a backtest from a fiction."
       },
       "MeResponse": {
         "properties": {
@@ -2872,7 +3688,7 @@
           "permissions"
         ],
         "title": "MeResponse",
-        "description": "Who the caller is, and what they can reach.\n\n``permissions`` is returned per workspace so the client can hide actions it cannot perform.\nThe server re-checks every one of them \u2014 a hidden button is a usability feature, never a\nsecurity control."
+        "description": "Who the caller is, and what they can reach.\n\n``permissions`` is returned per workspace so the client can hide actions it cannot perform.\nThe server re-checks every one of them — a hidden button is a usability feature, never a\nsecurity control."
       },
       "ModelCallRecord": {
         "properties": {
@@ -2900,12 +3716,12 @@
           },
           "input_tokens": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Input Tokens"
           },
           "output_tokens": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Output Tokens"
           },
           "cost": {
@@ -2913,12 +3729,12 @@
           },
           "latency_ms": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Latency Ms"
           },
           "tool_calls": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Tool Calls",
             "default": 0
           },
@@ -3091,22 +3907,22 @@
           },
           "max_tool_calls": {
             "type": "integer",
-            "maximum": 64.0,
-            "minimum": 0.0,
+            "maximum": 64,
+            "minimum": 0,
             "title": "Max Tool Calls",
             "default": 12
           },
           "max_output_tokens": {
             "type": "integer",
-            "maximum": 32768.0,
-            "minimum": 64.0,
+            "maximum": 32768,
+            "minimum": 64,
             "title": "Max Output Tokens",
             "default": 4096
           },
           "timeout_seconds": {
             "type": "integer",
-            "maximum": 600.0,
-            "minimum": 1.0,
+            "maximum": 600,
+            "minimum": 1,
             "title": "Timeout Seconds",
             "default": 60
           }
@@ -3128,7 +3944,7 @@
           "embed"
         ],
         "title": "ModelProfile",
-        "description": "Routing profiles, not model names (``MASTER_BUILD_SPEC.md`` \u00a713.5).\n\nProduct behaviour must not be hard-coded to a current model name; the gateway resolves a\nprofile to a concrete model, and the resolved identifier is recorded on the decision."
+        "description": "Routing profiles, not model names (``MASTER_BUILD_SPEC.md`` §13.5).\n\nProduct behaviour must not be hard-coded to a current model name; the gateway resolves a\nprofile to a concrete model, and the resolved identifier is recorded on the decision."
       },
       "Money": {
         "properties": {
@@ -3172,32 +3988,32 @@
           },
           "importance": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Importance"
           },
           "sentiment": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Sentiment"
           },
           "certainty": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Certainty"
           },
           "novelty": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Novelty"
           },
           "source_quality": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Source Quality"
           },
           "expected_horizon": {
@@ -3209,8 +4025,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1.0,
-                "minimum": 0.0
+                "maximum": 1,
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -3264,7 +4080,7 @@
           "first_seen_at"
         ],
         "title": "NewsEvent",
-        "description": "A structured news event extracted from untrusted text (``MASTER_BUILD_SPEC.md`` \u00a77.12).\n\nThe extraction step is where an article stops being text and becomes data. Sentiment alone\nis close to useless; credibility, novelty, certainty and expected horizon are what make an\nevent actionable or not."
+        "description": "A structured news event extracted from untrusted text (``MASTER_BUILD_SPEC.md`` §7.12).\n\nThe extraction step is where an article stops being text and becomes data. Sentiment alone\nis close to useless; credibility, novelty, certainty and expected horizon are what make an\nevent actionable or not."
       },
       "NewsEventType": {
         "type": "string",
@@ -3285,6 +4101,125 @@
           "other"
         ],
         "title": "NewsEventType"
+      },
+      "OrderIntent": {
+        "properties": {
+          "order_intent_id": {
+            "type": "string",
+            "pattern": "^oi_[0-9a-f]{32}$",
+            "title": "Order Intent Id",
+            "description": "oi_ id"
+          },
+          "decision_id": {
+            "type": "string",
+            "pattern": "^dec_[0-9a-f]{32}$",
+            "title": "Decision Id",
+            "description": "dec_ id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id",
+            "description": "ws_ id"
+          },
+          "agent_version_id": {
+            "type": "string",
+            "pattern": "^av_[0-9a-f]{32}$",
+            "title": "Agent Version Id",
+            "description": "av_ id"
+          },
+          "instrument_id": {
+            "$ref": "#/components/schemas/InstrumentId"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TradingMode"
+          },
+          "side": {
+            "$ref": "#/components/schemas/OrderSide"
+          },
+          "order_type": {
+            "$ref": "#/components/schemas/OrderType"
+          },
+          "notional": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "limit_price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Price"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "time_in_force": {
+            "$ref": "#/components/schemas/TimeInForce",
+            "default": "ioc"
+          },
+          "idempotency_key": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Idempotency Key"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "estimated_cost_bps": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Bps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "order_intent_id",
+          "decision_id",
+          "workspace_id",
+          "agent_version_id",
+          "instrument_id",
+          "mode",
+          "side",
+          "order_type",
+          "notional",
+          "idempotency_key",
+          "created_at",
+          "expires_at"
+        ],
+        "title": "OrderIntent",
+        "description": "A proposed order awaiting deterministic risk evaluation.\n\nThis type deliberately has no venue credentials, no venue order id, and no method that\nreaches a venue. It is inert until risk approves it."
+      },
+      "OrderSide": {
+        "type": "string",
+        "enum": [
+          "buy",
+          "sell"
+        ],
+        "title": "OrderSide"
+      },
+      "OrderType": {
+        "type": "string",
+        "enum": [
+          "market",
+          "limit"
+        ],
+        "title": "OrderType"
       },
       "Page_AgentResponse_": {
         "properties": {
@@ -3604,7 +4539,7 @@
           },
           "version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Version"
           },
           "bundle_id": {
@@ -4198,7 +5133,7 @@
             "type": "boolean",
             "const": false,
             "title": "Live Trading Enabled",
-            "description": "Always false in this release. Live execution is gated on MASTER_BUILD_SPEC.md \u00a747 and ADR 0001.",
+            "description": "Always false in this release. Live execution is gated on MASTER_BUILD_SPEC.md §47 and ADR 0001.",
             "default": false
           },
           "default_trading_mode": {
@@ -4279,7 +5214,7 @@
           },
           "open_order_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Open Order Count",
             "default": 0
           },
@@ -4394,26 +5329,26 @@
         "properties": {
           "expected_return_bps": {
             "type": "integer",
-            "maximum": 10000.0,
-            "minimum": -10000.0,
+            "maximum": 10000,
+            "minimum": -10000,
             "title": "Expected Return Bps"
           },
           "confidence": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Confidence"
           },
           "uncertainty": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
+            "maximum": 1,
+            "minimum": 0,
             "title": "Uncertainty"
           },
           "horizon_minutes": {
             "type": "integer",
-            "maximum": 100800.0,
-            "minimum": 1.0,
+            "maximum": 100800,
+            "minimum": 1,
             "title": "Horizon Minutes"
           }
         },
@@ -4475,7 +5410,7 @@
           "live_expanded"
         ],
         "title": "PromotionStage",
-        "description": "Promotion pipeline stages (``MASTER_BUILD_SPEC.md`` \u00a712.6).\n\nA failed gate produces a new version; it never rewrites history."
+        "description": "Promotion pipeline stages (``MASTER_BUILD_SPEC.md`` §12.6).\n\nA failed gate produces a new version; it never rewrites history."
       },
       "ProposedAction": {
         "type": "string",
@@ -4488,7 +5423,7 @@
           "no_trade"
         ],
         "title": "ProposedAction",
-        "description": "The only actions a model may propose (``MASTER_BUILD_SPEC.md`` \u00a76.6).\n\nThis is a closed set on purpose. A model cannot propose \"withdraw\", \"transfer\", \"change\nrisk policy\", or any free-form instruction, because those words have no representation here."
+        "description": "The only actions a model may propose (``MASTER_BUILD_SPEC.md`` §6.6).\n\nThis is a closed set on purpose. A model cannot propose \"withdraw\", \"transfer\", \"change\nrisk policy\", or any free-form instruction, because those words have no representation here."
       },
       "Quantity": {
         "properties": {
@@ -4593,6 +5528,218 @@
         ],
         "title": "RehearsalLaunch"
       },
+      "RiskControls": {
+        "properties": {
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id",
+            "description": "ws_ id"
+          },
+          "account_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "title": "Account Id"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Version"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid Until"
+          },
+          "account_known": {
+            "type": "boolean",
+            "title": "Account Known"
+          },
+          "connectivity_ok": {
+            "type": "boolean",
+            "title": "Connectivity Ok"
+          },
+          "event_calendar_known": {
+            "type": "boolean",
+            "title": "Event Calendar Known"
+          },
+          "active_kills": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "global",
+                "workspace",
+                "account",
+                "agent",
+                "asset",
+                "risk_class"
+              ]
+            },
+            "type": "array",
+            "title": "Active Kills"
+          },
+          "blocked_agent_versions": {
+            "items": {
+              "type": "string",
+              "pattern": "^av_[0-9a-f]{32}$",
+              "description": "av_ id"
+            },
+            "type": "array",
+            "title": "Blocked Agent Versions",
+            "default": []
+          },
+          "macro_events": {
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "type": "array",
+            "maxItems": 128,
+            "title": "Macro Events"
+          },
+          "fencing_token": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Fencing Token"
+          },
+          "lease_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Lease Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workspace_id",
+          "account_id",
+          "version",
+          "as_of",
+          "valid_until",
+          "account_known",
+          "connectivity_ok",
+          "event_calendar_known",
+          "active_kills",
+          "macro_events",
+          "fencing_token",
+          "lease_expires_at"
+        ],
+        "title": "RiskControls",
+        "description": "Trusted supervisor observations. Any active kill stops both buys and sells.\n\nThe local session holds one account, so kills are already filtered to its scope by its\nsupervisor. Versions increase on refresh. A model has no method for refreshing controls."
+      },
+      "RiskDecision": {
+        "type": "string",
+        "enum": [
+          "approved",
+          "approved_resized",
+          "rejected"
+        ],
+        "title": "RiskDecision"
+      },
+      "RiskEvaluation": {
+        "properties": {
+          "risk_evaluation_id": {
+            "type": "string",
+            "pattern": "^re_[0-9a-f]{32}$",
+            "title": "Risk Evaluation Id"
+          },
+          "order_intent_id": {
+            "type": "string",
+            "pattern": "^oi_[0-9a-f]{32}$",
+            "title": "Order Intent Id",
+            "description": "oi_ id"
+          },
+          "decision_id": {
+            "type": "string",
+            "pattern": "^dec_[0-9a-f]{32}$",
+            "title": "Decision Id",
+            "description": "dec_ id"
+          },
+          "workspace_id": {
+            "type": "string",
+            "pattern": "^ws_[0-9a-f]{32}$",
+            "title": "Workspace Id",
+            "description": "ws_ id"
+          },
+          "evaluated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Evaluated At"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/RiskDecision"
+          },
+          "reason_codes": {
+            "items": {
+              "$ref": "#/components/schemas/RiskReasonCode"
+            },
+            "type": "array",
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Reason Codes"
+          },
+          "applied_policy_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^rp_[0-9a-f]{32}$",
+              "description": "rp_ id"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Applied Policy Ids"
+          },
+          "binding_scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requested_notional": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "approved_notional": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "evaluator_version": {
+            "type": "string",
+            "pattern": "^v\\d+(\\.\\d+)*$",
+            "title": "Evaluator Version"
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "risk_evaluation_id",
+          "order_intent_id",
+          "decision_id",
+          "workspace_id",
+          "evaluated_at",
+          "decision",
+          "reason_codes",
+          "applied_policy_ids",
+          "requested_notional",
+          "approved_notional",
+          "evaluator_version"
+        ],
+        "title": "RiskEvaluation",
+        "description": "The deterministic result of evaluating an ``OrderIntent`` against policy.\n\nOnly an ``APPROVED`` or ``APPROVED_RESIZED`` evaluation can produce an\n``ApprovedOrderIntent``. Nothing else may reach an execution adapter — a property the risk\nservice must prove with tests, not assert in a comment."
+      },
       "RiskExecutionPolicy": {
         "properties": {
           "execution_policy_id": {
@@ -4627,32 +5774,32 @@
           },
           "max_snapshot_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Snapshot Age Ms"
           },
           "max_portfolio_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Portfolio Age Ms"
           },
           "max_reconciliation_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Reconciliation Age Ms"
           },
           "max_market_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Market Age Ms"
           },
           "max_approval_age_ms": {
             "type": "integer",
-            "maximum": 86400000.0,
-            "minimum": 1.0,
+            "maximum": 86400000,
+            "minimum": 1,
             "title": "Max Approval Age Ms"
           }
         },
@@ -4719,8 +5866,8 @@
           },
           "max_open_positions": {
             "type": "integer",
-            "maximum": 1000.0,
-            "minimum": 0.0,
+            "maximum": 1000,
+            "minimum": 0,
             "title": "Max Open Positions"
           },
           "max_daily_loss_pct": {
@@ -4765,8 +5912,8 @@
           },
           "max_spread_bps": {
             "type": "integer",
-            "maximum": 10000.0,
-            "minimum": 0.0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Max Spread Bps"
           },
           "min_order_notional_usd": {
@@ -4795,8 +5942,8 @@
           },
           "min_edge_over_cost_bps": {
             "type": "integer",
-            "maximum": 10000.0,
-            "minimum": 0.0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Min Edge Over Cost Bps",
             "default": 5
           }
@@ -4843,8 +5990,8 @@
           },
           "max_open_positions": {
             "type": "integer",
-            "maximum": 1000.0,
-            "minimum": 0.0,
+            "maximum": 1000,
+            "minimum": 0,
             "title": "Max Open Positions"
           },
           "max_daily_loss_pct": {
@@ -4868,8 +6015,8 @@
           },
           "max_spread_bps": {
             "type": "integer",
-            "maximum": 10000.0,
-            "minimum": 0.0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Max Spread Bps"
           },
           "min_order_notional_usd": {
@@ -4884,8 +6031,8 @@
           },
           "min_edge_over_cost_bps": {
             "type": "integer",
-            "maximum": 10000.0,
-            "minimum": 0.0,
+            "maximum": 10000,
+            "minimum": 0,
             "title": "Min Edge Over Cost Bps",
             "default": 5
           }
@@ -4906,6 +6053,33 @@
         ],
         "title": "RiskLimits",
         "description": "Exposure and loss limits. Percentages are of portfolio equity unless stated."
+      },
+      "RiskMarket": {
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/BookTicker"
+          },
+          "liquidity_usd": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Liquidity Usd",
+            "ge": 0
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "book",
+          "liquidity_usd",
+          "observed_at"
+        ],
+        "title": "RiskMarket",
+        "description": "Frozen normalized market observation provided by the coordinator, never the model."
       },
       "RiskPolicy": {
         "properties": {
@@ -4930,7 +6104,7 @@
           },
           "version": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Version"
           },
           "scope": {
@@ -4982,6 +6156,151 @@
         "title": "RiskPolicy",
         "description": "An immutable, versioned risk policy.\n\nPolicies are referenced by id from an ``AgentSpec`` and recorded on every evaluation, so a\nhistorical rejection can be explained with the policy that actually applied."
       },
+      "RiskReasonCode": {
+        "type": "string",
+        "enum": [
+          "approved",
+          "approved_resized",
+          "stale_data",
+          "missing_data_family",
+          "data_quality_below_minimum",
+          "unknown_account_state",
+          "reconciliation_stale",
+          "exchange_connectivity_degraded",
+          "credential_status_uncertain",
+          "unsupported_symbol",
+          "unsupported_instrument_class",
+          "spread_too_wide",
+          "insufficient_liquidity",
+          "edge_below_cost_plus_margin",
+          "below_minimum_order_size",
+          "max_position_exceeded",
+          "max_gross_exposure_exceeded",
+          "portfolio_concentration_exceeded",
+          "network_concentration_exceeded",
+          "max_open_positions_exceeded",
+          "insufficient_cash",
+          "daily_loss_limit_reached",
+          "drawdown_circuit_breaker",
+          "kill_switch_active",
+          "agent_version_not_approved",
+          "mode_not_permitted",
+          "live_trading_disabled",
+          "scheduled_event_risk",
+          "evidence_requirements_not_met",
+          "duplicate_intent",
+          "policy_version_mismatch",
+          "intent_expired",
+          "context_mismatch",
+          "unsupported_order_type",
+          "execution_lease_expired",
+          "unsupported_precision",
+          "max_order_exceeded"
+        ],
+        "title": "RiskReasonCode",
+        "description": "Machine-readable reasons. Rejections must be explainable to the user (§29).\n\nThese are a closed enum rather than free text so that rejection rates can be measured per\nreason, and so a UI can explain \"why this trade was rejected\" consistently."
+      },
+      "RiskRecord": {
+        "properties": {
+          "evaluation": {
+            "$ref": "#/components/schemas/RiskEvaluation"
+          },
+          "account_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "title": "Account Id"
+          },
+          "request_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Request Hash"
+          },
+          "portfolio_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Portfolio Hash"
+          },
+          "registration_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Registration Hash"
+          },
+          "controls_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Controls Hash"
+          },
+          "reservations_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Reservations Hash"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "max_quantity": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "max_cash_debit": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "evaluation",
+          "account_id",
+          "request_hash",
+          "portfolio_hash",
+          "registration_hash",
+          "controls_hash",
+          "reservations_hash",
+          "expires_at",
+          "max_quantity",
+          "max_cash_debit"
+        ],
+        "title": "RiskRecord"
+      },
+      "RiskRequest": {
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/OrderIntent"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/AgentDecision"
+          },
+          "allocation": {
+            "$ref": "#/components/schemas/Allocation"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/MarketSnapshot"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "type": "array",
+            "maxItems": 512,
+            "title": "Evidence"
+          },
+          "market": {
+            "$ref": "#/components/schemas/RiskMarket"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "intent",
+          "decision",
+          "allocation",
+          "snapshot",
+          "evidence",
+          "market"
+        ],
+        "title": "RiskRequest"
+      },
       "RiskScope": {
         "type": "string",
         "enum": [
@@ -4994,7 +6313,7 @@
           "order"
         ],
         "title": "RiskScope",
-        "description": "The limit hierarchy (``MASTER_BUILD_SPEC.md`` \u00a711.2), most general first."
+        "description": "The limit hierarchy (``MASTER_BUILD_SPEC.md`` §11.2), most general first."
       },
       "Role": {
         "type": "string",
@@ -5159,8 +6478,8 @@
         "properties": {
           "decision_interval_seconds": {
             "type": "integer",
-            "maximum": 86400.0,
-            "minimum": 60.0,
+            "maximum": 86400,
+            "minimum": 60,
             "title": "Decision Interval Seconds"
           },
           "event_triggers": {
@@ -5174,8 +6493,8 @@
           },
           "max_decisions_per_day": {
             "type": "integer",
-            "maximum": 1440.0,
-            "minimum": 1.0,
+            "maximum": 1440,
+            "minimum": 1,
             "title": "Max Decisions Per Day",
             "default": 96
           }
@@ -5191,79 +6510,113 @@
         "properties": {
           "price": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Price",
-            "default": 0.0
+            "default": 0
           },
           "order_flow": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Order Flow",
-            "default": 0.0
+            "default": 0
           },
           "derivatives": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Derivatives",
-            "default": 0.0
+            "default": 0
           },
           "liquidity": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Liquidity",
-            "default": 0.0
+            "default": 0
           },
           "onchain": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Onchain",
-            "default": 0.0
+            "default": 0
           },
           "tokenomics": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Tokenomics",
-            "default": 0.0
+            "default": 0
           },
           "defi": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Defi",
-            "default": 0.0
+            "default": 0
           },
           "events": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Events",
-            "default": 0.0
+            "default": 0
           },
           "news": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "News",
-            "default": 0.0
+            "default": 0
           },
           "macro": {
             "type": "number",
-            "maximum": 1.0,
-            "minimum": -1.0,
+            "maximum": 1,
+            "minimum": -1,
             "title": "Macro",
-            "default": 0.0
+            "default": 0
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "SignalScores",
-        "description": "Per-family signal contributions, each in [-1, 1].\n\nSignal families rather than raw indicators: dumping hundreds of indicators into a model\nproduces confident noise (``MASTER_BUILD_SPEC.md`` \u00a77)."
+        "description": "Per-family signal contributions, each in [-1, 1].\n\nSignal families rather than raw indicators: dumping hundreds of indicators into a model\nproduces confident noise (``MASTER_BUILD_SPEC.md`` §7)."
+      },
+      "SlippageModel": {
+        "properties": {
+          "spread_crossing_bps": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Spread Crossing Bps",
+            "ge": "0",
+            "le": "1000"
+          },
+          "impact_bps_per_unit_adv": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Impact Bps Per Unit Adv",
+            "default": "0",
+            "ge": "0",
+            "le": "100000"
+          },
+          "fixed_slippage_bps": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Fixed Slippage Bps",
+            "default": "0",
+            "ge": "0",
+            "le": "1000"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "spread_crossing_bps"
+        ],
+        "title": "SlippageModel",
+        "description": "How far past the touch an order is assumed to fill.\n\n``spread_crossing_bps`` is the half-spread a taker pays even for an infinitesimal order.\n``impact_bps_per_unit_adv`` charges additional slippage in proportion to the order's share of\naverage daily volume — a square-root law is closer to reality for large orders, but linear is\nthe conservative choice at the sizes this platform targets, and being conservative about cost\nis the correct direction to be wrong in."
       },
       "SourceClass": {
         "type": "string",
@@ -5279,7 +6632,7 @@
           "internal_model"
         ],
         "title": "SourceClass",
-        "description": "Source classes from ``MASTER_BUILD_SPEC.md`` \u00a742.\n\nSource class informs confidence. It never establishes truth: an official account can be\ncompromised, and a wire service can be wrong."
+        "description": "Source classes from ``MASTER_BUILD_SPEC.md`` §42.\n\nSource class informs confidence. It never establishes truth: an official account can be\ncompromised, and a wire service can be wrong."
       },
       "StageSummary": {
         "properties": {
@@ -5336,6 +6689,16 @@
         ],
         "title": "StageSummary"
       },
+      "TimeInForce": {
+        "type": "string",
+        "enum": [
+          "gtc",
+          "ioc",
+          "fok",
+          "day"
+        ],
+        "title": "TimeInForce"
+      },
       "TradingMode": {
         "type": "string",
         "enum": [
@@ -5345,7 +6708,7 @@
           "live"
         ],
         "title": "TradingMode",
-        "description": "The four product modes (``MASTER_BUILD_SPEC.md`` \u00a75).\n\n``LIVE`` exists in the type system so that code can reason about it, and is refused at\nruntime unless the live gate is open (ADR 0001)."
+        "description": "The four product modes (``MASTER_BUILD_SPEC.md`` §5).\n\n``LIVE`` exists in the type system so that code can reason about it, and is refused at\nruntime unless the live gate is open (ADR 0001)."
       },
       "UniverseConfig": {
         "properties": {

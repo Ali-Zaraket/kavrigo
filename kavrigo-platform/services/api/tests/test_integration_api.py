@@ -31,12 +31,24 @@ from kavrigo_api.services.provider_entitlements import (
     entitlement_event_hash,
 )
 from kavrigo_api.settings import Settings
+from kavrigo_backtest import (
+    BacktestResult,
+    BacktestRiskAudit,
+    BacktestRiskReceipt,
+    CostModel,
+    FeeSchedule,
+    LatencyModel,
+    ReproducibilityBundle,
+    RunStatus,
+    SlippageModel,
+)
 from kavrigo_domain import (
     BookTicker,
     DataPack,
     InstrumentId,
     MarketSnapshot,
     MarketTrade,
+    OrderSide,
     Price,
     Quantity,
     content_hash,
@@ -516,6 +528,223 @@ class TestAuditTrail:
 
 
 class TestProductInspection:
+    @staticmethod
+    def _risk_result(ws: str, run: str, *, receipts: int = 2) -> BacktestResult:
+        at = datetime(2026, 1, 1, tzinfo=UTC)
+        digest = "sha256:" + "ab" * 32
+        version = "av_" + "1" * 32
+        journal = BacktestRiskAudit.seal(
+            tuple(
+                BacktestRiskReceipt(
+                    sequence=index + 1,
+                    run_id=run,
+                    workspace_id=ws,
+                    agent_version_id=version,
+                    risk_replay_hash=digest,
+                    at=at + timedelta(minutes=index),
+                    instrument_id=InstrumentId.parse("BTC-USD.SIM"),
+                    side=OrderSide.BUY,
+                    outcome="unavailable",
+                    reason_codes=("stale_data",),
+                )
+                for index in range(receipts)
+            )
+        )
+        return BacktestResult(
+            run_id=run,
+            workspace_id=ws,
+            status=RunStatus.REFUSED,
+            started_at=at,
+            finished_at=at,
+            period_start=at,
+            period_end=at + timedelta(days=1),
+            cost_model=CostModel(
+                fees=FeeSchedule(venue="SIM", maker_bps=Decimal("1"), taker_bps=Decimal("2")),
+                slippage=SlippageModel(spread_crossing_bps=Decimal("1")),
+                latency=LatencyModel(decision_to_venue_ms=10),
+            ),
+            bundle=ReproducibilityBundle(
+                run_id=run,
+                created_at=at,
+                dataset_manifest_hash=digest,
+                config_hash=digest,
+                agent_version_id=version,
+                spec_hash=digest,
+                prompt_hash=digest,
+                model_profile="mock",
+                resolved_model_identifier="mock-v1",
+                feature_set_version="v1",
+                feature_manifest_hash=digest,
+                risk_policy_id="rp_" + "1" * 32,
+                execution_policy_id="ep_" + "1" * 32,
+                cost_model_hash=digest,
+                random_seed=1,
+                engine_name="fixture",
+                engine_version="1",
+                container_image_digest="fixture:v1",
+                code_version="fixture",
+            ),
+            refusal_reason="Synthetic fixture refused.",
+            risk_evaluations=receipts,
+            orders_rejected_by_risk=receipts,
+            risk_replay_hash=digest,
+            risk_reason_counts=journal.reason_counts,
+            risk_audit=journal,
+            limitations=["Synthetic fixture only."],
+        )
+
+    def test_risk_receipts_are_scoped_paginated_and_hash_verified(self, client: TestClient) -> None:
+        ws = _create_workspace(client, "alice", "risk-receipt-view")
+        run = f"run_{4:032x}"
+        result = self._risk_result(ws, run)
+        output = result.model_dump_json()
+        run_sql(
+            """INSERT INTO kavrigo.engine_runs
+            (workspace_id,run_id,definition,input_hash,status,created_at)
+            VALUES (:ws,:run,:definition,:hash,'refused',clock_timestamp())""",
+            {
+                "ws": ws,
+                "run": run,
+                "definition": json.dumps({"workspace_id": ws, "job": {"kind": "backtest"}}),
+                "hash": "sha256:" + "ab" * 32,
+            },
+            workspace_id=ws,
+        )
+        run_sql(
+            """INSERT INTO kavrigo.engine_steps
+            (workspace_id,run_id,stage,status,attempt_id,input_hash,output,output_hash,started_at)
+            VALUES (:ws,:run,'backtest','refused','test',:hash,:output,:output_hash,clock_timestamp())""",
+            {
+                "ws": ws,
+                "run": run,
+                "hash": "sha256:" + "ab" * 32,
+                "output": output,
+                "output_hash": content_hash(json.loads(output)),
+            },
+            workspace_id=ws,
+        )
+        path = f"/v1/workspaces/{ws}/runs/{run}/risk-receipts"
+        assert client.get(path).status_code == 401
+        assert client.get(path, headers=_auth("bob")).status_code == 404
+        first = client.get(path, params={"limit": 1}, headers=_auth("alice"))
+        assert first.status_code == 200, first.text
+        assert first.headers["cache-control"] == "private, no-store"
+        assert first.json()["journal_state"] == "recorded"
+        assert first.json()["audit_hash"] == result.risk_audit.content_hash
+        assert first.json()["bundle_hash"] == result.bundle.bundle_hash
+        assert first.json()["cost_model"]["fees"]["taker_bps"] == "2"
+        assert [item["sequence"] for item in first.json()["items"]] == [1]
+        assert first.json()["has_more"] is True
+        viewer = client.get("/v1/me", headers=_auth("viewer")).json()["user_id"]
+        run_sql(
+            """INSERT INTO kavrigo.memberships (workspace_id,user_id,role)
+            VALUES (:ws,:user,'viewer')""",
+            {"ws": ws, "user": viewer},
+            workspace_id=ws,
+        )
+        assert client.get(path, headers=_auth("viewer")).status_code == 200
+        second = client.get(
+            path,
+            params={"limit": 1, "cursor": first.json()["next_cursor"]},
+            headers=_auth("alice"),
+        )
+        assert second.status_code == 200, second.text
+        assert [item["sequence"] for item in second.json()["items"]] == [2]
+        assert second.json()["has_more"] is False
+        assert client.get(path, params={"limit": 26}, headers=_auth("alice")).status_code == 422
+        assert (
+            client.get(path, params={"cursor": "YWJj"}, headers=_auth("alice")).status_code == 400
+        )
+
+    @pytest.mark.parametrize("corruption", ["stage_hash", "journal_hash"])
+    def test_risk_receipts_refuse_corrupt_storage(
+        self, client: TestClient, corruption: str
+    ) -> None:
+        ws = _create_workspace(client, "alice", f"risk-corrupt-{corruption.replace('_', '-')}")
+        run = f"run_{5:032x}"
+        result = self._risk_result(ws, run)
+        payload = json.loads(result.model_dump_json())
+        if corruption == "journal_hash":
+            payload["risk_audit"]["content_hash"] = "sha256:" + "cd" * 32
+        output = json.dumps(payload)
+        run_sql(
+            """INSERT INTO kavrigo.engine_runs
+            (workspace_id,run_id,definition,input_hash,status,created_at)
+            VALUES (:ws,:run,:definition,:hash,'refused',clock_timestamp())""",
+            {
+                "ws": ws,
+                "run": run,
+                "definition": json.dumps({"workspace_id": ws, "job": {"kind": "backtest"}}),
+                "hash": "sha256:" + "ab" * 32,
+            },
+            workspace_id=ws,
+        )
+        run_sql(
+            """INSERT INTO kavrigo.engine_steps
+            (workspace_id,run_id,stage,status,attempt_id,input_hash,output,output_hash,started_at)
+            VALUES (:ws,:run,'backtest','refused','test',:hash,:output,:output_hash,clock_timestamp())""",
+            {
+                "ws": ws,
+                "run": run,
+                "hash": "sha256:" + "ab" * 32,
+                "output": output,
+                "output_hash": (
+                    "sha256:" + "cd" * 32 if corruption == "stage_hash" else content_hash(payload)
+                ),
+            },
+            workspace_id=ws,
+        )
+        response = client.get(
+            f"/v1/workspaces/{ws}/runs/{run}/risk-receipts", headers=_auth("alice")
+        )
+        assert response.status_code == 500
+        assert response.json()["message"] == "Backtest receipt is inconsistent."
+
+    def test_risk_receipts_distinguish_pending_legacy_and_empty(self, client: TestClient) -> None:
+        ws = _create_workspace(client, "alice", "risk-receipt-states")
+        root = f"/v1/workspaces/{ws}/runs"
+        for number, state in ((1, "pending"), (2, "unavailable"), (3, "recorded")):
+            run = f"run_{number:032x}"
+            run_sql(
+                """INSERT INTO kavrigo.engine_runs
+                (workspace_id,run_id,definition,input_hash,status,created_at)
+                VALUES (:ws,:run,:definition,:hash,:status,clock_timestamp())""",
+                {
+                    "ws": ws,
+                    "run": run,
+                    "definition": json.dumps({"workspace_id": ws, "job": {"kind": "backtest"}}),
+                    "hash": "sha256:" + "ab" * 32,
+                    "status": "queued" if state == "pending" else "refused",
+                },
+                workspace_id=ws,
+            )
+            if state != "pending":
+                result = self._risk_result(ws, run, receipts=0)
+                if state == "unavailable":
+                    result = result.model_copy(update={"risk_audit": None})
+                output = result.model_dump_json()
+                run_sql(
+                    """INSERT INTO kavrigo.engine_steps
+                    (workspace_id,run_id,stage,status,attempt_id,input_hash,output,output_hash,started_at)
+                    VALUES (:ws,:run,'backtest','refused','test',:hash,:output,:output_hash,clock_timestamp())""",
+                    {
+                        "ws": ws,
+                        "run": run,
+                        "hash": "sha256:" + "ab" * 32,
+                        "output": output,
+                        "output_hash": content_hash(json.loads(output)),
+                    },
+                    workspace_id=ws,
+                )
+            response = client.get(f"{root}/{run}/risk-receipts", headers=_auth("alice"))
+            assert response.status_code == 200, response.text
+            assert response.json()["journal_state"] == state
+            assert response.json()["items"] == []
+            if state == "recorded":
+                assert response.json()["audit_hash"] is not None
+            else:
+                assert response.json()["audit_hash"] is None
+
     @pytest.mark.parametrize("suffix", ["runs", "paper/accounts", "audit"])
     def test_tenant_boundary_and_no_store(self, client: TestClient, suffix: str) -> None:
         ws = _create_workspace(client, "alice", "inspection-alice")

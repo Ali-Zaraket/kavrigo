@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from kavrigo_backtest import BacktestRiskReceipt, CostModel
 from kavrigo_domain import AgentDecision, EvidenceItem, Money, PortfolioSnapshot
 
 
@@ -31,6 +32,27 @@ class RunInspection(RunSummary):
     decisions: list[AgentDecision]
     evidence: list[EvidenceItem]
     reason_codes: list[str]
+
+
+class BacktestRiskPage(BaseModel):
+    """A bounded view of a stored diagnostic risk journal, never an order permit."""
+
+    model_config = ConfigDict(extra="forbid")
+    run_id: str
+    run_status: Literal["queued", "running", "completed", "refused", "uncertain"]
+    journal_state: Literal["pending", "unavailable", "recorded"]
+    audit_hash: str | None
+    risk_replay_hash: str | None
+    bundle_hash: str | None
+    dataset_manifest_hash: str | None
+    cost_model: CostModel | None
+    risk_evaluations: int
+    risk_approvals: int
+    risk_reason_counts: dict[str, int]
+    limitations: list[str]
+    items: list[BacktestRiskReceipt]
+    has_more: bool
+    next_cursor: str | None
 
 
 class PaperAccountView(BaseModel):

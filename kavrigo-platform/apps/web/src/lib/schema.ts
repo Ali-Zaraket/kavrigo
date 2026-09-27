@@ -229,6 +229,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workspaces/{workspace_id}/runs/{run_id}/risk-receipts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Inspect bounded reference-backtest risk receipts */
+    get: operations["backtest_risk_receipts_v1_workspaces__workspace_id__runs__run_id__risk_receipts_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/workspaces/{workspace_id}/paper/accounts": {
     parameters: {
       query?: never;
@@ -640,6 +657,22 @@ export interface components {
       /** Created By */
       created_by: string;
     };
+    /**
+     * Allocation
+     * @description Inert proposal; cannot be passed to a broker. Step 11 must evaluate an OrderIntent.
+     */
+    Allocation: {
+      /**
+       * Decision Id
+       * @description dec_ id
+       */
+      decision_id: string;
+      instrument_id: components["schemas"]["InstrumentId"];
+      requested_notional: components["schemas"]["Money"];
+      allocated_notional: components["schemas"]["Money"];
+      /** Reason Codes */
+      reason_codes: string[];
+    };
     /** AnalysisConfig */
     AnalysisConfig: {
       /**
@@ -703,6 +736,144 @@ export interface components {
      */
     AuthorKind: "human" | "ai_assisted" | "ai_generated";
     /**
+     * BacktestRiskPage
+     * @description A bounded view of a stored diagnostic risk journal, never an order permit.
+     */
+    BacktestRiskPage: {
+      /** Run Id */
+      run_id: string;
+      /**
+       * Run Status
+       * @enum {string}
+       */
+      run_status: "queued" | "running" | "completed" | "refused" | "uncertain";
+      /**
+       * Journal State
+       * @enum {string}
+       */
+      journal_state: "pending" | "unavailable" | "recorded";
+      /** Audit Hash */
+      audit_hash: string | null;
+      /** Risk Replay Hash */
+      risk_replay_hash: string | null;
+      /** Bundle Hash */
+      bundle_hash: string | null;
+      /** Dataset Manifest Hash */
+      dataset_manifest_hash: string | null;
+      cost_model: components["schemas"]["CostModel"] | null;
+      /** Risk Evaluations */
+      risk_evaluations: number;
+      /** Risk Approvals */
+      risk_approvals: number;
+      /** Risk Reason Counts */
+      risk_reason_counts: {
+        [key: string]: number;
+      };
+      /** Limitations */
+      limitations: string[];
+      /** Items */
+      items: components["schemas"]["BacktestRiskReceipt"][];
+      /** Has More */
+      has_more: boolean;
+      /** Next Cursor */
+      next_cursor: string | null;
+    };
+    /**
+     * BacktestRiskReceipt
+     * @description Diagnostic receipt, never an executable permit or proof of a fill.
+     */
+    BacktestRiskReceipt: {
+      /** Sequence */
+      sequence: number;
+      /** Run Id */
+      run_id: string;
+      /**
+       * Workspace Id
+       * @description ws_ id
+       */
+      workspace_id: string;
+      /**
+       * Agent Version Id
+       * @description av_ id
+       */
+      agent_version_id: string;
+      /** Risk Replay Hash */
+      risk_replay_hash: string;
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      instrument_id: components["schemas"]["InstrumentId"];
+      side: components["schemas"]["OrderSide"];
+      /**
+       * Outcome
+       * @enum {string}
+       */
+      outcome:
+        | "handed_off"
+        | "risk_rejected"
+        | "handoff_refused"
+        | "below_minimum_order_size"
+        | "unavailable";
+      /** Reason Codes */
+      reason_codes: string[];
+      request?: components["schemas"]["RiskRequest"] | null;
+      portfolio?: components["schemas"]["PortfolioSnapshot"] | null;
+      controls?: components["schemas"]["RiskControls"] | null;
+      record?: components["schemas"]["RiskRecord"] | null;
+      handed_off_quantity?: components["schemas"]["Quantity"] | null;
+    };
+    /**
+     * BookTicker
+     * @description Best bid and ask.
+     *
+     *     Top of book only. ``MASTER_BUILD_SPEC.md`` §7.2 is explicit that displayed liquidity can be
+     *     cancelled, so this is combined with executed trades rather than trusted on its own.
+     */
+    BookTicker: {
+      instrument_id: components["schemas"]["InstrumentId"];
+      bid_price: components["schemas"]["Price"];
+      bid_size: components["schemas"]["Quantity"];
+      ask_price: components["schemas"]["Price"];
+      ask_size: components["schemas"]["Quantity"];
+      /** Venue Time */
+      venue_time?: string | null;
+      /**
+       * Received At
+       * Format: date-time
+       */
+      received_at: string;
+      /** Sequence */
+      sequence?: number | null;
+    };
+    /**
+     * CostModel
+     * @description The complete execution-reality assumption a run was evaluated under.
+     *
+     *     Recorded on every result. Two runs are only comparable if they shared a cost model, and a
+     *     published performance figure without one is not a claim about a strategy — it is a claim
+     *     about an assumption.
+     */
+    CostModel: {
+      fees: components["schemas"]["FeeSchedule"];
+      slippage: components["schemas"]["SlippageModel"];
+      latency: components["schemas"]["LatencyModel"];
+      /** @default always_taker */
+      liquidity: components["schemas"]["LiquidityAssumption"];
+      minimum_order_notional?: components["schemas"]["Money"] | null;
+      /**
+       * Partial Fills Enabled
+       * @default true
+       */
+      partial_fills_enabled: boolean;
+      /**
+       * Reject On Insufficient Liquidity
+       * @default true
+       */
+      reject_on_insufficient_liquidity: boolean;
+    };
+    /**
      * DataFamily
      * @description Data families that carry independent freshness budgets (``MASTER_BUILD_SPEC.md`` §11.3).
      * @enum {string}
@@ -738,6 +909,42 @@ export interface components {
       | "security_events"
       | "social_attention"
       | "relative_strength";
+    /**
+     * DataQuality
+     * @description Snapshot quality score and its components (``MASTER_BUILD_SPEC.md`` §43).
+     */
+    DataQuality: {
+      /** Score */
+      score: number;
+      freshness: components["schemas"]["FreshnessReport"];
+      /**
+       * Provider Health Ok
+       * @default true
+       */
+      provider_health_ok: boolean;
+      /**
+       * Sequence Complete
+       * @default true
+       */
+      sequence_complete: boolean;
+      /** Cross Provider Agreement */
+      cross_provider_agreement?: number | null;
+      /**
+       * Missing Feature Ratio
+       * @default 0
+       */
+      missing_feature_ratio: number;
+      /**
+       * Contains Revised Data
+       * @default false
+       */
+      contains_revised_data: boolean;
+      /**
+       * Notes
+       * @default []
+       */
+      notes: string[];
+    };
     /**
      * DecisionState
      * @description The agent's read of the situation (``MASTER_BUILD_SPEC.md`` §6.7).
@@ -916,6 +1123,40 @@ export interface components {
       max_approval_age_ms: number;
     };
     /**
+     * FeatureVector
+     * @description Deterministic, versioned features for one instrument at snapshot time.
+     *
+     *     Feature values are ``Decimal``: they feed sizing and threshold comparisons, and a float that
+     *     rounds differently between the backtest and the live path is a reproducibility bug.
+     */
+    FeatureVector: {
+      instrument_id: components["schemas"]["InstrumentId"];
+      /** Feature Set Version */
+      feature_set_version: string;
+      /** Values */
+      values: {
+        [key: string]: string;
+      };
+      /** Content Hash */
+      content_hash: string;
+    };
+    /**
+     * FeeSchedule
+     * @description Venue fee tiers in basis points of notional.
+     *
+     *     Negative maker fees (rebates) are representable because some venues pay them, but a backtest
+     *     relying on a rebate should say so loudly — see :attr:`CostModel.optimism_warnings`.
+     */
+    FeeSchedule: {
+      /** Venue */
+      venue: string;
+      /** Maker Bps */
+      maker_bps: string;
+      /** Taker Bps */
+      taker_bps: string;
+      minimum_fee?: components["schemas"]["Money"] | null;
+    };
+    /**
      * FreshnessPolicy
      * @description Maximum tolerated data age per family, in milliseconds (``MASTER_BUILD_SPEC.md`` §11.3).
      *
@@ -937,6 +1178,26 @@ export interface components {
        * @default 0.6
        */
       min_data_quality: number;
+    };
+    /**
+     * FreshnessReport
+     * @description Observed data age per family at snapshot time.
+     */
+    FreshnessReport: {
+      /** Age Ms */
+      age_ms: {
+        [key: string]: number;
+      };
+      /**
+       * Stale Families
+       * @default []
+       */
+      stale_families: components["schemas"]["DataFamily"][];
+      /**
+       * Missing Families
+       * @default []
+       */
+      missing_families: components["schemas"]["DataFamily"][];
     };
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -986,6 +1247,38 @@ export interface components {
       instrument_class: components["schemas"]["InstrumentClass"];
     };
     /**
+     * LatencyModel
+     * @description Delay between deciding and the order reaching the venue.
+     *
+     *     Latency is not a performance detail in a backtest, it is a correctness one: with zero
+     *     latency a strategy fills at the price that triggered it, which is the single most flattering
+     *     assumption available. ``decision_to_venue_ms`` is the number that matters.
+     */
+    LatencyModel: {
+      /** Decision To Venue Ms */
+      decision_to_venue_ms: number;
+      /**
+       * Venue Ack Ms
+       * @default 0
+       */
+      venue_ack_ms: number;
+      /**
+       * Market Data Ms
+       * @default 0
+       */
+      market_data_ms: number;
+    };
+    /**
+     * LiquidityAssumption
+     * @description What the simulation assumes about how orders fill.
+     *
+     *     ``ALWAYS_MAKER`` is deliberately available *and* deliberately flagged as optimistic: a
+     *     strategy assuming it earns rebates on every fill is assuming its resting orders are always
+     *     hit, which is exactly the assumption that does not survive contact with a real venue.
+     * @enum {string}
+     */
+    LiquidityAssumption: "always_taker" | "always_maker" | "order_type";
+    /**
      * MarketRegime
      * @description Regime labels from ``MASTER_BUILD_SPEC.md`` §44.
      *
@@ -1004,6 +1297,49 @@ export interface components {
       | "crowded_short"
       | "event_risk"
       | "unknown";
+    /**
+     * MarketSnapshot
+     * @description An immutable point-in-time view: features, evidence, regime and quality.
+     *
+     *     ``as_of`` is the decision time. Nothing in a snapshot may carry information that was not
+     *     available at ``as_of`` — that single rule is what separates a backtest from a fiction.
+     */
+    MarketSnapshot: {
+      /**
+       * Snapshot Id
+       * @description snap_ id
+       */
+      snapshot_id: string;
+      /**
+       * As Of
+       * Format: date-time
+       */
+      as_of: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Instruments */
+      instruments: components["schemas"]["InstrumentId"][];
+      /**
+       * Features
+       * @default []
+       */
+      features: components["schemas"]["FeatureVector"][];
+      /**
+       * Evidence Refs
+       * @default []
+       */
+      evidence_refs: string[];
+      /** @default unknown */
+      regime: components["schemas"]["MarketRegime"];
+      quality: components["schemas"]["DataQuality"];
+      /** Dataset Manifest Ref */
+      dataset_manifest_ref?: string | null;
+      /** Content Hash */
+      content_hash: string;
+    };
     /**
      * MeResponse
      * @description Who the caller is, and what they can reach.
@@ -1211,6 +1547,67 @@ export interface components {
       | "macro_release"
       | "market_structure"
       | "other";
+    /**
+     * OrderIntent
+     * @description A proposed order awaiting deterministic risk evaluation.
+     *
+     *     This type deliberately has no venue credentials, no venue order id, and no method that
+     *     reaches a venue. It is inert until risk approves it.
+     */
+    OrderIntent: {
+      /**
+       * Order Intent Id
+       * @description oi_ id
+       */
+      order_intent_id: string;
+      /**
+       * Decision Id
+       * @description dec_ id
+       */
+      decision_id: string;
+      /**
+       * Workspace Id
+       * @description ws_ id
+       */
+      workspace_id: string;
+      /**
+       * Agent Version Id
+       * @description av_ id
+       */
+      agent_version_id: string;
+      instrument_id: components["schemas"]["InstrumentId"];
+      mode: components["schemas"]["TradingMode"];
+      side: components["schemas"]["OrderSide"];
+      order_type: components["schemas"]["OrderType"];
+      notional: components["schemas"]["Money"];
+      limit_price?: components["schemas"]["Price"] | null;
+      /** @default ioc */
+      time_in_force: components["schemas"]["TimeInForce"];
+      /** Idempotency Key */
+      idempotency_key: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      /** Estimated Cost Bps */
+      estimated_cost_bps?: string | null;
+    };
+    /**
+     * OrderSide
+     * @enum {string}
+     */
+    OrderSide: "buy" | "sell";
+    /**
+     * OrderType
+     * @enum {string}
+     */
+    OrderType: "market" | "limit";
     /** Page[AgentResponse] */
     Page_AgentResponse_: {
       /** Items */
@@ -1788,6 +2185,110 @@ export interface components {
       execution_enabled: false;
     };
     /**
+     * RiskControls
+     * @description Trusted supervisor observations. Any active kill stops both buys and sells.
+     *
+     *     The local session holds one account, so kills are already filtered to its scope by its
+     *     supervisor. Versions increase on refresh. A model has no method for refreshing controls.
+     */
+    RiskControls: {
+      /**
+       * Workspace Id
+       * @description ws_ id
+       */
+      workspace_id: string;
+      /** Account Id */
+      account_id: string;
+      /** Version */
+      version: number;
+      /**
+       * As Of
+       * Format: date-time
+       */
+      as_of: string;
+      /**
+       * Valid Until
+       * Format: date-time
+       */
+      valid_until: string;
+      /** Account Known */
+      account_known: boolean;
+      /** Connectivity Ok */
+      connectivity_ok: boolean;
+      /** Event Calendar Known */
+      event_calendar_known: boolean;
+      /** Active Kills */
+      active_kills: (
+        "global" | "workspace" | "account" | "agent" | "asset" | "risk_class"
+      )[];
+      /**
+       * Blocked Agent Versions
+       * @default []
+       */
+      blocked_agent_versions: string[];
+      /** Macro Events */
+      macro_events: string[];
+      /** Fencing Token */
+      fencing_token: number;
+      /**
+       * Lease Expires At
+       * Format: date-time
+       */
+      lease_expires_at: string;
+    };
+    /**
+     * RiskDecision
+     * @enum {string}
+     */
+    RiskDecision: "approved" | "approved_resized" | "rejected";
+    /**
+     * RiskEvaluation
+     * @description The deterministic result of evaluating an ``OrderIntent`` against policy.
+     *
+     *     Only an ``APPROVED`` or ``APPROVED_RESIZED`` evaluation can produce an
+     *     ``ApprovedOrderIntent``. Nothing else may reach an execution adapter — a property the risk
+     *     service must prove with tests, not assert in a comment.
+     */
+    RiskEvaluation: {
+      /** Risk Evaluation Id */
+      risk_evaluation_id: string;
+      /**
+       * Order Intent Id
+       * @description oi_ id
+       */
+      order_intent_id: string;
+      /**
+       * Decision Id
+       * @description dec_ id
+       */
+      decision_id: string;
+      /**
+       * Workspace Id
+       * @description ws_ id
+       */
+      workspace_id: string;
+      /**
+       * Evaluated At
+       * Format: date-time
+       */
+      evaluated_at: string;
+      decision: components["schemas"]["RiskDecision"];
+      /** Reason Codes */
+      reason_codes: components["schemas"]["RiskReasonCode"][];
+      /** Applied Policy Ids */
+      applied_policy_ids: string[];
+      binding_scope?: components["schemas"]["RiskScope"] | null;
+      requested_notional: components["schemas"]["Money"];
+      approved_notional: components["schemas"]["Money"];
+      /** Evaluator Version */
+      evaluator_version: string;
+      /**
+       * Detail
+       * @default
+       */
+      detail: string;
+    };
+    /**
      * RiskExecutionPolicy
      * @description Versioned execution assumptions consumed by deterministic risk.
      *
@@ -1879,6 +2380,20 @@ export interface components {
       min_edge_over_cost_bps: number;
     };
     /**
+     * RiskMarket
+     * @description Frozen normalized market observation provided by the coordinator, never the model.
+     */
+    RiskMarket: {
+      book: components["schemas"]["BookTicker"];
+      /** Liquidity Usd */
+      liquidity_usd: string;
+      /**
+       * Observed At
+       * Format: date-time
+       */
+      observed_at: string;
+    };
+    /**
      * RiskPolicy
      * @description An immutable, versioned risk policy.
      *
@@ -1915,6 +2430,85 @@ export interface components {
       created_by: string;
       /** Content Hash */
       content_hash: string;
+    };
+    /**
+     * RiskReasonCode
+     * @description Machine-readable reasons. Rejections must be explainable to the user (§29).
+     *
+     *     These are a closed enum rather than free text so that rejection rates can be measured per
+     *     reason, and so a UI can explain "why this trade was rejected" consistently.
+     * @enum {string}
+     */
+    RiskReasonCode:
+      | "approved"
+      | "approved_resized"
+      | "stale_data"
+      | "missing_data_family"
+      | "data_quality_below_minimum"
+      | "unknown_account_state"
+      | "reconciliation_stale"
+      | "exchange_connectivity_degraded"
+      | "credential_status_uncertain"
+      | "unsupported_symbol"
+      | "unsupported_instrument_class"
+      | "spread_too_wide"
+      | "insufficient_liquidity"
+      | "edge_below_cost_plus_margin"
+      | "below_minimum_order_size"
+      | "max_position_exceeded"
+      | "max_gross_exposure_exceeded"
+      | "portfolio_concentration_exceeded"
+      | "network_concentration_exceeded"
+      | "max_open_positions_exceeded"
+      | "insufficient_cash"
+      | "daily_loss_limit_reached"
+      | "drawdown_circuit_breaker"
+      | "kill_switch_active"
+      | "agent_version_not_approved"
+      | "mode_not_permitted"
+      | "live_trading_disabled"
+      | "scheduled_event_risk"
+      | "evidence_requirements_not_met"
+      | "duplicate_intent"
+      | "policy_version_mismatch"
+      | "intent_expired"
+      | "context_mismatch"
+      | "unsupported_order_type"
+      | "execution_lease_expired"
+      | "unsupported_precision"
+      | "max_order_exceeded";
+    /** RiskRecord */
+    RiskRecord: {
+      evaluation: components["schemas"]["RiskEvaluation"];
+      /** Account Id */
+      account_id: string;
+      /** Request Hash */
+      request_hash: string;
+      /** Portfolio Hash */
+      portfolio_hash: string;
+      /** Registration Hash */
+      registration_hash: string;
+      /** Controls Hash */
+      controls_hash: string;
+      /** Reservations Hash */
+      reservations_hash: string;
+      /**
+       * Expires At
+       * Format: date-time
+       */
+      expires_at: string;
+      max_quantity: components["schemas"]["Quantity"];
+      max_cash_debit: components["schemas"]["Money"];
+    };
+    /** RiskRequest */
+    RiskRequest: {
+      intent: components["schemas"]["OrderIntent"];
+      decision: components["schemas"]["AgentDecision"];
+      allocation: components["schemas"]["Allocation"];
+      snapshot: components["schemas"]["MarketSnapshot"];
+      /** Evidence */
+      evidence: components["schemas"]["EvidenceItem"][];
+      market: components["schemas"]["RiskMarket"];
     };
     /**
      * RiskScope
@@ -2077,6 +2671,30 @@ export interface components {
       macro: number;
     };
     /**
+     * SlippageModel
+     * @description How far past the touch an order is assumed to fill.
+     *
+     *     ``spread_crossing_bps`` is the half-spread a taker pays even for an infinitesimal order.
+     *     ``impact_bps_per_unit_adv`` charges additional slippage in proportion to the order's share of
+     *     average daily volume — a square-root law is closer to reality for large orders, but linear is
+     *     the conservative choice at the sizes this platform targets, and being conservative about cost
+     *     is the correct direction to be wrong in.
+     */
+    SlippageModel: {
+      /** Spread Crossing Bps */
+      spread_crossing_bps: string;
+      /**
+       * Impact Bps Per Unit Adv
+       * @default 0
+       */
+      impact_bps_per_unit_adv: string;
+      /**
+       * Fixed Slippage Bps
+       * @default 0
+       */
+      fixed_slippage_bps: string;
+    };
+    /**
      * SourceClass
      * @description Source classes from ``MASTER_BUILD_SPEC.md`` §42.
      *
@@ -2113,6 +2731,11 @@ export interface components {
       /** Finished At */
       finished_at: string | null;
     };
+    /**
+     * TimeInForce
+     * @enum {string}
+     */
+    TimeInForce: "gtc" | "ioc" | "fok" | "day";
     /**
      * TradingMode
      * @description The four product modes (``MASTER_BUILD_SPEC.md`` §5).
@@ -2638,6 +3261,41 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RunInspection"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  backtest_risk_receipts_v1_workspaces__workspace_id__runs__run_id__risk_receipts_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        cursor?: string | null;
+      };
+      header?: never;
+      path: {
+        run_id: string;
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BacktestRiskPage"];
         };
       };
       /** @description Validation Error */

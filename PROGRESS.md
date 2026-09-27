@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-09-27 reference-risk inspection slice:** ADR 0043 adds a read-only, workspace-scoped,
+cursor-paginated API for the sealed reference-backtest risk journal. It rechecks the stage hash
+and typed artifact before returning up to 25 receipts, their cost assumptions, reproducibility
+hashes and limitations. Research now shows a compact chronological receipt view with synthetic
+diagnostic labels and frozen-input disclosure. Pending, historical-unavailable and empty journals
+remain distinct; there are no order controls. Tenant, viewer, pagination, cursor and corruption
+tests pass. Full regression: **1017 passed** against PostgreSQL, Temporal and ClickHouse; Ruff
+covers 327 files and strict typing covers 148 sources. The generated OpenAPI client, web lint,
+format, types, three tests and production build pass. API readiness and Research return HTTP 200.
+
 **2026-09-27 per-signal risk-audit slice:** ADR 0042 saves a typed, bounded receipt for each
 attempted synthetic USD reference order. Each receipt binds the frozen risk request, portfolio,
 supervisor controls, evaluator record, safe reason codes and any quantity handed to Nautilus.

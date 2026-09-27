@@ -40,5 +40,9 @@ empty hashed journal; older results without a journal have unavailable audit det
 Collection is capped at 5,000 receipts and 8 MB of serialized journal data. If the adapter cannot
 retain a complete journal, it stops further handoffs and refuses the run without metrics instead
 of returning a truncated history. Full data is saved in tenant-scoped PostgreSQL stage output;
-Temporal history retains only the stage reference/hash. These backend artifacts do not yet have
-a dedicated product UI. See [ADR 0042](../adr/0042-reference-backtest-risk-receipts.md).
+Temporal history retains only the stage reference/hash. A read-only Research inspection pages
+through typed receipts, verifies the stored artifact before responding, and labels them as
+synthetic diagnostics rather than submitted or filled orders. Workspace `RUN_READ` permission,
+row-level security and private no-store responses protect this view. See
+[ADR 0042](../adr/0042-reference-backtest-risk-receipts.md) and
+[ADR 0043](../adr/0043-reference-risk-receipt-inspection.md).

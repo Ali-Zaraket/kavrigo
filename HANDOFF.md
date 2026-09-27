@@ -31,6 +31,13 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-09-27:** ADR 0043 exposes ADR 0042's sealed risk receipts through a bounded,
+> `RUN_READ`-gated workspace API and a Research inspection view. Stage and journal hashes are
+> verified server-side; each signal remains a synthetic diagnostic, not an order or paper
+> activation. Pending, legacy and no-signal states are distinguished. Full regression: 1017
+> passed; Ruff covers 327 files and strict typing covers 148 sources. OpenAPI/client, web checks
+> and production build pass. API readiness and Research return HTTP 200.
+
 > **2026-09-27:** ADR 0042 adds per-signal typed risk receipts to the tenant-scoped durable
 > reference-backtest result. Receipts retain evaluated inputs, portfolio and supervisor controls,
 > deterministic outcome, reason codes and quantity handed to Nautilus, with journal ordering,
