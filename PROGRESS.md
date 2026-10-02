@@ -1,5 +1,13 @@
 # Kavrigo progress
 
+**2026-10-02 CI repair and hosted CSP slice:** The latest GitHub Actions run confirmed the new
+browser job passed, while integration failed at ClickHouse schema setup and security could not
+resolve an obsolete Trivy Action tag. A loopback-only bootstrap now applies all seven local
+ClickHouse statements successfully; security pins the signed Trivy v0.36.0 commit. Hosted web
+mode now configures Clerk's strict nonce CSP and dynamic provider rendering. Web lint, format,
+types, four tests and production build pass locally. The next CI run and real Clerk login remain
+to be verified.
+
 **2026-10-02 browser CI slice:** A dedicated CI job now creates a fresh PostgreSQL service,
 applies the least-privilege role and all migrations, starts a local paper-only API, builds the
 web app, installs Chromium, and runs all three browser boundary tests. Failed traces are retained.

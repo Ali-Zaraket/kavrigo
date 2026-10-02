@@ -31,6 +31,13 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-10-02:** The first browser CI run passed. Integration failed while the old inline SQL
+> splitter skipped commented ClickHouse statements; security setup failed because Trivy Action
+> `0.29.0` no longer resolves. The schema bootstrap now applies seven statements against a
+> loopback ClickHouse service, and security pins the signed v0.36.0 release commit. Hosted Clerk
+> uses strict nonce CSP with dynamic provider rendering. Web checks/build pass; the next GitHub
+> run and real Clerk instance smoke remain open.
+>
 > **2026-10-02:** CI now has a separate Chromium browser job with a job-scoped migrated
 > PostgreSQL database, least-privilege API role, local paper-only API and failure trace upload.
 > The same three browser cases passed locally against the isolated test database; the edited

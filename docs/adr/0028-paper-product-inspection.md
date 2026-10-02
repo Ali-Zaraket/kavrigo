@@ -20,6 +20,14 @@ tenant membership (ADR 0021); this web path does not authorize itself. Rollback 
 web mode only for local development; production requires a configured Clerk instance. Real hosted
 token, MFA and account-switch smoke tests remain a release gate.
 
+**2026-10-02 CSP amendment:** Hosted Clerk middleware now issues its strict, per-request nonce
+CSP and the server-rendered `ClerkProvider` uses its required dynamic mode. The policy also
+refuses framing, plugin objects and document base overrides. This follows Clerk's documented
+Next.js integration; real hosted challenge and sign-in behavior still requires verification with
+the deployment's Clerk instance.
+References checked 2026-10-02: [Clerk strict CSP](https://clerk.com/docs/guides/secure/best-practices/csp-headers)
+and the version-matched Next.js 16 CSP guide in `node_modules/next/dist/docs`.
+
 Read-only FastAPI projections select explicit columns from engine-owned PostgreSQL receipts
 under the existing membership, permission and forced-RLS controls. This bootstrap shares the
 database deliberately, introduces no second authority, and does not import the engine executor

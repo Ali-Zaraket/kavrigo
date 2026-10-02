@@ -161,24 +161,7 @@ jobs:
       - name: Apply the ClickHouse schema
         # Service containers cannot mount the init directory, so the same file the local stack
         # runs on startup is posted over the HTTP interface here.
-        run: |
-          python - <<'PY'
-          import pathlib, urllib.request
-          sql = pathlib.Path("kavrigo-infra/local/clickhouse/init/001_schema.sql").read_text()
-          for statement in (s.strip() for s in sql.split(";")):
-              if not statement or statement.startswith("--"):
-                  continue
-              request = urllib.request.Request(
-                  "http://localhost:8123/",
-                  data=statement.encode(),
-                  headers={
-                      "X-ClickHouse-User": "kavrigo",
-                      "X-ClickHouse-Key": "kavrigo_local_dev",
-                  },
-              )
-              urllib.request.urlopen(request).read()
-          print("ClickHouse schema applied")
-          PY
+        run: python scripts/apply_local_clickhouse_schema.py --url http://127.0.0.1:8123
 
       - name: Start local Temporal for real workflow and history replay tests
         run: docker compose -f kavrigo-infra/local/docker-compose.yml up -d --wait temporal
@@ -306,7 +289,8 @@ jobs:
           GITLEAKS_CONFIG: .gitleaks.toml
 
       - name: Filesystem vulnerability and misconfiguration scan
-        uses: aquasecurity/trivy-action@0.29.0
+        # Signed v0.36.0 release commit; older unprefixed 0.29.0 no longer resolves.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: fs
           scanners: vuln,secret,misconfig

@@ -15,7 +15,9 @@
 - Retry buttons retain the same body/key after an ambiguous error. There is no optimistic
   account confirmation. Draft editing appends versions; it never updates historical specs.
 - Local dev identities are unsigned and only appropriate for isolated local development.
-  Hosted identity, hardened CSP and a security review are outstanding release gates.
+  Hosted mode configures Clerk's strict nonce-based CSP and dynamic provider rendering. Real
+  hosted login, MFA, challenge assets and account switching must be tested with the configured
+  Clerk instance; independent security review remains a release gate.
 - Read models share the bootstrap PostgreSQL service. Extract them behind engine-owned service
   contracts before repository/service separation. Do not grant the web process database access.
 

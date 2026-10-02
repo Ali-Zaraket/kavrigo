@@ -32,6 +32,8 @@ request; it does not ask users to paste tokens or store them in browser storage.
 cookie and token lifecycle belong to the SDK. A hosted instance and real-token end-to-end smoke
 are still required before public access. Without hosted configuration, a nonlocal API environment
 shows an unavailable sign-in state instead of accepting a pasted bearer token.
+Hosted mode uses Clerk's per-request nonce and strict Content Security Policy; the real Clerk
+instance must be smoke-tested to verify its sign-in UI and challenge assets under that policy.
 
 ## Available behavior
 

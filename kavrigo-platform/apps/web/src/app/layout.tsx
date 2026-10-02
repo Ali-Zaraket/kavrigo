@@ -37,7 +37,7 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body>
         {hosted ? (
-          <ClerkProvider>
+          <ClerkProvider dynamic>
             <HostedProviders>
               <Shell>{children}</Shell>
             </HostedProviders>
