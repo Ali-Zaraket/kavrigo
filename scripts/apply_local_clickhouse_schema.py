@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import pathlib
 import urllib.error
 import urllib.parse
 import urllib.request
-from pathlib import Path
 
 
-SCHEMA = Path(__file__).resolve().parents[1] / "kavrigo-infra/local/clickhouse/init/001_schema.sql"
+SCHEMA = (
+    pathlib.Path(__file__).resolve().parents[1]
+    / "kavrigo-infra/local/clickhouse/init/001_schema.sql"
+)
 
 
 def statements(sql: str) -> list[str]:
@@ -36,7 +39,7 @@ def main() -> None:
 
     sql_statements = statements(SCHEMA.read_text(encoding="utf-8"))
     for index, statement in enumerate(sql_statements, start=1):
-        request = urllib.request.Request(
+        request = urllib.request.Request(  # noqa: S310 - URL was restricted to loopback HTTP
             args.url,
             data=statement.encode("utf-8"),
             headers={
@@ -45,7 +48,7 @@ def main() -> None:
             },
         )
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310
                 response.read()
         except urllib.error.HTTPError as exc:
             detail = exc.read(2_000).decode("utf-8", errors="replace")
