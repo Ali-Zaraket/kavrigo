@@ -6,8 +6,8 @@ current session token per API call, and resets workspace/query state on account 
 same-origin proxy still allowlists routes and forwards only the bearer header; the API remains
 the JWT, MFA and tenant authority. Nonlocal environments without hosted sign-in no longer offer
 a manual token form. Web lint, format, typecheck, four unit/boundary tests and production build
-pass. Real Clerk keys, a hosted session/MFA/account-switch smoke and browser integration against
-a disposable API remain open. No public release is implied.
+pass. Three local browser tests passed against a separate migrated `kavrigo_test` API. Real Clerk
+keys and a hosted session/MFA/account-switch smoke remain open. No public release is implied.
 
 **2026-09-27 Clerk session-verification slice:** `paper-prod` now requires an explicit Clerk v2
 session profile and HTTPS authorized-party allowlist. Signed v2 session tokens must carry `sid`;

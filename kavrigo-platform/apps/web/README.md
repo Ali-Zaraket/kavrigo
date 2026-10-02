@@ -71,6 +71,8 @@ pnpm test:e2e
 
 Browser tests use an isolated API at http://127.0.0.1:58301, configured against a disposable
 migrated PostgreSQL database. Override KAVRIGO_TEST_API_ORIGIN only with another test service.
+On the 2026-10-02 Windows host, port 58301 is reserved; an isolated test API on 59001 passed the
+suite with `KAVRIGO_TEST_API_ORIGIN=http://127.0.0.1:59001`.
 Do not run destructive Python database fixtures concurrently with browser tests on that database.
 Playwright defaults to its installed Chromium. On this machine PLAYWRIGHT_CHANNEL=msedge uses
 existing Edge; no browser installation is required. Tests launch a production web server on 3000.

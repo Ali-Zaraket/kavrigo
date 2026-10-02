@@ -35,8 +35,10 @@
 > same-origin API client. Local development identity remains; a nonlocal deployment without
 > Clerk configuration has no manual bearer-token form. The current session token is fetched
 > per request; user changes remount the workspace/query state. Four web unit/boundary tests,
-> lint, format, typecheck and production build pass. Real hosted Clerk login, MFA and account
-> switching need smoke tests; no Clerk keys are configured in this checkout.
+> lint, format, typecheck and production build pass. Three local browser tests passed against a
+> separate migrated test API; Windows reserved the default port 58301, so the test API used
+> 59001. Real hosted Clerk login, MFA and account switching need smoke tests; no Clerk keys are
+> configured in this checkout. The local paper stack and web app were restarted on 58300/3000.
 >
 > **2026-09-27:** Paper-production startup now requires the Clerk v2 session profile and a
 > configured HTTPS authorized-party list. The verifier accepts only signed v2 session tokens,
