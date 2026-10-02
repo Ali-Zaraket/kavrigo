@@ -33,3 +33,4 @@ services are built.
 Generated Python lands in `_generated/` and is git-ignored; regenerate with `make proto`. The
 `kavrigo_domain` Pydantic models are the in-process validation contract and must stay in step
 with these definitions — a change to one requires a change to the other in the same pull request.
+`buf.yaml` defines the `proto/` module and enforces the standard lint rules in CI.

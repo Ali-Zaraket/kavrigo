@@ -8,7 +8,7 @@
 | `quality` | lint, strict typecheck, unit and property tests, and that the suite passes with every external provider key unset |
 | `integration` | migrated PostgreSQL, ClickHouse and Temporal integration behavior plus migration rollback |
 | `browser` | local paper workspace, mode-failure and proxy boundaries in Chromium against a job-scoped migrated PostgreSQL database and least-privilege API role |
-| `contracts` | reports Protobuf lint and breaking-change findings; enforcement still needs `buf.yaml` |
+| `contracts` | enforces Protobuf lint; PR breaking-change check is still report-only |
 | `security` | scans history for secrets and reports critical/high filesystem findings; Trivy findings are currently nonblocking |
 | `codeql` | static security analysis |
 | `build` | the compose stack is valid and both service images build |
