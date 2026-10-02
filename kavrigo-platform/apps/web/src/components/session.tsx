@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState } from "react";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import {
   QueryClient,
   QueryClientProvider,
@@ -10,6 +11,7 @@ import { apiClient, unwrap } from "@/lib/client";
 
 type Session = {
   token: string;
+  hosted: boolean;
   signIn: (token: string) => void;
   signOut: () => void;
   workspace: string;
@@ -47,8 +49,67 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <Context.Provider
         value={{
           token,
+          hosted: false,
           signIn: reset,
           signOut: () => reset(""),
+          workspace,
+          setWorkspace,
+          api,
+        }}
+      >
+        {children}
+      </Context.Provider>
+    </QueryClientProvider>
+  );
+}
+
+/** Clerk owns the hosted session. A new user remounts this state and its query cache. */
+export function HostedProviders({ children }: { children: React.ReactNode }) {
+  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
+  const clerk = useClerk();
+  if (!isLoaded) return <p role="status">Checking your session…</p>;
+  return (
+    <HostedSession
+      key={userId ?? "signed-out"}
+      signedIn={!!isSignedIn}
+      getToken={getToken}
+      signOut={() => void clerk.signOut()}
+    >
+      {children}
+    </HostedSession>
+  );
+}
+
+function HostedSession({
+  children,
+  signedIn,
+  getToken,
+  signOut,
+}: {
+  children: React.ReactNode;
+  signedIn: boolean;
+  getToken: () => Promise<string | null>;
+  signOut: () => void;
+}) {
+  const [workspace, setWorkspace] = useState("");
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, staleTime: 0, refetchOnWindowFocus: true },
+          mutations: { retry: false },
+        },
+      }),
+  );
+  const api = useMemo(() => apiClient(getToken), [getToken]);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Context.Provider
+        value={{
+          token: signedIn ? "clerk-session" : "",
+          hosted: true,
+          signIn: () => {},
+          signOut,
           workspace,
           setWorkspace,
           api,

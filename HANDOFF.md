@@ -31,6 +31,13 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-10-02:** Optional hosted Clerk web sign-in is wired into the Next.js shell and
+> same-origin API client. Local development identity remains; a nonlocal deployment without
+> Clerk configuration has no manual bearer-token form. The current session token is fetched
+> per request; user changes remount the workspace/query state. Four web unit/boundary tests,
+> lint, format, typecheck and production build pass. Real hosted Clerk login, MFA and account
+> switching need smoke tests; no Clerk keys are configured in this checkout.
+>
 > **2026-09-27:** Paper-production startup now requires the Clerk v2 session profile and a
 > configured HTTPS authorized-party list. The verifier accepts only signed v2 session tokens,
 > refuses pending/unknown session status and wrong present `azp`, and derives MFA from a recent

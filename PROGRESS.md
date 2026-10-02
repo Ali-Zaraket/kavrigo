@@ -1,5 +1,14 @@
 # Kavrigo progress
 
+**2026-10-02 hosted web sign-in slice:** The Next.js shell now supports a configured Clerk
+session alongside local development identity. Hosted mode presents Clerk sign-in, requests the
+current session token per API call, and resets workspace/query state on account changes. The
+same-origin proxy still allowlists routes and forwards only the bearer header; the API remains
+the JWT, MFA and tenant authority. Nonlocal environments without hosted sign-in no longer offer
+a manual token form. Web lint, format, typecheck, four unit/boundary tests and production build
+pass. Real Clerk keys, a hosted session/MFA/account-switch smoke and browser integration against
+a disposable API remain open. No public release is implied.
+
 **2026-09-27 Clerk session-verification slice:** `paper-prod` now requires an explicit Clerk v2
 session profile and HTTPS authorized-party allowlist. Signed v2 session tokens must carry `sid`;
 pending/unknown status and a present but unlisted `azp` are refused. MFA-gated actions require a

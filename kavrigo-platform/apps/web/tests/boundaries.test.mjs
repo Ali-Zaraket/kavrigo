@@ -5,7 +5,7 @@ import {
   bodylessPostRoute,
   controlPlaneOrigin,
 } from "../src/lib/proxy-policy.ts";
-import { decimal, money } from "../src/lib/client.ts";
+import { apiClient, decimal, money } from "../src/lib/client.ts";
 
 const ws = `v1/workspaces/ws_${"1".repeat(32)}`;
 test("proxy only exposes the allowlisted control plane", () => {
@@ -63,4 +63,41 @@ test("monetary strings keep every digit beyond IEEE-754 precision", () => {
     "-1,234,567.000001 USD",
   );
   assert.equal(decimal("0.000000000001"), "0.000000000001");
+});
+
+test("hosted API requests use the current session token and fail closed after sign-out", async () => {
+  const originalFetch = globalThis.fetch;
+  const OriginalRequest = globalThis.Request;
+  const forwarded = [];
+  let token = "first-session";
+  globalThis.Request = class extends OriginalRequest {
+    constructor(input, init) {
+      super(
+        typeof input === "string"
+          ? new URL(input, "http://localhost:3000")
+          : input,
+        init,
+      );
+    }
+  };
+  globalThis.fetch = async (request) => {
+    forwarded.push(request.headers.get("authorization"));
+    return Response.json({ mode: "paper" });
+  };
+  try {
+    const client = apiClient(async () => token);
+    await client.GET("/v1/platform/mode");
+    token = "refreshed-session";
+    await client.GET("/v1/platform/mode");
+    token = "";
+    await client.GET("/v1/platform/mode");
+    assert.deepEqual(forwarded, [
+      "Bearer first-session",
+      "Bearer refreshed-session",
+      null,
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.Request = OriginalRequest;
+  }
 });

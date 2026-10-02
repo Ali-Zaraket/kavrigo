@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { SignInButton } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -78,7 +79,7 @@ export function Empty({
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
-  const { token, signOut, workspace, setWorkspace } = useSession();
+  const { token, hosted, signOut, workspace, setWorkspace } = useSession();
   const mode = useMode();
   const me = useMe();
   const [light, setLight] = useState(false);
@@ -211,6 +212,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {!token ? (
             <SignIn
               local={mode.data?.environment === "local" && !mode.isError}
+              hosted={hosted}
             />
           ) : me.isPending ? (
             <Notice>Checking your workspace membership…</Notice>
@@ -284,7 +286,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SignIn({ local }: { local: boolean }) {
+function SignIn({ local, hosted }: { local: boolean; hosted: boolean }) {
   const { signIn } = useSession();
   const [value, setValue] = useState("");
   return (
@@ -310,41 +312,53 @@ function SignIn({ local }: { local: boolean }) {
         <span>→</span>
         <span>Paper</span>
       </div>
-      <form
-        className="panel sign-in"
-        onSubmit={(event) => {
-          event.preventDefault();
-          signIn(local ? `dev:${value}` : value);
-        }}
-      >
-        <div className="section-label">
-          {local ? "LOCAL DEVELOPMENT" : "AUTHENTICATION"}
+      {hosted ? (
+        <div className="panel sign-in">
+          <div className="section-label">AUTHENTICATION</div>
+          <h2>Start in paper mode</h2>
+          <p>Sign in to access your Kavrigo workspace.</p>
+          <SignInButton mode="modal">
+            <Button type="button">
+              Sign in <ArrowUpRight size={17} aria-hidden="true" />
+            </Button>
+          </SignInButton>
         </div>
-        <h2>Start in paper mode</h2>
-        <p>
-          {local
-            ? "This local environment accepts a development identity. Use the same identity to return to your workspaces."
-            : "Hosted sign-in is not configured. Use a control-plane bearer token from your configured identity provider."}
-        </p>
-        <label htmlFor="identity">
-          {local ? "Development identity" : "Session token"}
-        </label>
-        <input
-          id="identity"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          type={local ? "text" : "password"}
-          required
-          maxLength={local ? 100 : 8192}
-          pattern={local ? "[a-zA-Z0-9_-]+" : undefined}
-          autoComplete="off"
-          placeholder={local ? "your-local-name" : "Paste session token"}
-        />
-        <Button type="submit">
-          Open workspace <ArrowUpRight size={17} aria-hidden="true" />
-        </Button>
-        <small>Session stays in memory. Refreshing signs you out.</small>
-      </form>
+      ) : local ? (
+        <form
+          className="panel sign-in"
+          onSubmit={(event) => {
+            event.preventDefault();
+            signIn(`dev:${value}`);
+          }}
+        >
+          <div className="section-label">LOCAL DEVELOPMENT</div>
+          <h2>Start in paper mode</h2>
+          <p>
+            This local environment accepts a development identity. Use the same
+            identity to return to your workspaces.
+          </p>
+          <label htmlFor="identity">Development identity</label>
+          <input
+            id="identity"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            type="text"
+            required
+            maxLength={100}
+            pattern="[a-zA-Z0-9_-]+"
+            autoComplete="off"
+            placeholder="your-local-name"
+          />
+          <Button type="submit">
+            Open workspace <ArrowUpRight size={17} aria-hidden="true" />
+          </Button>
+          <small>Session stays in memory. Refreshing signs you out.</small>
+        </form>
+      ) : (
+        <Notice error>
+          Hosted sign-in is not configured for this environment.
+        </Notice>
+      )}
     </div>
   );
 }

@@ -9,6 +9,17 @@ storage, cookies, URLs or rendered server HTML. Refresh requires sign-in again. 
 identities remain explicitly development-only; the API's environment gate remains authoritative.
 Hosted Clerk sign-in remains a separate integration before deployment.
 
+**2026-10-02 hosted sign-in amendment:** An optional Clerk Next.js 7.9.7 path now wraps the
+existing web shell in `ClerkProvider`, runs Clerk middleware from Next.js 16 `src/proxy.ts`, and
+shows Clerk's sign-in modal. The root layout renders dynamically so auth mode is selected from
+runtime configuration rather than a statically generated local page. The client asks Clerk for the current session token on each API
+request and forwards it only to the same-origin, allowlisted control-plane proxy. Local development
+keeps its in-memory dev identity. A nonlocal environment without Clerk shows a configuration
+error instead of a manual token form. The API independently verifies Clerk v2 session claims and
+tenant membership (ADR 0021); this web path does not authorize itself. Rollback selects the local
+web mode only for local development; production requires a configured Clerk instance. Real hosted
+token, MFA and account-switch smoke tests remain a release gate.
+
 Read-only FastAPI projections select explicit columns from engine-owned PostgreSQL receipts
 under the existing membership, permission and forced-RLS controls. This bootstrap shares the
 database deliberately, introduces no second authority, and does not import the engine executor

@@ -20,8 +20,18 @@ for mutations. Set it explicitly when using another hostname or port. Never deri
 allowlist from an untrusted forwarded-host header. See .env.example.
 
 Local mode accepts a named development identity; use the same name to recover membership.
-Tokens remain in memory. Refresh signs out. Hosted Clerk sign-in is not implemented.
-The API refuses development identity outside its local environment.
+The local token remains in memory and refresh signs out. The API refuses development identity
+outside its local environment.
+
+For a hosted paper environment, set `KAVRIGO_WEB_AUTH_PROVIDER=clerk` and configure
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and the server-only `CLERK_SECRET_KEY` from the same Clerk
+instance at build and runtime. Configure the API with `AUTH_PROVIDER=jwks`, `AUTH_SESSION_PROFILE=clerk_v2`, that
+instance's HTTPS issuer/JWKS URL, and `AUTH_ALLOWED_PARTIES` containing the deployed HTTPS web
+origin. The web renders Clerk's sign-in control and obtains the current session token for each API
+request; it does not ask users to paste tokens or store them in browser storage. Clerk's session
+cookie and token lifecycle belong to the SDK. A hosted instance and real-token end-to-end smoke
+are still required before public access. Without hosted configuration, a nonlocal API environment
+shows an unavailable sign-in state instead of accepting a pasted bearer token.
 
 ## Available behavior
 
@@ -38,14 +48,15 @@ The API refuses development identity outside its local environment.
   visible server-confirmed paper status. Mode lookup failure disables creation.
 
 The control plane can store immutable, MFA-gated policy candidates, but the local web sign-in
-does not establish MFA and the web proxy does not expose candidate mutations. Review and
-approval remain separate for any order-capable paper run. Draft saving validates policy ID
-syntax, not existence or approval. Rehearsals use isolated synthetic inputs, an abstaining mock model and a global
-risk stop; they do not activate a paper strategy or permit orders. No policy mutation, live
+does not establish MFA and the web proxy does not expose candidate mutations. Clerk's `fva`
+second-factor age is checked by the API for hosted policy actions. Review and approval remain
+separate for any order-capable paper run. Draft saving validates policy ID syntax, not existence
+or approval. Rehearsals use isolated synthetic inputs, an abstaining mock model and a global risk
+stop; they do not activate a paper strategy or permit orders. No policy mutation, live
 trading, or exchange secret is exposed. Backtest strategy/data wiring, charts, SSE/WS transports,
-current provider freshness,
-conversational compilation, and hosted identity are explicit carry-overs. Empty screens do not
-invent results; historical receipts do not claim current reconciliation or freshness.
+current provider freshness, conversational compilation, and live hosted-identity verification
+are explicit carry-overs. Empty screens do not invent results; historical receipts do not claim
+current reconciliation or freshness.
 
 ## Check
 

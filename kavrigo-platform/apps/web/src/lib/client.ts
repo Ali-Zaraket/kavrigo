@@ -2,11 +2,24 @@ import createClient from "openapi-fetch";
 import type { paths, components } from "./schema";
 
 export type Schema = components["schemas"];
-export const apiClient = (token: string) =>
-  createClient<paths>({
+export const apiClient = (token: string | (() => Promise<string | null>)) => {
+  const client = createClient<paths>({
     baseUrl: "/api/control",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers:
+      typeof token === "string" && token
+        ? { Authorization: `Bearer ${token}` }
+        : {},
   });
+  if (typeof token === "function") {
+    client.use({
+      onRequest: async ({ request }) => {
+        const current = await token();
+        if (current) request.headers.set("Authorization", `Bearer ${current}`);
+      },
+    });
+  }
+  return client;
+};
 export function unwrap<T>(result: {
   data?: T;
   error?: unknown;
