@@ -71,7 +71,6 @@ jobs:
 
       - name: Lint
         run: |
-          uv run ruff check --fix --diff scripts/apply_local_clickhouse_schema.py
           uv run ruff check --output-format=github .
           uv run ruff format --check .
 

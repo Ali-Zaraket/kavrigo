@@ -8,7 +8,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-
 SCHEMA = (
     pathlib.Path(__file__).resolve().parents[1]
     / "kavrigo-infra/local/clickhouse/init/001_schema.sql"
