@@ -4,11 +4,18 @@
 
 | Job | What it proves |
 |---|---|
+| `web` | generated API client, web lint, formatting, types, unit tests and production build |
 | `quality` | lint, strict typecheck, unit and property tests, and that the suite passes with every external provider key unset |
-| `contracts` | Protobuf lints and does not break consumers |
-| `security` | no secrets in history; no known critical/high vulnerabilities or misconfigurations |
+| `integration` | migrated PostgreSQL, ClickHouse and Temporal integration behavior plus migration rollback |
+| `browser` | local paper workspace, mode-failure and proxy boundaries in Chromium against a job-scoped migrated PostgreSQL database and least-privilege API role |
+| `contracts` | reports Protobuf lint and breaking-change findings; enforcement still needs `buf.yaml` |
+| `security` | scans history for secrets and reports critical/high filesystem findings; Trivy findings are currently nonblocking |
 | `codeql` | static security analysis |
 | `build` | the compose stack is valid and both service images build |
+
+The `browser` job uses development authentication only inside the disposable CI runner. It never
+connects to a hosted identity provider or market-data account, and does not constitute a hosted
+Clerk or production deployment smoke test.
 
 ## Not yet wired
 

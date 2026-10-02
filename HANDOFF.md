@@ -31,6 +31,11 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-10-02:** CI now has a separate Chromium browser job with a job-scoped migrated
+> PostgreSQL database, least-privilege API role, local paper-only API and failure trace upload.
+> The same three browser cases passed locally against the isolated test database; the edited
+> workflow YAML parses. GitHub Actions execution and hosted Clerk smoke remain unverified.
+>
 > **2026-10-02:** Optional hosted Clerk web sign-in is wired into the Next.js shell and
 > same-origin API client. Local development identity remains; a nonlocal deployment without
 > Clerk configuration has no manual bearer-token form. The current session token is fetched

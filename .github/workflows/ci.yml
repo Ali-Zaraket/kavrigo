@@ -194,6 +194,81 @@ jobs:
           uv run alembic downgrade base
           uv run alembic upgrade head
 
+  browser:
+    name: paper workspace browser boundaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: kavrigo
+          POSTGRES_PASSWORD: kavrigo_local_dev
+          POSTGRES_DB: kavrigo
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kavrigo -d kavrigo"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      KAVRIGO_ENV: local
+      AUTH_PROVIDER: dev
+      POSTGRES_MIGRATION_DSN: postgresql+asyncpg://kavrigo:kavrigo_local_dev@localhost:5432/kavrigo
+      POSTGRES_DSN: postgresql+asyncpg://kavrigo_app:kavrigo_local_dev@localhost:5432/kavrigo
+      API_HOST: 127.0.0.1
+      API_PORT: "58301"
+      KAVRIGO_TEST_API_ORIGIN: http://127.0.0.1:58301
+      KAVRIGO_WEB_AUTH_PROVIDER: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --all-packages
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install pinned package manager
+        run: npm install --global pnpm@11.19.0
+      - name: Install web dependencies
+        working-directory: kavrigo-platform/apps/web
+        run: pnpm install --frozen-lockfile
+      - name: Create least-privilege application role
+        run: |
+          PGPASSWORD=kavrigo_local_dev psql -h localhost -U kavrigo -d kavrigo \
+            -v ON_ERROR_STOP=1 \
+            -f kavrigo-infra/local/postgres/init/001_roles.sql
+      - name: Migrate disposable browser database
+        working-directory: kavrigo-platform/services/api
+        run: uv run alembic upgrade head
+      - name: Start isolated paper API
+        run: |
+          nohup uv run python -m kavrigo_api > "$RUNNER_TEMP/kavrigo-browser-api.log" 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:58301/readyz; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/kavrigo-browser-api.log"
+          exit 1
+      - name: Build web app
+        working-directory: kavrigo-platform/apps/web
+        run: pnpm build
+      - name: Install Chromium and system dependencies
+        working-directory: kavrigo-platform/apps/web
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser tests against disposable API
+        working-directory: kavrigo-platform/apps/web
+        run: pnpm test:e2e
+      - name: Retain failed browser traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-browser-failure
+          path: kavrigo-platform/apps/web/test-results/
+          if-no-files-found: ignore
+
   contracts:
     name: protobuf contracts
     runs-on: ubuntu-latest

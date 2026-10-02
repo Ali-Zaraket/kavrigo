@@ -1,5 +1,11 @@
 # Kavrigo progress
 
+**2026-10-02 browser CI slice:** A dedicated CI job now creates a fresh PostgreSQL service,
+applies the least-privilege role and all migrations, starts a local paper-only API, builds the
+web app, installs Chromium, and runs all three browser boundary tests. Failed traces are retained.
+The workflow YAML parses, and the same browser suite passed locally against a separate migrated
+test API. Hosted Clerk and deployment smoke tests remain separate release gates.
+
 **2026-10-02 hosted web sign-in slice:** The Next.js shell now supports a configured Clerk
 session alongside local development identity. Hosted mode presents Clerk sign-in, requests the
 current session token per API call, and resets workspace/query state on account changes. The
