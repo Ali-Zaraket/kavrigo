@@ -297,6 +297,9 @@ jobs:
           format: sarif
           output: trivy.sarif
           severity: CRITICAL,HIGH
+          # SARIF includes every severity by default, which would make exit-code=1
+          # fail on the low-severity local Dockerfile finding.
+          limit-severities-for-sarif: true
           exit-code: "1"   # block critical/high findings
 
       - name: Upload scan results
