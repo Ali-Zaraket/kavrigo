@@ -97,6 +97,14 @@ resource "aws_eks_cluster" "paper" {
   bootstrap_self_managed_addons = false
   enabled_cluster_log_types     = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
+  # A customer-managed key makes the encryption boundary explicit and reviewable.
+  encryption_config {
+    resources = ["secrets"]
+    provider {
+      key_arn = var.cluster_kms_key_arn
+    }
+  }
+
   compute_config {
     enabled       = true
     node_pools    = ["general-purpose", "system"]

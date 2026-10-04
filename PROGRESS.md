@@ -1,7 +1,7 @@
 # Kavrigo progress
 
 **2026-10-04 paper-launch preparation (not a launch):** Added a private, paper-only EKS Auto
-Mode/ECR OpenTofu foundation with required region, private subnets and operator role; OpenTofu
+Mode/ECR OpenTofu foundation with required region, private subnets, operator role and EKS KMS key; OpenTofu
 1.12.0 `fmt` and `validate` passed with the pinned AWS provider. CI now validates this plan
 without cloud credentials. Market trades, quotes and candles now persist an explicit
 `license_ref`; the ClickHouse writer refuses an empty reference. Ingestion unit tests (14) and

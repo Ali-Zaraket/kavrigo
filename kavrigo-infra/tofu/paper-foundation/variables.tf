@@ -44,3 +44,13 @@ variable "operator_role_arn" {
     error_message = "Provide an existing IAM role ARN."
   }
 }
+
+variable "cluster_kms_key_arn" {
+  description = "Existing same-region customer-managed KMS key for EKS API data; its policy must permit EKS use and grant creation."
+  type        = string
+
+  validation {
+    condition     = can(regex("^arn:aws(-[a-z]+)?:kms:[a-z0-9-]+:[0-9]{12}:key/[0-9a-f-]+$", var.cluster_kms_key_arn))
+    error_message = "Provide a customer-managed KMS key ARN."
+  }
+}
