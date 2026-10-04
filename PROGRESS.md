@@ -1,12 +1,23 @@
 # Kavrigo progress
 
+**2026-10-04 CI/security and local paper checkpoint:** GitHub Actions run
+[37209632714](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37209632714) passed all eight jobs:
+web, Python quality, PostgreSQL/ClickHouse/Temporal integration, Chromium browser, enforced Buf
+contracts, secret/Trivy scan, CodeQL and container builds. Next.js and eslint-config-next are
+pinned to security release 16.3.8; Trivy now blocks high/critical findings. Local web lint,
+format, typecheck, four unit tests and production build pass. The patched Studio at
+`http://127.0.0.1:3000/studio` and the Docker API at 58300 both return HTTP 200, including
+the mode proxy and migration-aware readiness. Hosted Clerk login/MFA and managed production
+infrastructure remain unverified without the corresponding accounts and settings. No licensed
+market-data provider has been activated.
+
 **2026-10-02 CI repair and hosted CSP slice:** The latest GitHub Actions run confirmed the new
 browser job passed, while integration failed at ClickHouse schema setup and security could not
 resolve an obsolete Trivy Action tag. A loopback-only bootstrap now applies all seven local
 ClickHouse statements successfully; security pins the signed Trivy v0.36.0 commit. Hosted web
 mode now configures Clerk's strict nonce CSP and dynamic provider rendering. Web lint, format,
-types, four tests and production build pass locally. The next CI run and real Clerk login remain
-to be verified.
+types, four tests and production build pass locally. The CI repair is verified by the 2026-10-04
+checkpoint above; real Clerk login remains to be verified.
 
 **2026-10-02 browser CI slice:** A dedicated CI job now creates a fresh PostgreSQL service,
 applies the least-privilege role and all migrations, starts a local paper-only API, builds the

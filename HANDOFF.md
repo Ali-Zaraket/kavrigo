@@ -31,6 +31,16 @@
 
 # Kavrigo — engineering handoff
 
+> **2026-10-04:** Commit `7d6d58d` passed all eight GitHub CI jobs in run
+> [37209632714](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37209632714). Buf lint
+> now enforces the versioned Protobuf module. Next.js and eslint-config-next are pinned to
+> 16.3.8 after a critical advisory; the Trivy security job blocks high/critical findings.
+> Patched web lint, format, types, four tests and build passed locally. The paper Docker stack
+> and Studio were restarted; `/studio`, the mode proxy, `/healthz` and `/readyz` return 200.
+> No hosted Clerk instance, cloud deployment, production data grant or CoinGecko key is
+> configured. Real sign-in/MFA, managed service operations and licensed paper activation
+> remain release gates.
+>
 > **2026-10-02:** The first browser CI run passed. Integration failed while the old inline SQL
 > splitter skipped commented ClickHouse statements; security setup failed because Trivy Action
 > `0.29.0` no longer resolves. The schema bootstrap now applies seven statements against a
@@ -314,13 +324,10 @@ are scoped-out work with a reason.
   migrations succeeded and all 50 integration tests passed. API, PostgreSQL, ClickHouse,
   Redpanda, Temporal and Valkey were healthy; step 13 replaces the skeleton with a real Temporal worker.
   It is still not a live market collector or hosted service.
-- **Hosted CI results are unverified at this checkpoint.** `.github/workflows/ci.yml` has six
-  jobs including a Postgres + ClickHouse integration job. The remote now exists; inspect GitHub
-  Actions for the commit being resumed. The workflow triggers on pull requests and pushes to
-  `main`, so a feature-branch push alone does not run it.
-- **Protobuf has never been generated.** `make proto` requires `protoc`, which is not installed,
-  and there is no `buf.yaml`, so the CI `contracts` job degrades to a warning. The `.proto`
-  files in `libs/data-contracts/` are hand-written and unvalidated by a compiler.
+- **Hosted CI is now verified.** The eight-job workflow passed on `7d6d58d`; see the current
+  checkpoint above. It runs on pull requests and pushes to `main`.
+- **Protobuf lint is enforced by Buf.** The v2 `buf.yaml` defines the `proto/` module. Local
+  `make proto` still requires `protoc`; generated language bindings are not committed.
 - **SBOM, Cosign signing and ECR push are deliberately absent** from CI rather than stubbed. A
   signing step that signs nothing gives false assurance (`MASTER_BUILD_SPEC.md` §24.4).
 
