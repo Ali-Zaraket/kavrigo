@@ -49,8 +49,10 @@ the API until the corresponding row is completed with written confirmation.
 
 1. **Data packs are entitlements, not feature flags.** A workspace may only enable a pack whose
    licence covers that tenant's use (`MASTER_BUILD_SPEC.md` §20, §46).
-2. **Every event and evidence item carries a `license_ref`** (`EventSource.license_ref`,
-   `EvidenceItem.license_ref`) so a retention or deletion obligation can be executed precisely.
+2. **Every persisted market row and evidence item carries a `license_ref`**
+   (`ClickHouseSink.license_ref`, `EvidenceItem.license_ref`) so a retention or deletion obligation
+   can identify affected raw rows precisely. Existing local rows with an empty reference are
+   unqualified legacy data, never evidence of a production entitlement.
    `VenueConfig.license_ref` is `None` for Binance today and the ingestion service logs
    `venue_license_unconfirmed` on startup — deliberately noisy, so this cannot be forgotten.
 3. **Retention TTLs are licence-derived.** The values in the ClickHouse bootstrap are

@@ -1,0 +1,5 @@
+bucket       = "REPLACE_WITH_VERSIONED_ENCRYPTED_STATE_BUCKET"
+key          = "kavrigo/dev/paper-foundation.tfstate"
+region       = "REPLACE_WITH_AWS_REGION"
+encrypt      = true
+use_lockfile = true

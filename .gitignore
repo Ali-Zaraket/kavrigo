@@ -42,6 +42,13 @@ artifacts/
 .local/
 
 # Tooling
+# OpenTofu state, plans and local inputs can contain credentials or private infrastructure data.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+backend.hcl
 .DS_Store
 .idea/
 .vscode/

@@ -4,7 +4,7 @@ Infrastructure, delivery and operations.
 
 ```text
 local/        docker compose development stack (implemented)
-tofu/         OpenTofu modules and environments (not started)
+tofu/         Paper-only EKS/ECR foundation (validated, not deployed)
 kubernetes/   base manifests and per-environment overlays (not started)
 argocd/       Argo CD applications (not started)
 policies/     admission and network policy (not started)
@@ -13,6 +13,10 @@ runbooks/     operational procedures (not started)
 ```
 
 Start with [`local/README.md`](local/README.md).
+
+The first reviewable hosted component is [`tofu/paper-foundation/`](tofu/paper-foundation/README.md).
+It has not been applied. The current [paper launch review](../docs/release/paper-launch-review.md)
+records the remaining gates before a public deployment.
 
 ## Decisions that constrain what goes here
 

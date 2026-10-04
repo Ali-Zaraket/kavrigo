@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS kavrigo.market_trades
     venue_trade_id  String,
     sequence        Int64,
     provider        LowCardinality(String),
+    license_ref     LowCardinality(String),
     schema_version  LowCardinality(String)
 )
 ENGINE = MergeTree
@@ -30,6 +31,7 @@ PARTITION BY toYYYYMM(event_time)
 ORDER BY (venue, instrument_id, event_time)
 TTL toDateTime(event_time) + INTERVAL 90 DAY
 SETTINGS index_granularity = 8192;
+ALTER TABLE kavrigo.market_trades ADD COLUMN IF NOT EXISTS license_ref LowCardinality(String) DEFAULT '';
 -- TTL is a placeholder. Real retention is dictated by each provider's licence terms
 -- (MASTER_BUILD_SPEC.md §8.3), not by convenience.
 
@@ -50,12 +52,14 @@ CREATE TABLE IF NOT EXISTS kavrigo.market_quotes
     spread_bps      Decimal(38, 18),
     sequence        Int64,
     provider        LowCardinality(String),
+    license_ref     LowCardinality(String),
     schema_version  LowCardinality(String)
 )
 ENGINE = MergeTree
 PARTITION BY toYYYYMM(event_time)
 ORDER BY (venue, instrument_id, event_time)
 TTL toDateTime(event_time) + INTERVAL 90 DAY;
+ALTER TABLE kavrigo.market_quotes ADD COLUMN IF NOT EXISTS license_ref LowCardinality(String) DEFAULT '';
 
 -- OHLCV bars. `is_closed` is load-bearing: a backtest that consumes an unclosed bar as final
 -- has look-ahead bias, because its close, high and low can all still change
@@ -79,11 +83,13 @@ CREATE TABLE IF NOT EXISTS kavrigo.market_candles
     trade_count           UInt32,
     is_closed             UInt8,
     provider              LowCardinality(String),
+    license_ref           LowCardinality(String),
     schema_version        LowCardinality(String)
 )
 ENGINE = ReplacingMergeTree(ingested_at)
 PARTITION BY toYYYYMM(open_time)
 ORDER BY (venue, instrument_id, interval, open_time);
+ALTER TABLE kavrigo.market_candles ADD COLUMN IF NOT EXISTS license_ref LowCardinality(String) DEFAULT '';
 -- Note that `provider` is NOT part of the ORDER BY key. Two rows sharing (venue, instrument,
 -- interval, open_time) are the same bar as far as the engine is concerned, and the newer
 -- ingested_at wins. That is the intent for a bar reissued as it forms, and it means a second

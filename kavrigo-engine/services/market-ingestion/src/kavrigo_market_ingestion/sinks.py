@@ -19,6 +19,7 @@ ClickHouse notes that are easy to get wrong:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -89,7 +90,7 @@ class CountingSink:
 
 
 def clickhouse_rows_for(
-    event: MarketEvent, *, provider: str, ingested_at: datetime
+    event: MarketEvent, *, provider: str, license_ref: str, ingested_at: datetime
 ) -> tuple[str, dict[str, Any]]:
     """Render one event as (table, row) for ``JSONEachRow`` insertion."""
     instrument = event.instrument_id
@@ -98,6 +99,7 @@ def clickhouse_rows_for(
         "instrument_id": instrument.value,
         "ingested_at": _ts(ingested_at),
         "provider": provider,
+        "license_ref": license_ref,
         "schema_version": "1",
     }
 
@@ -159,12 +161,16 @@ class ClickHouseSink:
         user: str | None = None,
         password: str | None = None,
         provider: str = "unknown",
+        license_ref: str,
         timeout_seconds: float = 10.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", license_ref) is None:
+            raise ValueError("ClickHouse persistence requires a nonempty license_ref")
         self._url = url.rstrip("/")
         self._database = database
         self._provider = provider
+        self._license_ref = license_ref
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(timeout=timeout_seconds)
         self._headers: dict[str, str] = {}
@@ -182,7 +188,10 @@ class ClickHouseSink:
         batches: dict[str, list[dict[str, Any]]] = {}
         for event in events:
             table, row = clickhouse_rows_for(
-                event, provider=self._provider, ingested_at=ingested_at
+                event,
+                provider=self._provider,
+                license_ref=self._license_ref,
+                ingested_at=ingested_at,
             )
             batches.setdefault(table, []).append(row)
 

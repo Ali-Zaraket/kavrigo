@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from functools import partial
 
 import pytest
 
@@ -21,7 +22,10 @@ from kavrigo_domain import (
     Price,
     Quantity,
 )
-from kavrigo_market_ingestion import MemorySink, clickhouse_rows_for
+from kavrigo_market_ingestion import ClickHouseSink, MemorySink
+from kavrigo_market_ingestion import clickhouse_rows_for as _clickhouse_rows_for
+
+clickhouse_rows_for = partial(_clickhouse_rows_for, license_ref="fixture-license-v1")
 
 BTC = InstrumentId.parse("BTC-USDT.BINANCE")
 T0 = datetime(2026, 3, 1, 12, 0, 0, 123000, tzinfo=UTC)
@@ -74,6 +78,15 @@ def _candle(*, is_closed: bool) -> Candle:
 
 
 class TestEncoding:
+    def test_persisted_rows_keep_deletion_provenance(self) -> None:
+        for event in (_trade(), _book(venue_time=T0), _candle(is_closed=True)):
+            _table, row = clickhouse_rows_for(event, provider="fixture", ingested_at=INGESTED)
+            assert row["license_ref"] == "fixture-license-v1"
+
+    def test_sink_refuses_unlicensed_persistence(self) -> None:
+        with pytest.raises(ValueError, match="license_ref"):
+            ClickHouseSink("http://127.0.0.1:8123", license_ref="")
+
     def test_decimals_cross_the_wire_as_strings(self) -> None:
         """A JSON number would be parsed as a double and lose precision on the way in."""
         _table, row = clickhouse_rows_for(_trade(), provider="binance", ingested_at=INGESTED)

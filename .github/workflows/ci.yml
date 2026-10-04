@@ -25,6 +25,23 @@ env:
   DEFAULT_TRADING_MODE: paper
 
 jobs:
+  infra:
+    name: paper foundation format and schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: kavrigo-infra/tofu/paper-foundation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: 1.12.0
+          tofu_wrapper: false
+      - run: tofu fmt -check
+      - run: tofu init -backend=false -lockfile=readonly -input=false
+      - run: tofu validate -no-color
+
   web:
     name: web contracts, lint, typecheck, test and build
     runs-on: ubuntu-latest

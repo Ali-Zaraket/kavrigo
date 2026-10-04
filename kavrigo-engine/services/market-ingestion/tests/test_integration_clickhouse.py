@@ -46,6 +46,7 @@ async def sink(clickhouse_client: httpx.AsyncClient, provider_tag: str) -> Click
         user=CLICKHOUSE_USER,
         password=CLICKHOUSE_PASSWORD,
         provider=provider_tag,
+        license_ref="fixture-license-v1",
         client=clickhouse_client,
     )
 
@@ -111,6 +112,9 @@ class TestTradeInserts:
         )
         assert written == 2
         assert await _mine(clickhouse_client, provider_tag, "market_trades") == ["2"]
+        assert await _mine(
+            clickhouse_client, provider_tag, "market_trades", "DISTINCT license_ref"
+        ) == ["fixture-license-v1"]
 
     async def test_decimal_precision_survives_the_round_trip(
         self, sink: ClickHouseSink, clickhouse_client: httpx.AsyncClient, provider_tag: str
@@ -244,6 +248,7 @@ class TestFailureReporting:
             user=CLICKHOUSE_USER,
             password=CLICKHOUSE_PASSWORD,
             provider="binance",
+            license_ref="fixture-license-v1",
             client=clickhouse_client,
         )
         with pytest.raises(RuntimeError, match="ClickHouse insert into"):

@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-10-04 paper-launch preparation (not a launch):** Added a private, paper-only EKS Auto
+Mode/ECR OpenTofu foundation with required region, private subnets and operator role; OpenTofu
+1.12.0 `fmt` and `validate` passed with the pinned AWS provider. CI now validates this plan
+without cloud credentials. Market trades, quotes and candles now persist an explicit
+`license_ref`; the ClickHouse writer refuses an empty reference. Ingestion unit tests (14) and
+real local ClickHouse integrations (10) passed, as did Ruff and strict mypy for the ingestion
+package. The [paper launch review](docs/release/paper-launch-review.md) remains **NO-GO**:
+there is no deployment account, active licensed provider, hosted identity, managed service
+stack, completed real-data paper activation, or independent security sign-off.
+
 **2026-10-04 CI/security and local paper checkpoint:** GitHub Actions run
 [37209632714](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37209632714) passed all eight jobs:
 web, Python quality, PostgreSQL/ClickHouse/Temporal integration, Chromium browser, enforced Buf
