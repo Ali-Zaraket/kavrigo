@@ -1,6 +1,6 @@
 # Kavrigo web — local paper workspace
 
-Next.js 16.3.4 App Router, React 19.2.8, strict TypeScript, Tailwind 4.3.3,
+Next.js 16.3.8 App Router, React 19.2.8, strict TypeScript, Tailwind 4.3.3,
 shadcn Base UI primitives, TanStack Query/Table and generated OpenAPI types.
 Requires Node 24 and pnpm 11.19.0. Versions are locked in pnpm-lock.yaml.
 

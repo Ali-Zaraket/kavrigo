@@ -25,28 +25,6 @@ env:
   DEFAULT_TRADING_MODE: paper
 
 jobs:
-  dependency-refresh:
-    name: one-time Next.js security lockfile refresh
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - run: npm install --global pnpm@11.19.0
-      - name: Refresh patched Next.js dependencies
-        working-directory: kavrigo-platform/apps/web
-        run: |
-          pnpm add next@16.3.8 --save-exact
-          pnpm add -D eslint-config-next@16.3.8 --save-exact
-      - uses: actions/upload-artifact@v4
-        with:
-          name: next-security-lockfile
-          path: |
-            kavrigo-platform/apps/web/package.json
-            kavrigo-platform/apps/web/pnpm-lock.yaml
-
   web:
     name: web contracts, lint, typecheck, test and build
     runs-on: ubuntu-latest
@@ -319,7 +297,7 @@ jobs:
           format: sarif
           output: trivy.sarif
           severity: CRITICAL,HIGH
-          exit-code: "0"   # report first; enforce once the baseline is clean
+          exit-code: "1"   # block critical/high findings
 
       - name: Upload scan results
         uses: github/codeql-action/upload-sarif@v3
