@@ -15,8 +15,10 @@ runbooks/     operational procedures (not started)
 Start with [`local/README.md`](local/README.md).
 
 The first reviewable hosted component is [`tofu/paper-foundation/`](tofu/paper-foundation/README.md).
-It has not been applied. The current [paper launch review](../docs/release/paper-launch-review.md)
-records the remaining gates before a public deployment.
+It has not been applied. The hosting provider is still a decision, so the AWS foundation is a
+reference plan, not a deployment commitment ([ADR 0046](../docs/adr/0046-defer-cloud-provider-selection.md)).
+The current [paper launch review](../docs/release/paper-launch-review.md) records the remaining
+gates before a public deployment.
 
 ## Decisions that constrain what goes here
 

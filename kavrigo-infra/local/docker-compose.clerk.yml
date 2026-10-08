@@ -1,0 +1,10 @@
+# Optional local Clerk session verification. Use with docker-compose.yml only after
+# configuring KAVRIGO_CLERK_ISSUER in the ignored repository-root .env file.
+services:
+  api:
+    environment:
+      AUTH_PROVIDER: jwks
+      AUTH_SESSION_PROFILE: clerk_v2
+      AUTH_ISSUER: ${KAVRIGO_CLERK_ISSUER:?Set KAVRIGO_CLERK_ISSUER to the Clerk Frontend API URL}
+      AUTH_JWKS_URL: ${KAVRIGO_CLERK_ISSUER:?Set KAVRIGO_CLERK_ISSUER to the Clerk Frontend API URL}/.well-known/jwks.json
+      AUTH_ALLOWED_PARTIES: '["http://localhost:3000"]'

@@ -57,3 +57,5 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0042](0042-reference-backtest-risk-receipts.md) | Per-signal risk receipts for reference backtests | Accepted for local validation |
 | [0043](0043-reference-risk-receipt-inspection.md) | Workspace-scoped inspection of reference risk receipts | Accepted for local product inspection |
 | [0044](0044-honest-control-plane-readiness.md) | Honest control-plane readiness and simulation disclosure | Accepted for local validation |
+| [0045](0045-market-row-license-provenance.md) | Licence provenance on persisted market rows | Accepted for local ingestion schema |
+| [0046](0046-defer-cloud-provider-selection.md) | Defer hosting provider; preserve application service boundaries | Accepted for pre-deployment work |

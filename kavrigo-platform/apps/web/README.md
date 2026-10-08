@@ -11,13 +11,15 @@ uses KAVRIGO_API_HOST_PORT=58300 and KAVRIGO_TEMPORAL_UI_HOST_PORT=58250.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm dev --hostname 127.0.0.1
+pnpm dev --hostname localhost
 ```
 
 Open http://localhost:3000. KAVRIGO_API_ORIGIN defaults to http://127.0.0.1:58300.
 KAVRIGO_WEB_ORIGIN defaults to http://localhost:3000 and must exactly match the browser origin
 for mutations. Set it explicitly when using another hostname or port. Never derive this
 allowlist from an untrusted forwarded-host header. See .env.example.
+Clerk development sign-in must use the same `localhost` host as `KAVRIGO_WEB_ORIGIN`; serving
+Next.js on `127.0.0.1` while opening `localhost` can leave Clerk's server-side request waiting.
 
 Local mode accepts a named development identity; use the same name to recover membership.
 The local token remains in memory and refresh signs out. The API refuses development identity

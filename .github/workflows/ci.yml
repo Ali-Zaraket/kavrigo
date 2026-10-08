@@ -284,9 +284,7 @@ jobs:
       - name: Check for breaking changes against main
         if: github.event_name == 'pull_request'
         working-directory: kavrigo-engine/libs/data-contracts
-        run: |
-          buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=kavrigo-engine/libs/data-contracts" \
-            || echo "::warning::buf breaking could not run; enable once buf.yaml is committed"
+        run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main,subdir=kavrigo-engine/libs/data-contracts"
 
   security:
     name: security scan

@@ -35,6 +35,35 @@ process liveness only), and set the override again for subsequent Compose
 commands in a new shell. This uses official [Compose interpolation](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
 (verified 2026-09-09); no Windows reserved ranges or unrelated services need changing.
 
+## Optional local Clerk sign-in
+
+The default stack uses local development identities. To test a Clerk **development** instance,
+put its `pk_test_` and `sk_test_` keys only in the ignored
+`kavrigo-platform/apps/web/.env.local`, set `KAVRIGO_WEB_AUTH_PROVIDER=clerk` there, and set
+`KAVRIGO_CLERK_ISSUER` in the ignored repository-root `.env` to the instance's HTTPS Frontend
+API URL. The API uses that URL as the token issuer and appends `/.well-known/jwks.json` for
+signature verification. This value is public; the API does not need the Clerk secret key.
+
+From the repository root, run Compose with both files:
+
+```powershell
+docker compose --env-file .env -f kavrigo-infra/local/docker-compose.yml -f kavrigo-infra/local/docker-compose.clerk.yml up -d --wait
+```
+
+Run the web app from `kavrigo-platform/apps/web` with `pnpm dev --hostname localhost`, then
+open `http://localhost:3000`. The API only accepts Clerk v2 session tokens from this instance
+and the `http://localhost:3000` authorized party. A development instance and localhost login
+prove integration only; production still needs its own instance, owned domain, HTTPS origin,
+MFA, and real-token security review. Never use production keys on localhost.
+
+If Clerk redirects sign-up to a required phone-number field, configure the development instance
+under **User & authentication**: require and verify an email address, and remove phone as a
+required sign-up identifier. Clerk's SMS country restrictions may reject some numbers; do not
+substitute another person's number. Configure authenticator-app MFA and backup codes separately
+under **Multi-factor** where required by policy. See Clerk's
+[sign-up/sign-in options](https://clerk.com/docs/guides/configure/auth-strategies/sign-up-sign-in-options)
+and [MFA guidance](https://clerk.com/docs/guides/development/custom-flows/account-updates/manage-mfa).
+
 ## Database roles
 
 Two roles, and the split is what makes row-level security meaningful:

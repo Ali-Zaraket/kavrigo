@@ -1,5 +1,26 @@
 # Kavrigo progress
 
+**2026-10-08 local Clerk integration:** A Clerk development instance has been configured in
+Git-ignored local settings, and an optional Compose overlay switches the API to v2 Clerk
+session/JWKS verification while preserving the default local-dev stack. The Clerk instance and
+JWKS endpoints respond; the web sign-in modal renders at `http://localhost:3000`, the paper-mode
+proxy responds, and the API rejects unsigned development and missing tokens (401). An actual
+signed-in user/session, membership behavior, MFA, and production-instance/domain behavior still
+need end-to-end verification. The Clerk keys remain in an ignored local file and were not
+printed or committed.
+The current development instance requires a phone number during sign-up; Clerk rejects a Lebanese
+number. The owner needs to configure email-based sign-up without a required phone field in the
+Clerk Dashboard, then complete the real-session smoke test. This is an instance setting, not a
+paper execution control; high-impact MFA still needs its own verification.
+
+**2026-10-04 hosting choice deferred and CI confirmed:** The owner postponed AWS signup and may
+choose another cloud. [ADR 0046](docs/adr/0046-defer-cloud-provider-selection.md) keeps the
+AWS plan unapplied and records the controls any alternate host must prove; application services
+remain on protocol-level contracts. [CI run 37213808266](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37213808266)
+passed all nine jobs, including the new infrastructure and security checks. Protobuf breaking
+changes now fail PR CI instead of becoming a warning. Clerk account creation is in progress;
+hosted identity remains unverified until a real development instance is configured and tested.
+
 **2026-10-04 paper-launch preparation (not a launch):** Added a private, paper-only EKS Auto
 Mode/ECR OpenTofu foundation with required region, private subnets, operator role and EKS KMS key; OpenTofu
 1.12.0 `fmt` and `validate` passed with the pinned AWS provider. CI now validates this plan
