@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { SignInButton } from "@clerk/nextjs";
+import { SignInButton, useClerk } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -9,6 +9,7 @@ import {
   BookOpen,
   Boxes,
   Check,
+  CircleUserRound,
   Command,
   FlaskConical,
   LayoutDashboard,
@@ -193,9 +194,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {light ? <Moon size={18} /> : <Sun size={18} />}
             </Button>
             {token && (
-              <Button variant="ghost" onClick={signOut} aria-label="Sign out">
-                <LogOut size={18} />
-              </Button>
+              <>
+                {hosted && <HostedAccountButton />}
+                <Button variant="ghost" onClick={signOut} aria-label="Sign out">
+                  <LogOut size={18} />
+                </Button>
+              </>
             )}
           </div>
         </header>
@@ -283,6 +287,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function HostedAccountButton() {
+  const clerk = useClerk();
+  return (
+    <Button
+      variant="ghost"
+      className="account-button"
+      onClick={() => clerk.openUserProfile()}
+      aria-label="Open account profile"
+    >
+      <CircleUserRound size={18} aria-hidden="true" />
+      <span>Account</span>
+    </Button>
   );
 }
 

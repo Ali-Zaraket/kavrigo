@@ -20,6 +20,8 @@ for mutations. Set it explicitly when using another hostname or port. Never deri
 allowlist from an untrusted forwarded-host header. See .env.example.
 Clerk development sign-in must use the same `localhost` host as `KAVRIGO_WEB_ORIGIN`; serving
 Next.js on `127.0.0.1` while opening `localhost` can leave Clerk's server-side request waiting.
+When signed in with Clerk, use **Account** in the top-right header to open Clerk's profile and
+security settings. The local development identity has no external profile.
 
 Local mode accepts a named development identity; use the same name to recover membership.
 The local token remains in memory and refresh signs out. The API refuses development identity

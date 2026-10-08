@@ -5,13 +5,15 @@ Git-ignored local settings, and an optional Compose overlay switches the API to 
 session/JWKS verification while preserving the default local-dev stack. The Clerk instance and
 JWKS endpoints respond; the web sign-in modal renders at `http://localhost:3000`, the paper-mode
 proxy responds, and the API rejects unsigned development and missing tokens (401). An actual
-signed-in user/session, membership behavior, MFA, and production-instance/domain behavior still
-need end-to-end verification. The Clerk keys remain in an ignored local file and were not
-printed or committed.
-The current development instance requires a phone number during sign-up; Clerk rejects a Lebanese
-number. The owner needs to configure email-based sign-up without a required phone field in the
-Clerk Dashboard, then complete the real-session smoke test. This is an instance setting, not a
-paper execution control; high-impact MFA still needs its own verification.
+signed-in user/session and membership creation now work locally; MFA and production-instance/domain
+behavior still need end-to-end verification. The Clerk keys remain in an ignored local file and
+were not printed or committed.
+The development instance initially required a phone number during sign-up and rejected a Lebanese
+number. The owner completed sign-in through the configured instance. A signed-in local browser
+session created the `Kavrigo Dev` workspace, loaded its owner membership and Agent Studio, and
+opened Clerk's profile dialog from Kavrigo's new Account control. This verifies the local
+session-to-API path; production-instance MFA, role-change, logout/revocation and tenant-isolation
+smokes remain.
 
 **2026-10-04 hosting choice deferred and CI confirmed:** The owner postponed AWS signup and may
 choose another cloud. [ADR 0046](docs/adr/0046-defer-cloud-provider-selection.md) keeps the

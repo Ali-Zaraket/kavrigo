@@ -244,6 +244,10 @@ nav a[aria-current="page"] {
   gap: 8px;
   align-items: center;
 }
+.account-button {
+  gap: 8px;
+  white-space: nowrap;
+}
 kbd {
   padding-left: 6px;
   font-size: 10px;
@@ -1000,6 +1004,9 @@ footer {
     margin-right: auto;
     font-size: 9px;
     padding: 5px 6px;
+  }
+  .account-button span {
+    display: none;
   }
   main {
     padding: 24px 16px;
