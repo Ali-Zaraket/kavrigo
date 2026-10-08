@@ -136,7 +136,7 @@ class Settings(BaseSettings):
                 raise ValueError("Clerk issuer and JWKS URL must describe one Frontend API origin")
             if self.is_production_like and (
                 issuer.host in {"localhost", "127.0.0.1", "::1"}
-                or issuer.host.endswith(".accounts.dev")
+                or (issuer.host or "").endswith(".accounts.dev")
             ):
                 raise ValueError("Staging and paper-prod require a production Clerk issuer")
             if self.kavrigo_env != "local" and not self.auth_allowed_parties:
