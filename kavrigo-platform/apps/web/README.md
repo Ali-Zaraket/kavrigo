@@ -38,6 +38,11 @@ are still required before public access. Without hosted configuration, a nonloca
 shows an unavailable sign-in state instead of accepting a pasted bearer token.
 Hosted mode uses Clerk's per-request nonce and strict Content Security Policy; the real Clerk
 instance must be smoke-tested to verify its sign-in UI and challenge assets under that policy.
+The [production Clerk handoff](../../../docs/release/clerk-production-handoff.md) records the
+deployment values and required real-token staging checks. Production builds must set
+`KAVRIGO_ENV` explicitly; staging/paper-prod builds require an owned HTTPS origin and
+`pk_live_`/`sk_live_` from one production instance. `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is embedded at build time,
+so rebuild the web image when changing Clerk instances.
 
 ## Available behavior
 

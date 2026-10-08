@@ -46,6 +46,9 @@ jobs:
     name: web contracts, lint, typecheck, test and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      KAVRIGO_ENV: local
+      KAVRIGO_WEB_AUTH_PROVIDER: dev
     defaults:
       run:
         working-directory: kavrigo-platform/apps/web

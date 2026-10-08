@@ -134,11 +134,67 @@ class TestAuthConfigurationGate:
         assert settings.auth_session_profile == "clerk_v2"
 
     @pytest.mark.parametrize(
+        ("issuer", "jwks_url", "error"),
+        [
+            (
+                "https://example.clerk.accounts.dev",
+                "https://example.clerk.accounts.dev/.well-known/jwks.json",
+                "production Clerk issuer",
+            ),
+            (
+                "https://identity.example.test",
+                "https://other.example.test/.well-known/jwks.json",
+                "one Frontend API origin",
+            ),
+            (
+                "https://identity.example.test/path",
+                "https://identity.example.test/path/.well-known/jwks.json",
+                "one Frontend API origin",
+            ),
+        ],
+    )
+    def test_hosted_clerk_rejects_development_or_mismatched_issuer(
+        self, issuer: str, jwks_url: str, error: str
+    ) -> None:
+        with pytest.raises(ValidationError, match=error):
+            Settings(
+                kavrigo_env="paper-prod",
+                auth_provider="jwks",
+                auth_issuer=issuer,
+                auth_jwks_url=jwks_url,
+                auth_session_profile="clerk_v2",
+                auth_allowed_parties=["https://app.example.test"],
+            )
+
+    def test_local_clerk_development_issuer_is_allowed(self) -> None:
+        settings = Settings(
+            kavrigo_env="local",
+            auth_provider="jwks",
+            auth_issuer="https://example.clerk.accounts.dev",
+            auth_jwks_url="https://example.clerk.accounts.dev/.well-known/jwks.json",
+            auth_session_profile="clerk_v2",
+            auth_allowed_parties=["http://localhost:3000"],
+        )
+        assert settings.auth_session_profile == "clerk_v2"
+
+    def test_hosted_dev_can_use_a_clerk_development_instance(self) -> None:
+        settings = Settings(
+            kavrigo_env="dev",
+            auth_provider="jwks",
+            auth_issuer="https://example.clerk.accounts.dev",
+            auth_jwks_url="https://example.clerk.accounts.dev/.well-known/jwks.json",
+            auth_session_profile="clerk_v2",
+            auth_allowed_parties=["https://dev.example.test"],
+        )
+        assert settings.auth_session_profile == "clerk_v2"
+
+    @pytest.mark.parametrize(
         "party",
         [
             "http://app.example.test",
             "https://app.example.test/path",
             "https://user:pass@app.example.test",
+            "https://localhost:3000",
         ],
     )
     def test_paper_prod_rejects_insecure_authorized_parties(self, party: str) -> None:

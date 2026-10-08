@@ -1,5 +1,13 @@
 # Kavrigo progress
 
+**2026-10-08 production Clerk preparation:** Web builds and runtime now require an explicit
+paper environment; staging/paper-prod reject local sign-in, `pk_test_`/`sk_test_` keys and
+non-HTTPS/loopback web origins. The API rejects a development Clerk issuer or mismatched JWKS
+endpoint in staging/paper-prod. [The handoff](docs/release/clerk-production-handoff.md) lists
+production-instance setup, exact environment mapping and real-token/MFA staging checks. This is
+code/configuration preparation only: no owned domain, production Clerk instance, live keys or
+hosted deployment has been connected. The paper launch review remains **NO-GO**.
+
 **2026-10-08 local Clerk integration:** A Clerk development instance has been configured in
 Git-ignored local settings, and an optional Compose overlay switches the API to v2 Clerk
 session/JWKS verification while preserving the default local-dev stack. The Clerk instance and

@@ -4,9 +4,10 @@ import {
   type NextFetchEvent,
   type NextRequest,
 } from "next/server";
+import { webAuthConfiguration } from "@/lib/auth-config";
 
 const hostedProxy =
-  process.env.KAVRIGO_WEB_AUTH_PROVIDER === "clerk"
+  webAuthConfiguration().mode === "clerk"
     ? clerkMiddleware({
         contentSecurityPolicy: {
           strict: true,

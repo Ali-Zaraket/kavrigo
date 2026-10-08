@@ -6,6 +6,62 @@ import {
   controlPlaneOrigin,
 } from "../src/lib/proxy-policy.ts";
 import { apiClient, decimal, money } from "../src/lib/client.ts";
+import { webAuthConfiguration } from "../src/lib/auth-config.ts";
+
+test("hosted Clerk configuration refuses unsigned auth and development keys", () => {
+  const production = {
+    NODE_ENV: "production",
+    KAVRIGO_ENV: "paper-prod",
+    KAVRIGO_WEB_AUTH_PROVIDER: "clerk",
+    KAVRIGO_WEB_ORIGIN: "https://app.example.test",
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_example",
+    CLERK_SECRET_KEY: "sk_live_example",
+  };
+  assert.deepEqual(webAuthConfiguration(production), {
+    mode: "clerk",
+    webOrigin: "https://app.example.test",
+  });
+  for (const override of [
+    { KAVRIGO_WEB_AUTH_PROVIDER: "dev" },
+    { KAVRIGO_WEB_ORIGIN: "http://app.example.test" },
+    { KAVRIGO_WEB_ORIGIN: "https://localhost:3000" },
+    { NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example" },
+    { CLERK_SECRET_KEY: "sk_test_example" },
+    { CLERK_SECRET_KEY: undefined },
+  ])
+    assert.throws(() => webAuthConfiguration({ ...production, ...override }));
+  assert.throws(() => webAuthConfiguration({ NODE_ENV: "production" }));
+});
+
+test("local Clerk sign-in keeps the development keys isolated to local", () => {
+  assert.equal(
+    webAuthConfiguration({
+      KAVRIGO_ENV: "local",
+      KAVRIGO_WEB_AUTH_PROVIDER: "clerk",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+      CLERK_SECRET_KEY: "sk_test_example",
+    }).mode,
+    "clerk",
+  );
+  assert.throws(() =>
+    webAuthConfiguration({
+      KAVRIGO_ENV: "local",
+      KAVRIGO_WEB_AUTH_PROVIDER: "clerk",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_example",
+      CLERK_SECRET_KEY: "sk_live_example",
+    }),
+  );
+  assert.equal(
+    webAuthConfiguration({
+      KAVRIGO_ENV: "dev",
+      KAVRIGO_WEB_AUTH_PROVIDER: "clerk",
+      KAVRIGO_WEB_ORIGIN: "https://dev.example.test",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_example",
+      CLERK_SECRET_KEY: "sk_test_example",
+    }).mode,
+    "clerk",
+  );
+});
 
 const ws = `v1/workspaces/ws_${"1".repeat(32)}`;
 test("proxy only exposes the allowlisted control plane", () => {

@@ -124,6 +124,21 @@ class Settings(BaseSettings):
         if self.auth_session_profile == "clerk_v2":
             if self.auth_provider != "jwks":
                 raise ValueError("AUTH_SESSION_PROFILE=clerk_v2 requires AUTH_PROVIDER=jwks")
+            if self.auth_issuer is None or self.auth_jwks_url is None:
+                raise ValueError("Clerk session verification requires issuer and JWKS URL")
+            issuer = _HTTP_URL.validate_python(self.auth_issuer)
+            if (
+                issuer.path not in {"", "/"}
+                or issuer.query
+                or issuer.fragment
+                or self.auth_jwks_url != f"{self.auth_issuer.rstrip('/')}/.well-known/jwks.json"
+            ):
+                raise ValueError("Clerk issuer and JWKS URL must describe one Frontend API origin")
+            if self.is_production_like and (
+                issuer.host in {"localhost", "127.0.0.1", "::1"}
+                or issuer.host.endswith(".accounts.dev")
+            ):
+                raise ValueError("Staging and paper-prod require a production Clerk issuer")
             if self.kavrigo_env != "local" and not self.auth_allowed_parties:
                 raise ValueError("Clerk session verification requires AUTH_ALLOWED_PARTIES")
             for party in self.auth_allowed_parties:
@@ -140,6 +155,10 @@ class Settings(BaseSettings):
                     or url.path not in {"", "/"}
                     or url.query
                     or url.fragment
+                    or (
+                        self.kavrigo_env != "local"
+                        and url.host in {"localhost", "127.0.0.1", "::1"}
+                    )
                 ):
                     raise ValueError("AUTH_ALLOWED_PARTIES must contain valid HTTPS origins")
         if self.kavrigo_env == "paper-prod" and self.auth_session_profile != "clerk_v2":
