@@ -1,5 +1,12 @@
 # Kavrigo progress
 
+**2026-10-08 web dependency security repair:** The first Clerk-preparation CI run exposed two
+new HIGH findings in the web lockfile: `sharp` 0.35.4 and `source-map-js` 1.2.1. Pnpm overrides
+now pin the patched 0.35.5 and 1.2.2 versions, including sharp's updated libvips binaries.
+Local Trivy 0.70.0 reports zero HIGH/CRITICAL lockfile vulnerabilities; web install, lint,
+format, typecheck, six unit tests and production build pass. The independent CI rerun must
+confirm the full security job before its checkpoint is recorded as green.
+
 **2026-10-08 production Clerk preparation:** Web builds and runtime now require an explicit
 paper environment; staging/paper-prod reject local sign-in, `pk_test_`/`sk_test_` keys and
 non-HTTPS/loopback web origins. The API rejects a development Clerk issuer or mismatched JWKS
