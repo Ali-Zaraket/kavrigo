@@ -52,7 +52,7 @@ class TrivyReportTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 self.assertEqual(check_report(path, "api"), 1)
             self.assertIn("CVE-2026-1234?::warning::unsafe", output.getvalue())
-            self.assertEqual(output.getvalue().count("::error::"), 2)
+            self.assertEqual(output.getvalue().count("::error::"), 1)
 
     def test_empty_report_passes_but_missing_report_fails(self) -> None:
         with tempfile.TemporaryDirectory(dir=_TEST_TEMP) as directory:

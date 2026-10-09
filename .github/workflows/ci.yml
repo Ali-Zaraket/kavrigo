@@ -485,6 +485,42 @@ jobs:
           format: json
           output: trivy-web.json
           exit-code: "0"
+      - name: Generate API CycloneDX SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: kavrigo-api:candidate
+          scanners: vuln
+          format: cyclonedx
+          output: sbom-api.cdx.json
+          exit-code: "0"
+      - name: Generate worker CycloneDX SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: kavrigo-worker:candidate
+          scanners: vuln
+          format: cyclonedx
+          output: sbom-worker.cdx.json
+          exit-code: "0"
+      - name: Generate web CycloneDX SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: kavrigo-web:candidate
+          scanners: vuln
+          format: cyclonedx
+          output: sbom-web.cdx.json
+          exit-code: "0"
+      - name: Retain candidate SBOMs and vulnerability reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-review-${{ github.sha }}
+          path: |
+            sbom-*.cdx.json
+            trivy-*.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Enforce all final image scans
         run: |
           result=0

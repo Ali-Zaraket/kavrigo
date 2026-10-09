@@ -36,18 +36,21 @@ def check_report(path: Path, image: str) -> int:
         for vulnerability in result.get("Vulnerabilities") or []
         if isinstance(vulnerability, dict) and vulnerability.get("Severity") in _BLOCKING
     ]
+    details = []
     for vulnerability in findings[:20]:
         cve = _public(vulnerability.get("VulnerabilityID", "unknown"))
         package = _public(vulnerability.get("PkgName", "unknown"))
         installed = _public(vulnerability.get("InstalledVersion", "unknown"))
         fixed = _public(vulnerability.get("FixedVersion", "unfixed"))
         severity = _public(vulnerability.get("Severity", "unknown"))
-        print(
-            f"::error::Trivy {_public(image)} {severity} {cve} "
-            f"{package} {installed} fixed-in {fixed}"
-        )
+        details.append(f"{severity} {cve} {package} {installed} fixed-in {fixed}")
     if findings:
-        print(f"::error::{_public(image)} has {len(findings)} HIGH/CRITICAL findings")
+        preview = "; ".join(details[:3])
+        print(
+            f"::error::Trivy {_public(image)} has {len(findings)} HIGH/CRITICAL findings: {preview}"
+        )
+        for detail in details:
+            print(f"Trivy {_public(image)} {detail}")
         return 1
     print(f"Trivy {_public(image)}: no HIGH/CRITICAL findings")
     return 0

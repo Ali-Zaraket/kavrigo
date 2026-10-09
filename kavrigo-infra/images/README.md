@@ -11,6 +11,9 @@ worker stages use the official Debian 13 distroless Python 3.13 runtime, with no
 tools. The venv is created through the runtime's `/usr/bin/python` path, and CI smoke-imports
 both candidates as UID 10001 with a read-only filesystem before scanning their final layers.
 The pinned runtime is refreshed only after ABI, smoke, and final-image vulnerability checks.
+CI retains CycloneDX SBOMs and full Trivy JSON reports for all three candidates as a
+short-lived review artifact, even when the final vulnerability gate fails. These are evidence
+for review, not signatures or deployable release artifacts.
 The [2026-10-09 CI run](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37983068033)
 passed the read-only runtime smoke but **failed** the API final-image scan on high-severity
 Debian 13 Python/Expat/ncurses findings with no fixed version reported by Trivy. This image is
