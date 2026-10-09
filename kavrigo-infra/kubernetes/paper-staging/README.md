@@ -11,6 +11,13 @@ written. An independently reviewed release overlay must replace both with scanne
 immutable digests from the private registry. `kubectl kustomize kavrigo-infra/kubernetes/paper-staging`
 renders the candidate without contacting a cluster; it does **not** authorize apply.
 
+After image signing and digest verification, `release_overlay.py` can write a preview overlay
+to a **new** ignored `.local/` directory. It accepts a DigitalOcean registry name plus distinct
+`sha256:` manifest digests for web and API, rejects mutable tags and the zero placeholder,
+and refuses to overwrite an existing directory. Run `kubectl kustomize` on that new directory
+and review the full output. The helper does not inspect signatures, fetch images, create
+Secrets, contact Kubernetes, or publish GitOps state.
+
 ## Required external configuration
 
 Deliver two Kubernetes Secrets through a reviewed secret manager after the cluster exists.

@@ -74,6 +74,10 @@ jobs:
             echo 'The staging base must not expose a public endpoint.' >&2
             exit 1
           fi
+      - name: Validate digest-only release overlay preview
+        run: |
+          python3 kavrigo-infra/kubernetes/paper-staging/test_release_overlay.py
+          python3 scripts/test_check_trivy_image_report.py
 
   web:
     name: web contracts, lint, typecheck, test and build
@@ -451,7 +455,11 @@ jobs:
           image-ref: kavrigo-api:candidate
           scanners: vuln
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          format: json
+          output: trivy-api.json
+          exit-code: "0"
+      - name: Enforce final API scan
+        run: python3 scripts/check_trivy_image_report.py trivy-api.json --image api
       - name: Scan final worker candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -459,7 +467,11 @@ jobs:
           image-ref: kavrigo-worker:candidate
           scanners: vuln
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          format: json
+          output: trivy-worker.json
+          exit-code: "0"
+      - name: Enforce final worker scan
+        run: python3 scripts/check_trivy_image_report.py trivy-worker.json --image worker
       - name: Scan final web candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -467,7 +479,11 @@ jobs:
           image-ref: kavrigo-web:candidate
           scanners: vuln
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          format: json
+          output: trivy-web.json
+          exit-code: "0"
+      - name: Enforce final web scan
+        run: python3 scripts/check_trivy_image_report.py trivy-web.json --image web
 
   # SBOM generation (Syft), image signing (Cosign) and private-registry promotion belong in
   # the reviewed deployment pipeline (MASTER_BUILD_SPEC.md §24.4, §36). These CI candidates
