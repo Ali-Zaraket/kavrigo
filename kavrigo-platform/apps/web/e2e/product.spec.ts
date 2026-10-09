@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 async function openWorkspace(page: Page) {
   const slug = `browser-${crypto.randomUUID().slice(0, 12)}`;
-  await page.goto("/");
+  await page.goto("/app");
   await expect(
     page.getByText("PAPER · SIMULATED", { exact: true }),
   ).toBeVisible();
@@ -19,6 +19,41 @@ async function openWorkspace(page: Page) {
   ).toBeVisible();
   return slug;
 }
+
+test("public homepage introduces paper mode and opens the app", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", {
+      name: "Build AI trading agents you can test, inspect, and govern.",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("PAPER-FIRST · PRIVATE PREVIEW")).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({
+    path: "test-results/marketing-home.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.screenshot({
+    path: "test-results/marketing-mobile.png",
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("link", { name: "Start in paper mode" }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(
+    page.getByRole("navigation", { name: "Primary navigation" }),
+  ).toBeVisible();
+  await page.goto("/studio");
+  await expect(page).toHaveURL(/\/app\/studio$/);
+});
 
 test("real API: draft, immutable version, workspace isolation, logout", async ({
   page,

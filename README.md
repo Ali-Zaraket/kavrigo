@@ -63,6 +63,10 @@ make down              # stop the local stack
 
 The local stack is described in [`kavrigo-infra/local/README.md`](kavrigo-infra/local/README.md).
 No external data provider, exchange credential, or model API key is required to run the tests.
+The web frontend serves its public introduction at `/` and the paper workspace at `/app`.
+DigitalOcean paper staging is specified in
+[`kavrigo-infra/tofu/digitalocean-paper-staging/README.md`](kavrigo-infra/tofu/digitalocean-paper-staging/README.md);
+that foundation has not been applied.
 
 ## Current status
 

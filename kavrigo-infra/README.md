@@ -4,7 +4,7 @@ Infrastructure, delivery and operations.
 
 ```text
 local/        docker compose development stack (implemented)
-tofu/         Paper-only EKS/ECR foundation (validated, not deployed)
+tofu/         Separate AWS reference and DigitalOcean paper-staging foundations
 kubernetes/   base manifests and per-environment overlays (not started)
 argocd/       Argo CD applications (not started)
 policies/     admission and network policy (not started)
@@ -14,9 +14,10 @@ runbooks/     operational procedures (not started)
 
 Start with [`local/README.md`](local/README.md).
 
-The first reviewable hosted component is [`tofu/paper-foundation/`](tofu/paper-foundation/README.md).
-It has not been applied. The hosting provider is still a decision, so the AWS foundation is a
-reference plan, not a deployment commitment ([ADR 0046](../docs/adr/0046-defer-cloud-provider-selection.md)).
+The current staging choice is DigitalOcean Amsterdam (`ams3`):
+[`tofu/digitalocean-paper-staging/`](tofu/digitalocean-paper-staging/README.md), recorded in
+[ADR 0047](../docs/adr/0047-digitalocean-paper-staging.md). It has not been applied. The earlier
+[`tofu/paper-foundation/`](tofu/paper-foundation/README.md) remains an unapplied AWS reference.
 The current [paper launch review](../docs/release/paper-launch-review.md) records the remaining
 gates before a public deployment.
 
@@ -24,9 +25,11 @@ gates before a public deployment.
 
 - OpenTofu with reusable modules, remote encrypted state, separate state per environment, plan
   review in the pull request, and no developer local apply to production (ADR 0016).
-- Argo CD pull-based delivery; GitHub OIDC to AWS so CI holds no long-lived cloud credentials.
-- EKS Auto Mode for application compute; managed stateful services stay outside the cluster
-  (ADR 0015).
+- Argo CD pull-based delivery is still the target. GitHub OIDC/ECR and EKS Auto Mode in the
+  master spec and ADRs 0015–0016 are AWS-specific; DigitalOcean credential and workload
+  delivery controls need a separate, reviewed implementation (ADR 0047).
+- Managed stateful services stay outside the DOKS cluster. The DigitalOcean staging root
+  covers PostgreSQL/Valkey; Redpanda Cloud, ClickHouse Cloud and Temporal Cloud are separate.
 - Environments: `local`, `dev`, `staging`, `paper-prod`, and `live-prod` — which is created only
   after the readiness gate in `MASTER_BUILD_SPEC.md` §47, and is separated from `paper-prod`
   enough to prevent credential or tool crossover.

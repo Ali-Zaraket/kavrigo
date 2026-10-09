@@ -14,7 +14,10 @@ pnpm install --frozen-lockfile
 pnpm dev --hostname localhost
 ```
 
-Open http://localhost:3000. KAVRIGO_API_ORIGIN defaults to http://127.0.0.1:58300.
+Open http://localhost:3000 for the public introduction, then use `/app` for the paper
+workspace. The product sections live at `/app/studio`, `/app/research`, `/app/pulse`, etc.;
+old top-level section URLs redirect there. KAVRIGO_API_ORIGIN defaults to
+http://127.0.0.1:58300.
 KAVRIGO_WEB_ORIGIN defaults to http://localhost:3000 and must exactly match the browser origin
 for mutations. Set it explicitly when using another hostname or port. Never derive this
 allowlist from an untrusted forwarded-host header. See .env.example.
@@ -43,6 +46,10 @@ deployment values and required real-token staging checks. Production builds must
 `KAVRIGO_ENV` explicitly; staging/paper-prod builds require an owned HTTPS origin and
 `pk_live_`/`sk_live_` from one production instance. `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is embedded at build time,
 so rebuild the web image when changing Clerk instances.
+
+The first hosted topology uses the same origin and `/app` path. A later `app.<owned-domain>`
+split needs separate, reviewed DNS/TLS, Clerk origins and routing; no Kavrigo domain is
+assumed owned today. The public homepage is indexable, while `/app` is marked `noindex`.
 
 ## Available behavior
 

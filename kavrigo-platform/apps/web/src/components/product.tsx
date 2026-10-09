@@ -199,19 +199,19 @@ function Overview() {
                 "01",
                 "Define your agent",
                 "Choose its universe, data, model policy, and immutable risk references.",
-                "/studio",
+                "/app/studio",
               ],
               [
                 "02",
                 "Inspect the research",
                 "Review stored backtests. A refused run is not a successful strategy result.",
-                "/research",
+                "/app/research",
               ],
               [
                 "03",
                 "Review every decision",
                 "Follow supporting and contradicting evidence before assessing a proposal.",
-                "/pulse",
+                "/app/pulse",
               ],
             ].map(([n, title, copy, href]) => (
               <Link href={href} key={n}>
@@ -250,7 +250,7 @@ function Overview() {
             This is the local paper platform. Hosted identity, live data
             transport, and strategy wiring remain incomplete.
           </p>
-          <Link className="text-link" href="/risk">
+          <Link className="text-link" href="/app/risk">
             Inspect risk boundaries <ArrowRight size={16} />
           </Link>
         </section>
@@ -892,7 +892,7 @@ function Risk() {
         kill-switch controls, and account approval are not exposed by this UI.
         Inspect versioned policy references in Studio.
       </Notice>
-      <Link className="text-link" href="/studio">
+      <Link className="text-link" href="/app/studio">
         Inspect agent policy references <ArrowRight size={16} />
       </Link>
     </>

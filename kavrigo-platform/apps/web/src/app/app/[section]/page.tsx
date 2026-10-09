@@ -1,4 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { Product } from "@/components/product";
+
 const sections = [
   "studio",
   "research",
@@ -9,12 +11,13 @@ const sections = [
   "integrations",
   "audit",
 ];
-export default async function Page({
+
+export default async function AppSectionPage({
   params,
 }: {
   params: Promise<{ section: string }>;
 }) {
   const { section } = await params;
   if (!sections.includes(section)) notFound();
-  redirect(`/app/${section}`);
+  return <Product section={section} />;
 }

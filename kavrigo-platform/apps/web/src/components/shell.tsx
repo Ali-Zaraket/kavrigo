@@ -33,15 +33,15 @@ import {
 } from "./ui/dialog";
 
 const links = [
-  ["Overview", "/", LayoutDashboard],
-  ["Studio", "/studio", Boxes],
-  ["Research", "/research", FlaskConical],
-  ["Pulse", "/pulse", Activity],
-  ["Portfolio", "/portfolio", Wallet],
-  ["Risk", "/risk", ShieldCheck],
-  ["Paper", "/paper", BookOpen],
-  ["Integrations", "/integrations", Waypoints],
-  ["Audit", "/audit", Check],
+  ["Overview", "/app", LayoutDashboard],
+  ["Studio", "/app/studio", Boxes],
+  ["Research", "/app/research", FlaskConical],
+  ["Pulse", "/app/pulse", Activity],
+  ["Portfolio", "/app/portfolio", Wallet],
+  ["Risk", "/app/risk", ShieldCheck],
+  ["Paper", "/app/paper", BookOpen],
+  ["Integrations", "/app/integrations", Waypoints],
+  ["Audit", "/app/audit", Check],
 ] as const;
 
 export function Notice({
@@ -112,7 +112,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
       <aside className="sidebar">
-        <Link href="/" className="brand" aria-label="Kavrigo overview">
+        <Link
+          href="/app"
+          className="brand"
+          aria-label="Kavrigo workspace overview"
+        >
           <svg
             width="30"
             height="30"
@@ -155,7 +159,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               <Icon size={18} aria-hidden="true" />
               {label}
-              {href === "/studio" && <span className="nav-hint">BUILD</span>}
+              {href === "/app/studio" && (
+                <span className="nav-hint">BUILD</span>
+              )}
             </Link>
           ))}
         </nav>

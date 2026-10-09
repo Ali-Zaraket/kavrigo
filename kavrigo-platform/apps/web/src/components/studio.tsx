@@ -409,7 +409,7 @@ function RehearsalLauncher({
             ? "Rehearsal dispatched."
             : "Rehearsal saved; dispatch is pending. Retry dispatch with the same key."}{" "}
           <span className="mono break">{launched.run_id}</span>{" "}
-          <Link className="text-link" href="/pulse">
+          <Link className="text-link" href="/app/pulse">
             Inspect in Pulse <ArrowUpRight size={14} aria-hidden="true" />
           </Link>
         </Notice>

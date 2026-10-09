@@ -1,11 +1,22 @@
 # Kavrigo progress
 
+**2026-10-09 DigitalOcean staging and public homepage:** The owner selected DigitalOcean
+Amsterdam (`ams3`) for a paper-only staging foundation. [ADR 0047](docs/adr/0047-digitalocean-paper-staging.md)
+records the cloud change; a separate, unapplied OpenTofu root plans isolated-worker DOKS,
+managed PostgreSQL/Valkey, VPC NAT, control-plane/database firewalls and private registry.
+Account eligibility for the preview-labeled NAT resource, encrypted/locked remote state,
+provider accounts, owned domain and hosted workload delivery remain pending. The Next.js
+homepage at `/` now introduces Kavrigo and `/app` contains the workspace; old section URLs
+redirect to `/app/...`. Local web lint, typecheck, six unit tests, build and the desktop/mobile
+Edge accessibility smoke passed. The paper launch review stays **NO-GO**.
+
 **2026-10-08 web dependency security repair:** The first Clerk-preparation CI run exposed two
 new HIGH findings in the web lockfile: `sharp` 0.35.4 and `source-map-js` 1.2.1. Pnpm overrides
 now pin the patched 0.35.5 and 1.2.2 versions, including sharp's updated libvips binaries.
 Local Trivy 0.70.0 reports zero HIGH/CRITICAL lockfile vulnerabilities; web install, lint,
-format, typecheck, six unit tests and production build pass. The independent CI rerun must
-confirm the full security job before its checkpoint is recorded as green.
+format, typecheck, six unit tests and production build pass. The subsequent
+[CI run 37779364061](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37779364061)
+passed all nine jobs.
 
 **2026-10-08 production Clerk preparation:** Web builds and runtime now require an explicit
 paper environment; staging/paper-prod reject local sign-in, `pk_test_`/`sk_test_` keys and
