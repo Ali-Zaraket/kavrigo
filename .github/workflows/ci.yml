@@ -413,6 +413,8 @@ jobs:
           file: kavrigo-infra/images/python.Dockerfile
           target: api
           push: false
+          load: true
+          tags: kavrigo-api:candidate
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build pinned-base worker candidate
@@ -422,6 +424,8 @@ jobs:
           file: kavrigo-infra/images/python.Dockerfile
           target: worker
           push: false
+          load: true
+          tags: kavrigo-worker:candidate
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build standalone web candidate without external credentials
@@ -431,6 +435,8 @@ jobs:
           file: kavrigo-infra/images/web.Dockerfile
           target: runtime
           push: false
+          load: true
+          tags: kavrigo-web:candidate
           build-args: |
             KAVRIGO_ENV=local
             KAVRIGO_WEB_AUTH_PROVIDER=dev
@@ -438,6 +444,31 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # SBOM generation (Syft), image signing (Cosign) and ECR push are added with the deployment
-  # pipeline in kavrigo-infra (MASTER_BUILD_SPEC.md §24.4, §36). They are deliberately absent
-  # here rather than stubbed: a signing step that signs nothing is worse than none.
+      - name: Scan final API candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: kavrigo-api:candidate
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+      - name: Scan final worker candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: kavrigo-worker:candidate
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+      - name: Scan final web candidate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: image
+          image-ref: kavrigo-web:candidate
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+  # SBOM generation (Syft), image signing (Cosign) and private-registry promotion belong in
+  # the reviewed deployment pipeline (MASTER_BUILD_SPEC.md §24.4, §36). These CI candidates
+  # are scanned but not signed or published.
