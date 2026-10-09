@@ -1,7 +1,7 @@
 """Check that final-image scan failures remain enforceable and publicly diagnosable."""
 
 # This suite runs with system Python before workspace dependencies are installed.
-# ruff: noqa: PT009, PT027
+# ruff: noqa: PT009
 
 from __future__ import annotations
 
