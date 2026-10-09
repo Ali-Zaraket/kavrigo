@@ -34,8 +34,7 @@ def check_report(path: Path, image: str) -> int:
         for result in report["Results"]
         if isinstance(result, dict)
         for vulnerability in result.get("Vulnerabilities") or []
-        if isinstance(vulnerability, dict)
-        and vulnerability.get("Severity") in _BLOCKING
+        if isinstance(vulnerability, dict) and vulnerability.get("Severity") in _BLOCKING
     ]
     for vulnerability in findings[:20]:
         cve = _public(vulnerability.get("VulnerabilityID", "unknown"))
