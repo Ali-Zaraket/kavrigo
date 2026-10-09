@@ -22,6 +22,7 @@ const hostedProxy =
 
 /** Local development has no Clerk account; hosted deployments always run Clerk's proxy. */
 export default function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (request.nextUrl.pathname === "/healthz") return NextResponse.next();
   return hostedProxy ? hostedProxy(request, event) : NextResponse.next();
 }
 

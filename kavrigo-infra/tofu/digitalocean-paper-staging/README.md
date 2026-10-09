@@ -53,8 +53,10 @@ used by workloads. Record the actual resources and recurring cost.
 ## Application dependencies after foundation
 
 The [candidate image Dockerfiles](../../images/README.md) are pinned to base digests but
-still need final-image SBOM, scan, signature and promotion by digest. Deployment also needs
-a private secret-delivery mechanism and Kubernetes manifests for web/API/worker.
+still need final-image SBOM, scan, signature and promotion by digest. An
+[internal-only web/API Kubernetes candidate](../../kubernetes/paper-staging/README.md) now exists;
+its images are deliberately invalid, secrets are absent, and no worker or public route is
+declared. Deployment still needs reviewed secret delivery and hosted worker support.
 The web image needs an **owned HTTPS domain** and a production Clerk instance at build time;
 `pk_test_`/`sk_test_` cannot be promoted. Configure API JWKS/issuer and party allowlist from
 that same instance; see [Clerk handoff](../../../docs/release/clerk-production-handoff.md).

@@ -6,7 +6,7 @@ Infrastructure, delivery and operations.
 local/        docker compose development stack (implemented)
 images/       pinned-base web/API/worker build candidates (not promoted)
 tofu/         Separate AWS reference and DigitalOcean paper-staging foundations
-kubernetes/   base manifests and per-environment overlays (not started)
+kubernetes/   internal-only paper-staging web/API candidate (unapplied)
 argocd/       Argo CD applications (not started)
 policies/     admission and network policy (not started)
 observability/ OpenTelemetry, dashboards, alerts (not started)
@@ -19,6 +19,7 @@ The current staging choice is DigitalOcean Amsterdam (`ams3`):
 [`tofu/digitalocean-paper-staging/`](tofu/digitalocean-paper-staging/README.md), recorded in
 [ADR 0047](../docs/adr/0047-digitalocean-paper-staging.md). It has not been applied. The earlier
 [`tofu/paper-foundation/`](tofu/paper-foundation/README.md) remains an unapplied AWS reference.
+The [Kubernetes candidate](kubernetes/paper-staging/README.md) has no public endpoint or worker.
 The current [paper launch review](../docs/release/paper-launch-review.md) records the remaining
 gates before a public deployment.
 

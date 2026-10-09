@@ -59,6 +59,22 @@ jobs:
       - run: tofu init -backend=false -input=false
       - run: tofu validate -no-color
 
+  paper-staging-workloads:
+    name: internal paper staging workload render
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render and keep the base internal-only
+        run: |
+          kubectl kustomize kavrigo-infra/kubernetes/paper-staging > /tmp/kavrigo-paper-staging.yaml
+          grep -q 'registry.invalid/kavrigo-web@sha256:0000000000000000000000000000000000000000000000000000000000000000' /tmp/kavrigo-paper-staging.yaml
+          grep -q 'registry.invalid/kavrigo-api@sha256:0000000000000000000000000000000000000000000000000000000000000000' /tmp/kavrigo-paper-staging.yaml
+          if grep -Eq '^kind: (Ingress|Gateway)$|^  type: LoadBalancer$' /tmp/kavrigo-paper-staging.yaml; then
+            echo 'The staging base must not expose a public endpoint.' >&2
+            exit 1
+          fi
+
   web:
     name: web contracts, lint, typecheck, test and build
     runs-on: ubuntu-latest

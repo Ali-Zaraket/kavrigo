@@ -23,6 +23,9 @@ async function openWorkspace(page: Page) {
 test("public homepage introduces paper mode and opens the app", async ({
   page,
 }) => {
+  const health = await page.request.get("/healthz");
+  expect(health.ok()).toBe(true);
+  expect(await health.json()).toEqual({ status: "ok" });
   await page.goto("/");
   await expect(
     page.getByRole("heading", {

@@ -1,5 +1,12 @@
 # Kavrigo progress
 
+**2026-10-09 internal workload candidate:** Added unapplied Kubernetes manifests for the
+paper-staging web and API only. Both services are ClusterIP with no public ingress; image
+references are deliberately invalid until a signed-digest release overlay exists. Pods run
+non-root with restricted security contexts, process/readiness probes, and ingress isolation.
+The web now exposes a process-only `/healthz`. Hosted paper workers, secret delivery,
+egress policy, licensed data and account/domain setup remain open, so launch stays **NO-GO**.
+
 **2026-10-09 DigitalOcean staging and public homepage:** The owner selected DigitalOcean
 Amsterdam (`ams3`) for a paper-only staging foundation. [ADR 0047](docs/adr/0047-digitalocean-paper-staging.md)
 records the cloud change; a separate, unapplied OpenTofu root plans isolated-worker DOKS,

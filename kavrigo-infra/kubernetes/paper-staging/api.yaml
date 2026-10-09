@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kavrigo-api
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: kavrigo-api
+  template:
+    metadata:
+      labels:
+        app: kavrigo-api
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          # Promotion must replace this non-resolving image with a signed digest.
+          image: registry.invalid/kavrigo-api@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: KAVRIGO_ENV
+              value: staging
+            - name: LIVE_TRADING_ENABLED
+              value: "false"
+            - name: DEFAULT_TRADING_MODE
+              value: paper
+            - name: AUTH_PROVIDER
+              value: jwks
+            - name: AUTH_SESSION_PROFILE
+              value: clerk_v2
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: kavrigo-api-runtime
+                  key: postgres-dsn
+            - name: AUTH_ISSUER
+              valueFrom:
+                secretKeyRef:
+                  name: kavrigo-api-runtime
+                  key: auth-issuer
+            - name: AUTH_JWKS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kavrigo-api-runtime
+                  key: auth-jwks-url
+            - name: AUTH_ALLOWED_PARTIES
+              valueFrom:
+                secretKeyRef:
+                  name: kavrigo-api-runtime
+                  key: auth-allowed-parties-json
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 2
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kavrigo-api
+spec:
+  type: ClusterIP
+  selector:
+    app: kavrigo-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kavrigo-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: kavrigo-api
