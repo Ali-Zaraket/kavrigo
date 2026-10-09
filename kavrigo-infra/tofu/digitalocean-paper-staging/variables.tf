@@ -41,7 +41,7 @@ variable "operator_cidrs" {
   type        = list(string)
 
   validation {
-    condition     = length(var.operator_cidrs) > 0 && alltrue([
+    condition = length(var.operator_cidrs) > 0 && alltrue([
       for cidr in var.operator_cidrs : can(cidrhost(cidr, 0)) && cidr != "0.0.0.0/0" && cidr != "::/0"
     ])
     error_message = "Supply at least one valid restricted operator CIDR."
