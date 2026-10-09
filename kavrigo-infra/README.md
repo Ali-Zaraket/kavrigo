@@ -4,6 +4,7 @@ Infrastructure, delivery and operations.
 
 ```text
 local/        docker compose development stack (implemented)
+images/       pinned-base web/API/worker build candidates (not promoted)
 tofu/         Separate AWS reference and DigitalOcean paper-staging foundations
 kubernetes/   base manifests and per-environment overlays (not started)
 argocd/       Argo CD applications (not started)

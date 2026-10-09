@@ -362,9 +362,9 @@ jobs:
       - uses: github/codeql-action/analyze@v3
 
   build:
-    name: container build
+    name: local and deployment candidate images
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: [quality]
     steps:
       - uses: actions/checkout@v4
@@ -387,6 +387,38 @@ jobs:
           file: kavrigo-infra/local/Dockerfile
           target: worker
           push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build pinned-base API candidate
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: kavrigo-infra/images/python.Dockerfile
+          target: api
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build pinned-base worker candidate
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: kavrigo-infra/images/python.Dockerfile
+          target: worker
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build standalone web candidate without external credentials
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: kavrigo-infra/images/web.Dockerfile
+          target: runtime
+          push: false
+          build-args: |
+            KAVRIGO_ENV=local
+            KAVRIGO_WEB_AUTH_PROVIDER=dev
+            KAVRIGO_WEB_ORIGIN=http://localhost:3000
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

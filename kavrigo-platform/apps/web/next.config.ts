@@ -6,6 +6,7 @@ import { webAuthConfiguration } from "./src/lib/auth-config";
 webAuthConfiguration();
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   poweredByHeader: false,
   async headers() {
     return [

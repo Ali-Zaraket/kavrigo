@@ -28,6 +28,10 @@ create a public endpoint, or make Kavrigo ready for a public release.
 4. Obtain the current DOKS version from the account's Kubernetes options (1.36+ for isolated
    workers), a globally unique registry name and current DB/node sizes. Copy
    `staging.tfvars.example` to ignored `staging.tfvars`, replacing every example value.
+5. Generate and review `.terraform.lock.hcl` on the deployment operator platform, commit it,
+   and switch CI to `-lockfile=readonly` before the first apply. CI currently validates the
+   exact provider version without a committed checksum lock because no deployment account
+   or reviewed state backend exists yet.
 
 ## Validate and review
 
@@ -48,8 +52,9 @@ used by workloads. Record the actual resources and recurring cost.
 
 ## Application dependencies after foundation
 
-The next deployment slice must supply production images built by immutable digest, signed
-with SBOM, a private secret-delivery mechanism, and Kubernetes manifests for web/API/worker.
+The [candidate image Dockerfiles](../../images/README.md) are pinned to base digests but
+still need final-image SBOM, scan, signature and promotion by digest. Deployment also needs
+a private secret-delivery mechanism and Kubernetes manifests for web/API/worker.
 The web image needs an **owned HTTPS domain** and a production Clerk instance at build time;
 `pk_test_`/`sk_test_` cannot be promoted. Configure API JWKS/issuer and party allowlist from
 that same instance; see [Clerk handoff](../../../docs/release/clerk-production-handoff.md).
