@@ -433,6 +433,12 @@ jobs:
           tags: kavrigo-worker:candidate
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Smoke non-root read-only Python candidates
+        run: |
+          docker run --rm --read-only --tmpfs /tmp --user 10001:10001 \
+            kavrigo-api:candidate -c 'import asyncpg, fastapi, kavrigo_api, nautilus_trader, temporalio'
+          docker run --rm --read-only --tmpfs /tmp --user 10001:10001 \
+            kavrigo-worker:candidate -c 'import kavrigo_engine_worker, nautilus_trader, temporalio'
       - name: Build standalone web candidate without external credentials
         uses: docker/build-push-action@v6
         with:

@@ -6,6 +6,12 @@ through a reviewed dependency update. These are **build candidates**, not signed
 release images. The web runtime includes Next.js static assets and the public font-license
 notice. Build from the repository root.
 
+The Python build stage uses the locked workspace dependencies on Debian 13. Its final API and
+worker stages use the official Debian 13 distroless Python 3.13 runtime, with no shell or build
+tools. The venv is created through the runtime's `/usr/bin/python` path, and CI smoke-imports
+both candidates as UID 10001 with a read-only filesystem before scanning their final layers.
+The pinned runtime is refreshed only after ABI, smoke, and final-image vulnerability checks.
+
 For a local smoke image that never contains a Clerk secret:
 
 ```text
