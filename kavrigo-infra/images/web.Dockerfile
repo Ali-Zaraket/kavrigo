@@ -33,6 +33,7 @@ WORKDIR /app
 RUN groupadd --gid 10001 kavrigo && useradd --uid 10001 --gid 10001 --create-home kavrigo
 COPY --from=build --chown=kavrigo:kavrigo /app/.next/standalone ./
 COPY --from=build --chown=kavrigo:kavrigo /app/.next/static ./.next/static
+COPY --from=build --chown=kavrigo:kavrigo /app/public ./public
 USER 10001:10001
 EXPOSE 3000
 CMD ["node", "server.js"]

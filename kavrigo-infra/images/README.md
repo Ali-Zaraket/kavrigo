@@ -3,7 +3,8 @@
 `web.Dockerfile` produces the Next.js standalone server. `python.Dockerfile` has `api` and
 `worker` targets. Both base images are pinned to immutable manifest digests; refresh them
 through a reviewed dependency update. These are **build candidates**, not signed or promoted
-release images. Build from the repository root.
+release images. The web runtime includes Next.js static assets and the public font-license
+notice. Build from the repository root.
 
 For a local smoke image that never contains a Clerk secret:
 
