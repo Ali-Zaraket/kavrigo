@@ -465,8 +465,6 @@ jobs:
           format: json
           output: trivy-api.json
           exit-code: "0"
-      - name: Enforce final API scan
-        run: python3 scripts/check_trivy_image_report.py trivy-api.json --image api
       - name: Scan final worker candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -477,8 +475,6 @@ jobs:
           format: json
           output: trivy-worker.json
           exit-code: "0"
-      - name: Enforce final worker scan
-        run: python3 scripts/check_trivy_image_report.py trivy-worker.json --image worker
       - name: Scan final web candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -489,8 +485,13 @@ jobs:
           format: json
           output: trivy-web.json
           exit-code: "0"
-      - name: Enforce final web scan
-        run: python3 scripts/check_trivy_image_report.py trivy-web.json --image web
+      - name: Enforce all final image scans
+        run: |
+          result=0
+          python3 scripts/check_trivy_image_report.py trivy-api.json --image api || result=1
+          python3 scripts/check_trivy_image_report.py trivy-worker.json --image worker || result=1
+          python3 scripts/check_trivy_image_report.py trivy-web.json --image web || result=1
+          exit "$result"
 
   # SBOM generation (Syft), image signing (Cosign) and private-registry promotion belong in
   # the reviewed deployment pipeline (MASTER_BUILD_SPEC.md §24.4, §36). These CI candidates
