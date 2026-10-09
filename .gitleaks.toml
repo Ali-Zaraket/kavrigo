@@ -22,7 +22,7 @@ description = "Possible wallet seed phrase assignment"
 regex = '''(?i)(mnemonic|seed[_-]?phrase|recovery[_-]?phrase)\s*[:=]\s*['"](\w+\s+){11,}\w+['"]'''
 tags = ["wallet"]
 
-[allowlist]
+[[allowlists]]
 description = "Placeholders and documentation"
 paths = [
   '''\.env\.example$''',
@@ -33,3 +33,11 @@ regexes = [
   '''replace_me''',
   '''kavrigo_local_dev''',
 ]
+
+[[allowlists]]
+description = "Documented BuildKit environment variable name, not a key value"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''^kavrigo-infra/images/README\.md$''']
+regexes = ['''^\s*--secret id=clerk_secret_key,env=CLERK_SECRET_KEY \\$''']

@@ -4,7 +4,7 @@ FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca92
 
 WORKDIR /app
 RUN npm install --global pnpm@11.19.0
-COPY kavrigo-platform/apps/web/package.json kavrigo-platform/apps/web/pnpm-lock.yaml ./
+COPY kavrigo-platform/apps/web/package.json kavrigo-platform/apps/web/pnpm-lock.yaml kavrigo-platform/apps/web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY kavrigo-platform/apps/web/ ./
 
