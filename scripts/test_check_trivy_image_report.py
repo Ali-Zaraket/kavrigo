@@ -1,5 +1,8 @@
 """Check that final-image scan failures remain enforceable and publicly diagnosable."""
 
+# This suite runs with system Python before workspace dependencies are installed.
+# ruff: noqa: PT009, PT027
+
 from __future__ import annotations
 
 import contextlib
@@ -14,7 +17,8 @@ _MODULE_PATH = Path(__file__).with_name("check_trivy_image_report.py")
 _TEST_TEMP = _MODULE_PATH.parents[1] / ".local" / "trivy-report-tests"
 _TEST_TEMP.mkdir(parents=True, exist_ok=True)
 _SPEC = importlib.util.spec_from_file_location("kavrigo_trivy_report", _MODULE_PATH)
-assert _SPEC is not None and _SPEC.loader is not None
+assert _SPEC is not None
+assert _SPEC.loader is not None
 _MODULE = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_MODULE)
 check_report = _MODULE.check_report
