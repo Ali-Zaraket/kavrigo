@@ -56,6 +56,14 @@ image with `pk_test_`/`sk_test_` keys or an HTTP origin. The runtime must receiv
 `KAVRIGO_ENV`, `KAVRIGO_WEB_AUTH_PROVIDER`, `KAVRIGO_WEB_ORIGIN`, and publishable key, plus a
 restricted `CLERK_SECRET_KEY` and API connection settings.
 
+The web image writes a versioned build policy after Next.js compiles the client bundle. Its
+entrypoint checks the runtime stage, authentication provider, origin, and hash of the public
+Clerk key against that policy before starting the server. A local/dev image cannot be promoted
+to staging or paper production by changing environment variables. Rebuild with the intended
+deployment values, then supply matching runtime values. This catches configuration drift; it
+is not a substitute for image signing, digest pinning, or Clerk's runtime validation. The
+policy contains no Clerk secret key and startup errors do not print key values.
+
 Before a release, generate and retain an SBOM, scan the final images, sign their immutable
 digests, push only to the reviewed private registry, and deploy by digest. Registry credentials
 must be short-lived or separately rotated; do not embed them in image layers or GitHub Actions

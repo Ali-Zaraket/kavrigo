@@ -25,6 +25,9 @@ RUN --mount=type=secret,id=clerk_secret_key \
     fi; \
     pnpm build
 
+COPY kavrigo-infra/images/web-build-policy.cjs /app/web-build-policy.cjs
+RUN node /app/web-build-policy.cjs stamp
+
 FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
@@ -33,6 +36,8 @@ WORKDIR /app
 COPY --from=build --chown=10001:10001 /app/.next/standalone ./
 COPY --from=build --chown=10001:10001 /app/.next/static ./.next/static
 COPY --from=build --chown=10001:10001 /app/public ./public
+COPY --from=build --chown=10001:10001 /app/web-build-policy.cjs /app/web-build-policy.cjs
+COPY --from=build --chown=10001:10001 /app/web-build-policy.json /app/web-build-policy.json
 USER 10001:10001
 EXPOSE 3000
-CMD ["server.js"]
+CMD ["web-build-policy.cjs", "start"]

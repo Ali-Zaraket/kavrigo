@@ -1,5 +1,11 @@
 # Kavrigo progress
 
+**2026-10-10 web image environment guard:** The standalone web image now records a versioned
+build policy after Next.js compilation and checks stage, auth provider, origin, and the public
+Clerk key hash before starting. CI tests both matching configuration and rejection of a local
+image started as staging. This prevents accidental environment-only promotion of a bundle whose
+public values were frozen at build time. It does not change the paper launch NO-GO decision.
+
 **2026-10-10 image release gate:** [CI run 67](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38045234630)
 passed ten non-image jobs, Python import smokes, and a non-root/read-only distroless Node 24 web
 homepage smoke. The web image scan has zero HIGH/CRITICAL findings; the API and worker each have

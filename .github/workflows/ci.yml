@@ -389,6 +389,8 @@ jobs:
     needs: [quality]
     steps:
       - uses: actions/checkout@v4
+      - name: Test web image build/runtime policy
+        run: node --test kavrigo-infra/images/web-build-policy.test.cjs
       - uses: docker/setup-buildx-action@v3
       - name: Validate the local compose stack
         run: docker compose -f kavrigo-infra/local/docker-compose.yml config -q
@@ -541,6 +543,20 @@ jobs:
           detail=$(docker logs --tail 20 "$container" 2>&1 | grep -m 1 -E 'Error:|error:' | cut -c 1-500 || true)
           echo "::error::Web candidate startup or homepage smoke failed: $status $detail"
           exit 1
+      - name: Reject promoted local-auth web candidate
+        run: |
+          container=$(docker run -d --read-only --tmpfs /tmp --user 10001:10001 \
+            -e KAVRIGO_ENV=staging -e KAVRIGO_WEB_AUTH_PROVIDER=dev \
+            -e KAVRIGO_WEB_ORIGIN=http://localhost:3000 kavrigo-web:candidate)
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          for attempt in {1..10}; do
+            if [ "$(docker inspect -f '{{.State.Running}}' "$container")" != true ]; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(docker inspect -f '{{.State.ExitCode}}' "$container")" != 0
+          docker logs "$container" 2>&1 | grep -Fq 'Web build/runtime policy mismatch: environment'
       - name: Enforce all final image scans
         run: |
           result=0
