@@ -14,11 +14,16 @@ The pinned runtime is refreshed only after ABI, smoke, and final-image vulnerabi
 CI retains CycloneDX SBOMs and full Trivy JSON reports for all three candidates as a
 short-lived review artifact, even when the final vulnerability gate fails. These are evidence
 for review, not signatures or deployable release artifacts.
-The [2026-10-09 CI run](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37983068033)
-passed the read-only runtime smoke but **failed** the API final-image scan on high-severity
-Debian 13 Python/Expat/ncurses findings with no fixed version reported by Trivy. This image is
-not eligible for signing or promotion. A different maintained runtime or documented,
-independently reviewed vulnerability disposition is required; the CI gate remains blocking.
+The [2026-10-09 CI run](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37985383354)
+passed ten non-image jobs, built all three final candidates, and retained their SBOMs and full
+Trivy reports. It **failed** the release gate: 42 HIGH/CRITICAL findings each in API and worker,
+and 66 in the web image. The first reported Debian package findings had no fixed version. A
+smaller distroless Node 24 web runtime built in CI but failed its first read-only startup smoke;
+a diagnostic rerun moves that smoke after report collection. None of these images is eligible for
+signing or promotion. A maintained, verified runtime or independently reviewed vulnerability
+disposition is required; the CI gate remains blocking.
+The [runtime review](../../../docs/release/image-runtime-review.md) records exact candidate
+digests, scan counts, and criteria for a subsequent image trial.
 
 For a local smoke image that never contains a Clerk secret:
 

@@ -455,20 +455,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke non-root read-only web candidate
-        run: |
-          container=$(docker run -d --rm --read-only --tmpfs /tmp --user 10001:10001 \
-            -p 127.0.0.1:58302:3000 kavrigo-web:candidate)
-          trap 'docker stop "$container"' EXIT
-          for attempt in {1..30}; do
-            if curl --fail --silent --output /dev/null http://127.0.0.1:58302/; then
-              exit 0
-            fi
-            sleep 1
-          done
-          docker logs "$container"
-          exit 1
-
       - name: Scan final API candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -535,6 +521,24 @@ jobs:
             trivy-*.json
           if-no-files-found: error
           retention-days: 14
+      - name: Smoke non-root read-only web candidate
+        run: |
+          container=$(docker run -d --read-only --tmpfs /tmp --user 10001:10001 \
+            -p 127.0.0.1:58302:3000 kavrigo-web:candidate)
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:58302/; then
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' "$container")" != true ]; then
+              break
+            fi
+            sleep 1
+          done
+          status=$(docker inspect -f '{{.State.Status}}/{{.State.ExitCode}}' "$container")
+          detail=$(docker logs --tail 3 "$container" 2>&1 | tr '\n' ' ' | cut -c 1-500)
+          echo "::error::Web candidate startup or homepage smoke failed: $status $detail"
+          exit 1
       - name: Enforce all final image scans
         run: |
           result=0
