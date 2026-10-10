@@ -29,6 +29,11 @@ Other runtime paths have material constraints:
   candidate for a future authenticated trial, but `dhi.io` requires a Docker account login and
   a reviewed CI/cluster pull-credential flow. The image must still pass the same ABI, imports,
   read-only execution and final scan checks; a catalog description is not a scan result.
+- Chainguard's [public Python image](https://images.chainguard.dev/directory/image/python/versions)
+  currently tracks Python 3.14 as `latest`; its Python 3.13 tags require an entitlement. A
+  public `latest` pull is therefore not a compatible drop-in for Kavrigo's locked 3.13 build.
+  An entitled 3.13 trial would still need native-wheel ABI, import, read-only and final-scan
+  evidence before a runtime change.
 - The [official Node Alpine image](https://hub.docker.com/_/node) uses musl rather than glibc.
   Kavrigo's locked Next.js build includes native `sharp` assets, so switching only its final
   stage is not safe without a matching musl build and runtime test. The Python dependency set

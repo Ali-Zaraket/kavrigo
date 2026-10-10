@@ -4,11 +4,17 @@ Kavrigo's local Clerk development instance proves the sign-in integration, not p
 identity. Keep `LIVE_TRADING_ENABLED=false` and `DEFAULT_TRADING_MODE=paper`. A public launch
 remains NO-GO until the [paper launch review](paper-launch-review.md) is satisfied.
 
-## Account owner: create the production instance
+**2026-10-10 status:** The owner reports control of `kavrigo.com` and a ready Clerk production
+instance. Public DNS resolves `clerk.kavrigo.com` and `accounts.kavrigo.com` to Clerk, and
+`https://clerk.kavrigo.com/.well-known/jwks.json` returned one RS256 signing key during a
+read-only check. This proves DNS and JWKS reachability, not a deployed web session, MFA flow,
+tenant isolation, or token acceptance by the API. Production key values remain outside Git.
 
-1. Acquire and verify the intended web domain. Do not assume `kavrigo.com` is owned. Create a
-   **production** Clerk instance for that domain and follow Clerk's DNS/TLS instructions. The
-   `*.accounts.dev` Frontend API and `pk_test_` / `sk_test_` keys are development-only.
+## Account owner: finish production instance configuration
+
+1. Use the now-controlled `kavrigo.com` domain and the **production** Clerk instance. Follow
+   Clerk's DNS/TLS instructions for any newly introduced hostname. The `*.accounts.dev`
+   Frontend API and `pk_test_` / `sk_test_` keys are development-only.
 2. In the production instance, configure allowed application origins, sign-in/sign-up paths,
    redirect URLs and any OAuth credentials separately. Check which development settings were
    copied; do not assume OAuth, custom paths or other integrations transferred. For the first

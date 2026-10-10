@@ -1,5 +1,11 @@
 # Kavrigo progress
 
+**2026-10-10 domain and production identity preparation:** The owner reports control of
+`kavrigo.com`, active Cloudflare DNS, and a ready Clerk production instance. The public Clerk
+Frontend API CNAME and RS256 JWKS endpoint responded to read-only checks. DigitalOcean login is
+working, but the new account has no VPC and NAT preview eligibility awaits support. No hosted
+session, production secret delivery, workload, or public Kavrigo endpoint has been verified.
+
 **2026-10-10 web image environment guard:** The standalone web image now records a versioned
 build policy after Next.js compilation and checks stage, auth provider, origin, and the public
 Clerk key hash before starting. CI tests both matching configuration and rejection of a local
