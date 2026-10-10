@@ -25,15 +25,14 @@ RUN --mount=type=secret,id=clerk_secret_key \
     fi; \
     pnpm build
 
-FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS runtime
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 WORKDIR /app
-RUN groupadd --gid 10001 kavrigo && useradd --uid 10001 --gid 10001 --create-home kavrigo
-COPY --from=build --chown=kavrigo:kavrigo /app/.next/standalone ./
-COPY --from=build --chown=kavrigo:kavrigo /app/.next/static ./.next/static
-COPY --from=build --chown=kavrigo:kavrigo /app/public ./public
+COPY --from=build --chown=10001:10001 /app/.next/standalone ./
+COPY --from=build --chown=10001:10001 /app/.next/static ./.next/static
+COPY --from=build --chown=10001:10001 /app/public ./public
 USER 10001:10001
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["server.js"]

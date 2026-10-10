@@ -1,7 +1,7 @@
 """Fail CI on high/critical findings in a final image's Trivy JSON report.
 
 Only bounded vulnerability identifiers and package versions reach public CI annotations.
-The report itself remains on the runner and is not uploaded as an artifact.
+The full report is retained with the candidate SBOM for a short-lived review artifact.
 """
 
 from __future__ import annotations

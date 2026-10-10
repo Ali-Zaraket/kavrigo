@@ -455,6 +455,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Smoke non-root read-only web candidate
+        run: |
+          container=$(docker run -d --rm --read-only --tmpfs /tmp --user 10001:10001 \
+            -p 127.0.0.1:58302:3000 kavrigo-web:candidate)
+          trap 'docker stop "$container"' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:58302/; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container"
+          exit 1
+
       - name: Scan final API candidate
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
@@ -529,6 +543,6 @@ jobs:
           python3 scripts/check_trivy_image_report.py trivy-web.json --image web || result=1
           exit "$result"
 
-  # SBOM generation (Syft), image signing (Cosign) and private-registry promotion belong in
-  # the reviewed deployment pipeline (MASTER_BUILD_SPEC.md §24.4, §36). These CI candidates
-  # are scanned but not signed or published.
+  # Image signing (Cosign) and private-registry promotion belong in the reviewed deployment
+  # pipeline (MASTER_BUILD_SPEC.md §24.4, §36). These CI candidates are scanned and have
+  # short-lived SBOM artifacts, but they are not signed or published.
