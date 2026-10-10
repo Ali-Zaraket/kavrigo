@@ -10,6 +10,10 @@ The image names use `registry.invalid` and a zero digest on purpose. This base c
 written. An independently reviewed release overlay must replace both with scanned, signed,
 immutable digests from the private registry. `kubectl kustomize kavrigo-infra/kubernetes/paper-staging`
 renders the candidate without contacting a cluster; it does **not** authorize apply.
+CI parses the rendered resources with `manifest_policy.py` and rejects added resources, public
+service exposure, host networking/ports, inline credentials, weakened pod isolation, non-paper
+settings, or changes to the two ingress policies. This is a review tripwire for the current
+internal-only candidate; it does not prove a cluster enforces NetworkPolicy.
 
 After image signing and digest verification, `release_overlay.py` can write a preview overlay
 to a **new** ignored `.local/` directory. It accepts a DigitalOcean registry name plus distinct
@@ -17,6 +21,9 @@ to a **new** ignored `.local/` directory. It accepts a DigitalOcean registry nam
 and refuses to overwrite an existing directory. Run `kubectl kustomize` on that new directory
 and review the full output. The helper does not inspect signatures, fetch images, create
 Secrets, contact Kubernetes, or publish GitOps state.
+Run `manifest_policy.py --release <rendered-overlay.yaml>` on the rendered overlay as well;
+release mode accepts only nonzero DigitalOcean registry digests and the same paper-only
+workload boundary. A passing static check is not signature verification or permission to deploy.
 
 ## Required external configuration
 

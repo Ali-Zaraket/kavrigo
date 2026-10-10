@@ -65,15 +65,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Render and keep the base internal-only
+      - uses: astral-sh/setup-uv@v5
+      - name: Render the staging base
         run: |
           kubectl kustomize kavrigo-infra/kubernetes/paper-staging > /tmp/kavrigo-paper-staging.yaml
-          grep -q 'registry.invalid/kavrigo-web@sha256:0000000000000000000000000000000000000000000000000000000000000000' /tmp/kavrigo-paper-staging.yaml
-          grep -q 'registry.invalid/kavrigo-api@sha256:0000000000000000000000000000000000000000000000000000000000000000' /tmp/kavrigo-paper-staging.yaml
-          if grep -Eq '^kind: (Ingress|Gateway)$|^  type: LoadBalancer$' /tmp/kavrigo-paper-staging.yaml; then
-            echo 'The staging base must not expose a public endpoint.' >&2
-            exit 1
-          fi
+      - name: Enforce internal paper-only manifest policy
+        run: |
+          uv run --no-project --with PyYAML==6.0.3 python kavrigo-infra/kubernetes/paper-staging/manifest_policy.py /tmp/kavrigo-paper-staging.yaml
+          uv run --no-project --with PyYAML==6.0.3 python kavrigo-infra/kubernetes/paper-staging/test_manifest_policy.py
       - name: Validate digest-only release overlay preview
         run: |
           python3 kavrigo-infra/kubernetes/paper-staging/test_release_overlay.py
