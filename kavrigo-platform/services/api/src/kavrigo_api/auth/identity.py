@@ -121,7 +121,7 @@ class JwksIdentityProvider:
         # rotation survivable without either an outage or a fetch on every request.
         self._jwk_client = PyJWKClient(
             jwks_url,
-            # Per-key LRU entries have no TTL in pinned PyJWT 2.13.0; they would outlive
+            # PyJWT's per-key LRU entries have no TTL; they would outlive
             # removal from a refreshed JWKS. Cache the set only, with the bounded lifespan.
             cache_keys=False,
             lifespan=cache_lifespan_seconds,

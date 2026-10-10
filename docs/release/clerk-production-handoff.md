@@ -22,8 +22,9 @@ tenant isolation, or token acceptance by the API. Production key values remain o
    Lebanon test user. Configure TOTP plus backup codes and a supported step-up path for
    high-impact risk-policy actions. Verify the actual production plan supports the required
    MFA options.
-3. Store the `pk_live_` publishable key in the web build environment and `sk_live_` secret key
-   in the web runtime secret store. Never commit either key or send it in chat. Configure the
+3. Store the `pk_live_` publishable key in the web build environment and runtime configuration.
+   Deliver the matching `sk_live_` key as a temporary BuildKit secret for the web build and
+   through the web runtime secret store. Never commit either key or send it in chat. Configure the
    API Frontend API issuer and exact JWKS URL from the **same production instance**. Record the
    domain, key ownership, rotation contact and incident process in the deployment change.
 
@@ -33,8 +34,8 @@ tenant isolation, or token acceptance by the API. Production key values remain o
 |---|---|---|
 | Web build and runtime | `KAVRIGO_ENV` | `staging` or `paper-prod` |
 | Web build and runtime | `KAVRIGO_WEB_AUTH_PROVIDER` | `clerk` |
-| Web build | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_live_...` from the chosen production instance |
-| Web runtime secret | `CLERK_SECRET_KEY` | Matching `sk_live_...` |
+| Web build and runtime | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_live_...` from the chosen production instance |
+| Web build secret and runtime secret | `CLERK_SECRET_KEY` | Matching `sk_live_...`; build delivery uses BuildKit `--secret`, never `--build-arg` |
 | Web build and runtime | `KAVRIGO_WEB_ORIGIN` | Exact owned HTTPS origin, such as `https://app.<owned-domain>` |
 | API | `AUTH_PROVIDER` / `AUTH_SESSION_PROFILE` | `jwks` / `clerk_v2` |
 | API | `AUTH_ISSUER` | Production Clerk Frontend API HTTPS **origin**, no path |
@@ -43,7 +44,8 @@ tenant isolation, or token acceptance by the API. Production key values remain o
 
 Build the web image **for the target Clerk instance**. Next.js embeds `NEXT_PUBLIC_` values
 at build time; changing the publishable key only at runtime cannot repoint an existing image.
-Keep the server secret in the runtime secret store, not in the image, repository or CI logs.
+Keep the server secret in the runtime secret store and provide it ephemerally to BuildKit during
+the image build, never in the image, repository or CI logs.
 An instance switch requires a new web build and matching API issuer configuration.
 
 The web build rejects a missing production environment and development Clerk keys in `staging`

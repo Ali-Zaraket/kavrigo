@@ -23,6 +23,17 @@ passed with those values supplied and reported no blocking web-image findings. T
 `node:24-bookworm-slim` web runtime had 66 HIGH/CRITICAL findings in
 [CI run 64](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37985383354).
 
+The later [CI run 38063760190](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38063760190)
+retained another scan of the same Python runtime candidates. Each still had 42 HIGH/CRITICAL
+findings: 31 Debian OS findings and 11 Python-package findings. The Python findings were six
+for PyJWT 2.13.0, two for urllib3 2.7.0, and one each for fsspec 2026.2.0, msgpack 1.1.2,
+and setuptools 70.3.0. The API's direct PyJWT requirement and workspace lock now require
+2.15.1, but this is a source change awaiting a fresh final-image scan; it does not clear the
+release gate. NautilusTrader 1.231.0 pins fsspec 2026.2.0, so fsspec cannot be updated inside
+the current stable dependency set without a separate compatibility decision. The OS findings
+remain in the pinned base. The other Python package findings need final-image path attribution
+before changing build inputs or claiming a fix.
+
 Other runtime paths have material constraints:
 
 - Docker's [Community hardened Python image](https://docs.docker.com/dhi/get-started/) is a
