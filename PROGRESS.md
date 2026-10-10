@@ -1,5 +1,15 @@
 # Kavrigo progress
 
+**2026-10-10 image release gate:** [CI run 67](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38045234630)
+passed ten non-image jobs, Python import smokes, and a non-root/read-only distroless Node 24 web
+homepage smoke. The web image scan has zero HIGH/CRITICAL findings; the API and worker each have
+42 and the aggregate gate remains failed. All three SBOMs and Trivy reports were retained for
+review. No candidate is signed or promoted. The [runtime review](docs/release/image-runtime-review.md)
+and [paper launch review](docs/release/paper-launch-review.md) remain NO-GO; production Clerk,
+licensed data, hosted services, independent security/legal review and live operating evidence
+are still absent. Next.js announced an October 14 security update whose affected versions are
+not yet known; recheck the locked web dependencies when its advisory is published.
+
 **2026-10-09 internal workload candidate:** Added unapplied Kubernetes manifests for the
 paper-staging web and API only. Both services are ClusterIP with no public ingress; image
 references are deliberately invalid until a signed-digest release overlay exists. Pods run

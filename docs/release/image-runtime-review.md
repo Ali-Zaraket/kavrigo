@@ -3,26 +3,25 @@
 **Decision: do not promote a candidate image.** The final-image HIGH/CRITICAL Trivy gate stays
 blocking. A green source/lockfile scan and successful import smoke do not clear findings in the
 runtime filesystem. Counts below are for the exact pinned images and vulnerability database used
-by [CI run 64](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37985383354); they can change
+by [CI run 67](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38045234630); they can change
 as the advisory database or image digests change. The run retained full JSON reports and
-CycloneDX SBOMs in the `image-review-e318c619af9ee3e92877be1f10b13578dd7731e1` artifact.
+CycloneDX SBOMs in the `image-review-96bd7d36925db312e1a13daa961e59c8fe0df080` artifact.
 
 | Candidate | Pinned runtime | CI HIGH/CRITICAL | Status |
 |---|---|---:|---|
 | API | `gcr.io/distroless/python3-debian13:nonroot@sha256:83aa8d4f74a4d7f7cf2d472054139bef71a927b76c680c0f2e1021d6b1d6d732` | 42 | Import smoke passed; release gate failed. |
 | Worker | Same Python 3.13 runtime | 42 | Import smoke passed; release gate failed. |
-| Web | `node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20` | 66 | Release gate failed. |
+| Web | `gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e` | 0 | Read-only non-root homepage smoke passed; scan gate passed for this image. |
 
 The official [distroless image catalog](https://github.com/GoogleContainerTools/distroless)
 publishes Debian 13 Python 3 and Node 24 runtimes. Its current Python `:nonroot` manifest digest
-was checked again on 2026-10-10 and matched the pinned digest. The web runtime is being trialed on
-the official [distroless Node 24](https://github.com/GoogleContainerTools/distroless/blob/main/nodejs/README.md)
-image, pinned by manifest digest in `web.Dockerfile`. [CI run 65](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38043942589)
-built it, but the read-only, non-root startup smoke failed. [CI run 66](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38044547242)
-retained its scan artifacts before repeating the smoke. The web process ran, but `/` failed in
-middleware. The smoke omitted `KAVRIGO_ENV` at runtime, which the web configuration requires in
-production mode; a rerun with the correct paper-local environment is needed to confirm this
-diagnosis. Do not assume the distroless runtime is viable yet.
+was checked again on 2026-10-10 and matched the pinned digest. The web candidate now uses the
+official [distroless Node 24](https://github.com/GoogleContainerTools/distroless/blob/main/nodejs/README.md)
+image, pinned by manifest digest in `web.Dockerfile`. Its first startup smoke omitted required
+runtime environment values; [CI run 67](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38045234630)
+passed with those values supplied and reported no blocking web-image findings. The previous
+`node:24-bookworm-slim` web runtime had 66 HIGH/CRITICAL findings in
+[CI run 64](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37985383354).
 
 Other runtime paths have material constraints:
 

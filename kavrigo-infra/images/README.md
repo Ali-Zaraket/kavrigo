@@ -14,16 +14,14 @@ The pinned runtime is refreshed only after ABI, smoke, and final-image vulnerabi
 CI retains CycloneDX SBOMs and full Trivy JSON reports for all three candidates as a
 short-lived review artifact, even when the final vulnerability gate fails. These are evidence
 for review, not signatures or deployable release artifacts.
-The [2026-10-09 CI run](https://github.com/Ali-Zaraket/kavrigo/actions/runs/37985383354)
-passed ten non-image jobs, built all three final candidates, and retained their SBOMs and full
-Trivy reports. It **failed** the release gate: 42 HIGH/CRITICAL findings each in API and worker,
-and 66 in the web image. The first reported Debian package findings had no fixed version. A
-smaller distroless Node 24 web runtime built in CI but failed its first read-only startup smoke;
-a diagnostic rerun retained reports, and showed the smoke lacked the required runtime environment
-values. The corrected smoke remains unverified. None of these images is eligible for
-signing or promotion. A maintained, verified runtime or independently reviewed vulnerability
-disposition is required; the CI gate remains blocking.
-The [runtime review](../../../docs/release/image-runtime-review.md) records exact candidate
+The [2026-10-10 CI run](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38045234630)
+passed ten non-image jobs and non-root, read-only smokes for Python imports and the web homepage.
+It retained all three SBOMs and full Trivy reports. The distroless Node 24 web candidate had
+zero HIGH/CRITICAL findings; API and worker each had 42. The first reported Debian Expat findings
+had no fixed version. None of the candidates is eligible for signing or promotion while the
+aggregate gate fails. A maintained, verified Python runtime or independently reviewed
+vulnerability disposition is required; the CI gate remains blocking.
+The [runtime review](../../docs/release/image-runtime-review.md) records exact candidate
 digests, scan counts, and criteria for a subsequent image trial.
 
 For a local smoke image that never contains a Clerk secret:
