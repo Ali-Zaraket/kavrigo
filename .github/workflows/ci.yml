@@ -524,6 +524,8 @@ jobs:
       - name: Smoke non-root read-only web candidate
         run: |
           container=$(docker run -d --read-only --tmpfs /tmp --user 10001:10001 \
+            -e KAVRIGO_ENV=local -e KAVRIGO_WEB_AUTH_PROVIDER=dev \
+            -e KAVRIGO_WEB_ORIGIN=http://localhost:3000 \
             -p 127.0.0.1:58302:3000 kavrigo-web:candidate)
           trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
           for attempt in {1..30}; do
@@ -536,7 +538,7 @@ jobs:
             sleep 1
           done
           status=$(docker inspect -f '{{.State.Status}}/{{.State.ExitCode}}' "$container")
-          detail=$(docker logs --tail 3 "$container" 2>&1 | tr '\n' ' ' | cut -c 1-500)
+          detail=$(docker logs --tail 20 "$container" 2>&1 | grep -m 1 -E 'Error:|error:' | cut -c 1-500 || true)
           echo "::error::Web candidate startup or homepage smoke failed: $status $detail"
           exit 1
       - name: Enforce all final image scans

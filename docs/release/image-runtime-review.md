@@ -18,9 +18,11 @@ publishes Debian 13 Python 3 and Node 24 runtimes. Its current Python `:nonroot`
 was checked again on 2026-10-10 and matched the pinned digest. The web runtime is being trialed on
 the official [distroless Node 24](https://github.com/GoogleContainerTools/distroless/blob/main/nodejs/README.md)
 image, pinned by manifest digest in `web.Dockerfile`. [CI run 65](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38043942589)
-built it, but the read-only, non-root startup smoke failed. The public job summary contains only
-an exit code, and that run stopped before scanning. The next run moves the smoke after report
-collection and emits a bounded startup diagnostic; do not assume this runtime is viable yet.
+built it, but the read-only, non-root startup smoke failed. [CI run 66](https://github.com/Ali-Zaraket/kavrigo/actions/runs/38044547242)
+retained its scan artifacts before repeating the smoke. The web process ran, but `/` failed in
+middleware. The smoke omitted `KAVRIGO_ENV` at runtime, which the web configuration requires in
+production mode; a rerun with the correct paper-local environment is needed to confirm this
+diagnosis. Do not assume the distroless runtime is viable yet.
 
 Other runtime paths have material constraints:
 

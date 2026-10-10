@@ -19,7 +19,8 @@ passed ten non-image jobs, built all three final candidates, and retained their 
 Trivy reports. It **failed** the release gate: 42 HIGH/CRITICAL findings each in API and worker,
 and 66 in the web image. The first reported Debian package findings had no fixed version. A
 smaller distroless Node 24 web runtime built in CI but failed its first read-only startup smoke;
-a diagnostic rerun moves that smoke after report collection. None of these images is eligible for
+a diagnostic rerun retained reports, and showed the smoke lacked the required runtime environment
+values. The corrected smoke remains unverified. None of these images is eligible for
 signing or promotion. A maintained, verified runtime or independently reviewed vulnerability
 disposition is required; the CI gate remains blocking.
 The [runtime review](../../../docs/release/image-runtime-review.md) records exact candidate
