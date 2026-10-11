@@ -1,6 +1,7 @@
 # Data provider and licence matrix
 
-**Status:** researched for development selection; no production licence is confirmed.
+**Status:** the owner has private CoinGecko support correspondence for review; no paid plan,
+active production entitlement, or approved retention/deletion procedure is recorded.
 
 `MASTER_BUILD_SPEC.md` §8.3: *data licensing is a launch blocker.* The legal right to use and
 display a provider's data is as much an engineering requirement as the API key. A public,
@@ -36,7 +37,7 @@ the API until the corresponding row is completed with written confirmation.
 | Binance Spot Testnet WS | local execution-disabled agent rehearsal | native WS | **simulated practice environment only** | never present as real-market data or performance evidence |
 | Coinbase Exchange public WS | none | native WS adapter retained for tests only | **blocked** | Aug. 7, 2026 terms restrict third-party apps, external display/derived works, and AI/agent use without written consent |
 | Kraken public API | none | not enabled | **blocked pending permission** | official API guide requires prior permission for non-personal commercial use |
-| CoinGecko | reference universe, metadata and production price candidate | commercial API | **commercial contract required** | select a plan covering application display, derived data and retention; no raw API redistribution |
+| CoinGecko | BTC/ETH prices, charts, internal paper decisions and backtests | paid commercial API | **scope clarification held privately; not activated** | subscribe to a suitable plan, review governing terms, implement attribution and deletion controls; no raw API or bulk-data redistribution |
 | CoinGlass | funding, OI, liquidations, positioning | REST (production), MCP (research) | **not confirmed** | commercial display rights; MCP is beta (ADR 0005) |
 | Dune | custom on-chain queries, decoded contract data | API + MCP | **not confirmed** | derived-data and display rights |
 | CryptoQuant | exchange-flow and on-chain metrics | REST | deferred | evaluate after V1 |
@@ -92,9 +93,28 @@ inside one entity and, absent written consent, prohibit building an application 
 users, external display of market data or derived works, and using market data to operate an AI
 agent. Keeping an adapter for deterministic parser tests does not access Coinbase data.
 
-CoinGecko is the clearest production procurement path found: its official licensing page offers
-commercial application-display and redistribution options. It is not enabled until a suitable
-plan and written rights are recorded in this matrix.
+CoinGecko is the clearest production procurement path found. The owner has supplied private
+support correspondence about Kavrigo's proposed in-app display, internal snapshots, paper
+decisions, backtests and deletion on termination. A named reviewer must inspect that record
+alongside the selected plan and governing terms; its contents are not reproduced in this public
+repository. The correspondence is not an active plan or an executed agreement. A specific
+deletion deadline and treatment of backups remain unconfirmed.
+
+As checked on 2026-10-11, the public [plan comparison](https://www.coingecko.com/en/api/pricing)
+lists Basic as Commercial but markets it for personal use cases. It lists 100,000 monthly call
+credits, 300 calls/minute, two years of daily/hourly history, and only one day of five-minute
+history for Basic; plan limits must be rechecked at purchase. Its attribution guidance requires
+a prominent “Data provided by CoinGecko” link to the API page. The
+[API Terms](https://www.coingecko.com/en/api_terms) separately specify a
+prominent “Powered by CoinGecko” credit and require prompt permanent deletion on termination;
+the [brand guide](https://brand.coingecko.com/resources/attribution-guide) lists multiple text
+formats. Resolve the exact attribution presentation and deletion of backups in the release legal
+review. The API Terms say they supersede prior email understandings, so support correspondence
+must not be treated as a standalone licence grant.
+
+Production CoinGecko ingestion remains disabled until the selected paid plan is active, its
+terms and rights are reviewed and recorded in the entitlement ledger, and attribution, rate
+budgeting, retention, cancellation deletion and backup purge are tested.
 
 Binance Spot Testnet is separately enabled for a local execution-disabled rehearsal. Its venue
 identity is `BINANCE_TESTNET`, and every persisted evidence item says the source is simulated.
@@ -109,4 +129,7 @@ Sources reviewed:
 - [Coinbase Market Data Terms of Use](https://www.coinbase.com/legal/market_data)
 - [Kraken API guide](https://docs-legacy.kraken.com/api/docs/guides/global-intro/)
 - [CoinGecko commercial data licensing](https://www.coingecko.com/en/api/enterprise/data-license)
+- [CoinGecko API plans](https://www.coingecko.com/en/api/pricing)
+- [CoinGecko API Terms](https://www.coingecko.com/en/api_terms)
+- [CoinGecko attribution guide](https://brand.coingecko.com/resources/attribution-guide)
 - [Binance Spot Testnet WebSocket streams](https://github.com/binance/binance-spot-api-docs/blob/master/testnet/web-socket-streams.md)
