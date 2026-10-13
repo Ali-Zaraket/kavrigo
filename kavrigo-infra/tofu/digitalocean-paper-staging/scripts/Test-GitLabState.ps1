@@ -248,16 +248,24 @@ resource "terraform_data" "preflight" {
         finally { Pop-Location }
         $restored = $restoredText | ConvertFrom-Json
         $restoredMarker = $restored.resources | Where-Object { $_.type -eq 'terraform_data' -and $_.name -eq 'preflight' } | Select-Object -First 1
-        # A fresh GitLab state name may assign its own lineage and restart its
-        # serial. Those values identify the destination history, not the
-        # restored resource contents. Check the complete disposable marker.
-        $markerMatches = [bool]$restoredMarker -and
-            $oldState.resources.Count -eq 1 -and
-            $restored.resources.Count -eq 1 -and
-            (($restoredMarker | ConvertTo-Json -Depth 32 -Compress) -ceq
-                ($oldMarker | ConvertTo-Json -Depth 32 -Compress))
-        if (-not $markerMatches) {
-            throw "The restored disposable marker does not match historical version $oldSerial."
+        # A fresh state name may assign its own lineage and serial. Compare
+        # the marker's identity and values, since state serialization metadata
+        # can differ after a push and pull through another backend state name.
+        $singleResource = @($oldState.resources).Count -eq 1 -and
+            @($restored.resources).Count -eq 1
+        $singleInstance = [bool]$restoredMarker -and
+            @($oldMarker.instances).Count -eq 1 -and
+            @($restoredMarker.instances).Count -eq 1
+        $idMatches = $singleInstance -and
+            $restoredMarker.instances[0].attributes.id -ceq $oldMarker.instances[0].attributes.id
+        $inputMatches = $singleInstance -and
+            (($restoredMarker.instances[0].attributes.input | ConvertTo-Json -Depth 32 -Compress) -ceq
+                ($oldMarker.instances[0].attributes.input | ConvertTo-Json -Depth 32 -Compress))
+        $outputMatches = $singleInstance -and
+            (($restoredMarker.instances[0].attributes.output | ConvertTo-Json -Depth 32 -Compress) -ceq
+                ($oldMarker.instances[0].attributes.output | ConvertTo-Json -Depth 32 -Compress))
+        if (-not ($singleResource -and $singleInstance -and $idMatches -and $inputMatches -and $outputMatches)) {
+            throw "The restored disposable marker does not match historical version $oldSerial (one resource: $singleResource; one marker instance: $singleInstance; id: $idMatches; input: $inputMatches; output: $outputMatches)."
         }
         Write-Host "PASS: Historical version $oldSerial was retrieved and restored to separate disposable state $recoveryName."
         Write-Host 'The separate state has its own lineage and serial history.'

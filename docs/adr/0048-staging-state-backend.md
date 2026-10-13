@@ -67,10 +67,12 @@ On 2026-10-13, OpenTofu also retrieved encrypted historical state version 4 and 
 under a fresh disposable recovery name with normal locking. Reading that recovery state
 returned the same unique `terraform_data.preflight` marker. The destination had a distinct
 lineage and serial 1; the original test helper incorrectly required those metadata fields
-to match the source history. The check now compares the complete disposable marker instead.
+to match the source history. A later full-JSON marker comparison also failed after OpenTofu
+normalized state metadata. The check now compares the marker's identity, input and output,
+and requires exactly one resource and instance in both disposable states.
 The original preflight state was not overwritten. This verifies recovery into a separate
 state name at the marker-ID level, not restoration over an existing applied state. A rerun
-must pass the corrected full-marker check before initializing the real state. The real staging
+must pass the corrected content check before initializing the real state. The real staging
 root remains unapplied pending access review, an encrypted plan, and explicit apply review.
 
 ## Security and compliance impact
