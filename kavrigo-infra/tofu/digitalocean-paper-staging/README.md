@@ -51,6 +51,18 @@ two-process lock contention and state-version recovery before initializing the r
 state name. The prior `scripts/Test-SpacesState.ps1` is retired after its lock failure; do not
 rerun it or use the Spaces preflight object as a staging state source.
 
+The local `scripts/Test-GitLabState.ps1` checks only encrypted read/write using the dedicated
+GitLab project and the disposable `preflight-kavrigo-v1` state. It prompts for a short-lived
+API-scoped GitLab token and the backed-up encryption passphrase, supplies both through its
+temporary process environment while OpenTofu runs, then restores prior values. Do not paste
+either secret into chat or a shell command. Run it from a fresh PowerShell process if the
+system execution policy blocks unsigned local scripts; do not change the machine-wide policy. A successful read/write
+is not permission to apply the staging root: locking and recovery must still pass separately.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1
+```
+
 ```text
 tofu fmt -check
 tofu init -backend=false -lockfile=readonly -input=false
