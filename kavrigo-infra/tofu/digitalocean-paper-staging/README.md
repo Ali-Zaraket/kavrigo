@@ -60,8 +60,10 @@ and the backed-up encryption passphrase without echoing them, temporarily sets p
 environment variables, and writes/reads a built-in `terraform_data` marker at
 `preflight/ams3-state-v1.tfstate`. It restores the prior environment afterward. This preflight
 does **not** create a VPC, cluster, database, registry, or other DigitalOcean infrastructure.
-It verifies state access and an encrypted round trip, not lock contention or version recovery;
-run those separate tests before the real staging apply.
+It verifies state access and an encrypted round trip. Re-run with `-TestLock` to hold the
+disposable state lock during a 25-second built-in resource replacement and confirm that a
+concurrent `tofu plan -lock-timeout=0s` is rejected. Neither run creates cloud infrastructure.
+Version recovery remains a separate test before the real staging apply.
 If Windows PowerShell 5.1 is set to `AllSigned`, run the local script in a child process with
 `powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File <absolute-script-path>`.
 This changes policy only for that child process, not for the machine or user account.

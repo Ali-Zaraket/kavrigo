@@ -1,5 +1,7 @@
 # Requires -Version 5.1
 # Creates only a terraform_data marker in a separate, disposable Spaces state key.
+param([switch]$TestLock)
+
 $ErrorActionPreference = 'Stop'
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
@@ -96,7 +98,64 @@ plan {
         throw 'OpenTofu could not read the disposable encrypted state.'
     }
     Write-Host 'PASS: Encrypted disposable state was written to and read from the AMS3 Spaces bucket.'
-    Write-Host 'No DigitalOcean infrastructure was created. Lock contention and recovery are separate tests.'
+    if ($TestLock) {
+        # Force a replacement. The local-exec marker is written only after the
+        # holder has acquired the backend lock, then it holds the lock briefly.
+        $marker = Join-Path $scratch ("lock-held-$([guid]::NewGuid().ToString('N')).marker")
+        $markerForPowerShell = $marker.Replace('\', '/')
+        $holdCommand = "Set-Content -LiteralPath '$markerForPowerShell' -Value ready; Start-Sleep -Seconds 25"
+        $holdCommandHcl = ConvertTo-Json -InputObject $holdCommand -Compress
+        $lockConfiguration = @"
+terraform {
+  required_version = ">= 1.12.0, < 2.0.0"
+  backend "s3" {}
+  encryption {
+    state { enforced = true }
+    plan { enforced = true }
+  }
+}
+resource "terraform_data" "preflight" {
+  input            = "kavrigo-spaces-state-preflight-v1"
+  triggers_replace = timestamp()
+  provisioner "local-exec" {
+    interpreter = ["powershell.exe", "-NoProfile", "-Command"]
+    command     = $holdCommandHcl
+  }
+}
+"@
+        [System.IO.File]::WriteAllText((Join-Path $scratch 'main.tf'), $lockConfiguration, [System.Text.UTF8Encoding]::new($false))
+        $stdout = Join-Path $scratch 'lock-holder.stdout.log'
+        $stderr = Join-Path $scratch 'lock-holder.stderr.log'
+        $holder = Start-Process -FilePath $tofu -ArgumentList @('apply', '-auto-approve', '-input=false', '-no-color') -WorkingDirectory $scratch -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+        try {
+            $deadline = (Get-Date).AddSeconds(45)
+            while (-not (Test-Path -LiteralPath $marker) -and -not $holder.HasExited -and (Get-Date) -lt $deadline) {
+                Start-Sleep -Milliseconds 250
+                $holder.Refresh()
+            }
+            if (-not (Test-Path -LiteralPath $marker)) {
+                throw 'The lock holder did not reach its holding phase; inspect the ignored lock-holder logs.'
+            }
+            $contenderOutput = (& $tofu plan -lock-timeout=0s -input=false -no-color 2>&1 | Out-String)
+            $contenderExit = $LASTEXITCODE
+            if ($contenderExit -eq 0 -or $contenderOutput -notmatch 'Error acquiring the state lock|Error locking state') {
+                throw 'Lock contention was not proven: the second process did not report a state-lock conflict.'
+            }
+        }
+        finally {
+            $holder.Refresh()
+            if (-not $holder.HasExited) {
+                Wait-Process -Id $holder.Id -Timeout 60 -ErrorAction Stop
+            }
+        }
+        $holder.Refresh()
+        if ($holder.ExitCode -ne 0) {
+            throw 'The lock holder failed; inspect the ignored lock-holder logs.'
+        }
+        Write-Host 'PASS: A concurrent OpenTofu plan was rejected while the first process held the Spaces state lock.'
+        Remove-Item -LiteralPath $marker -ErrorAction SilentlyContinue
+    }
+    Write-Host 'No DigitalOcean infrastructure was created. Version recovery remains a separate test.'
 }
 finally {
     if ($locationPushed) { Pop-Location }
