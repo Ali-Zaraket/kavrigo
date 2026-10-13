@@ -29,7 +29,10 @@ create a public endpoint, or make Kavrigo ready for a public release.
    versioning](https://docs.digitalocean.com/products/spaces/how-to/enable-versioning/)
    explicitly. Spaces [documents SSE-C rather than bucket-level
    encryption](https://docs.digitalocean.com/products/spaces/reference/s3-compatibility/),
-   so configure and test OpenTofu state encryption before placing any real state there.
+   so this root enforces OpenTofu state **and plan** encryption. Supply a reviewed
+   `TF_ENCRYPTION` configuration at runtime using a dedicated, backed-up key;
+   never put its passphrase in `.tf`, `backend.hcl`, shell history, or CI logs.
+   Without `TF_ENCRYPTION`, this root must fail before writing state or plans.
    Prove concurrent lock behavior and a version restore using a disposable state key before
    the first infrastructure apply. State can include managed database credentials. Never use
    local state for an applied cluster.
@@ -42,6 +45,16 @@ create a public endpoint, or make Kavrigo ready for a public release.
    or reviewed state backend exists yet.
 
 ## Validate and review
+
+The operator must first provide Spaces credentials through ephemeral `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY` environment variables, and the [OpenTofu encryption
+configuration](https://opentofu.org/docs/v1.12/language/state/encryption/) through `TF_ENCRYPTION`.
+Use a dedicated PBKDF2/AES-GCM key for this state, protect and back up the passphrase in a
+password manager, and include both `state` and `plan` methods. The repository only contains
+`enforced = true`; it contains no passphrase or default encryption key. The operator-local
+`backend.hcl` contains the bucket endpoint, name, state key, `use_lockfile = true`, and the
+DigitalOcean S3 compatibility settings, but no credentials. Verify this file and the encryption
+setup with a disposable state key and no infrastructure resources before the first real init.
 
 ```text
 tofu fmt -check
