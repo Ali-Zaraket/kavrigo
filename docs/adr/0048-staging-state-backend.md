@@ -1,6 +1,6 @@
 # ADR 0048: GitLab-managed OpenTofu state for DigitalOcean staging
 
-- **Status:** Accepted for an unapplied staging plan; backend integration unverified
+- **Status:** Accepted for an unapplied staging plan; read/write and lock contention verified, version recovery pending
 - **Date:** 2026-10-13
 - **Deciders:** Product owner, engineering
 - **Spec reference:** `MASTER_BUILD_SPEC.md` §16.14; ADR 0047
@@ -55,6 +55,15 @@ and restore test against GitLab using a disposable state name. No staging infras
 may proceed until those checks pass and the actual state project, membership and token scope
 are reviewed. The earlier Spaces bucket contains only disposable preflight state; it is not a
 source for migration into the production staging state name.
+
+On 2026-10-13, project `87561856` passed encrypted disposable state write/read. A second
+OpenTofu process then received GitLab's `HTTP remote state already locked` error while the
+first held the lock. The holder's log reported `Apply complete!` after lock release, and a
+subsequent run successfully acquired the same state lock and applied, confirming release.
+The test helper incorrectly reported failure because Windows PowerShell 5.1 returned a null
+`ExitCode` for the background process; the helper now checks its completion log and a
+post-release plan. This is test-harness failure, not evidence of a GitLab lock failure.
+State-version recovery remains untested, so the staging root is still unapplied.
 
 ## Security and compliance impact
 

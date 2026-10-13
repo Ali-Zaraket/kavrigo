@@ -169,8 +169,12 @@ resource "terraform_data" "preflight" {
             $holder.WaitForExit()
         }
         $holder.Refresh()
-        if ($holder.ExitCode -ne 0) {
-            throw "The lock holder exited with code $($holder.ExitCode); inspect the ignored lock-holder logs."
+        # Windows PowerShell 5.1 returns a null ExitCode for a background
+        # Start-Process -PassThru even after WaitForExit(). Confirm OpenTofu's
+        # completion record here, then require a successful fresh plan below.
+        $holderOutput = Get-Content -LiteralPath $stdout -Raw
+        if ($holderOutput -notmatch '(?m)^Apply complete! Resources:') {
+            throw 'The lock holder did not report a completed apply; inspect the ignored lock-holder logs.'
         }
         $releasedStdout = Join-Path $contender 'post-release.stdout.log'
         $releasedStderr = Join-Path $contender 'post-release.stderr.log'

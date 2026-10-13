@@ -26,9 +26,10 @@ create a public endpoint, or make Kavrigo ready for a public release.
    OpenTofu state with verified locking and recovery. The AMS3 Spaces preflight passed an
    encrypted read/write but **failed the two-process lock test** on 2026-10-13; do not use
    Spaces or the old `backend.hcl` for this root. GitLab's [managed OpenTofu state](https://docs.gitlab.com/user/infrastructure/iac/terraform_state/)
-   documents HTTP lock/unlock endpoints on its Free tier; it still needs our own disposable
-   read/write, contention and version-restore tests before any infrastructure apply. Configure
-   its URL, lock/unlock methods and credentials through `TF_HTTP_*` process environment
+   documents HTTP lock/unlock endpoints on its Free tier. Disposable encrypted read/write and
+   two-process lock contention passed on 2026-10-13; version restore remains untested and is
+   required before any infrastructure apply. Configure its URL, lock/unlock methods and
+   credentials through `TF_HTTP_*` process environment
    variables. Supply `TF_ENCRYPTION` at runtime using a dedicated, backed-up key; this root
    enforces client-side state **and plan** encryption. Keep tokens and the encryption
    passphrase out of `.tf`, shell history, plan artifacts and CI logs. State can contain
