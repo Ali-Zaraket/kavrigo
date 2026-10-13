@@ -3,10 +3,14 @@
 param(
     [ValidatePattern('^[0-9]+$')]
     [string]$ProjectId = '87561856',
-    [switch]$TestLock
+    [switch]$TestLock,
+    [switch]$TestRecovery
 )
 
 $ErrorActionPreference = 'Stop'
+if ($TestLock -and $TestRecovery) {
+    throw 'Run lock and recovery tests separately.'
+}
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $tofu = Join-Path $root '.local\opentofu\bin\tofu.exe'
@@ -54,6 +58,7 @@ foreach ($name in $names) {
 $secureToken = $null
 $securePassphrase = $null
 $locationPushed = $false
+$oldStatePath = $null
 try {
     $secureToken = Read-Host 'GitLab personal access token (api scope)' -AsSecureString
     $securePassphrase = Read-Host 'State encryption passphrase from your password manager' -AsSecureString
@@ -186,7 +191,68 @@ resource "terraform_data" "preflight" {
         Write-Host 'PASS: The first process released the lock and a later plan succeeded.'
         Remove-Item -LiteralPath $marker -ErrorAction SilentlyContinue
     }
-    Write-Host 'No DigitalOcean infrastructure was created. Version recovery remains a separate test.'
+    if ($TestRecovery) {
+        $currentSerial = [int]$state.serial
+        if ($currentSerial -lt 2) {
+            throw 'At least two disposable state versions are needed for recovery testing.'
+        }
+        $oldSerial = $currentSerial - 1
+        $recoverySource = Join-Path $root '.local\gitlab-state-recovery-source'
+        $recoveryTarget = Join-Path $root '.local\gitlab-state-recovery-target'
+        New-Item -ItemType Directory -Force -Path $recoverySource, $recoveryTarget | Out-Null
+        [System.IO.File]::WriteAllText((Join-Path $recoverySource 'main.tf'), $configuration, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText((Join-Path $recoveryTarget 'main.tf'), $configuration, [System.Text.UTF8Encoding]::new($false))
+
+        # Read GitLab's older version through OpenTofu so client-side encryption
+        # is decrypted by the normal configuration, never by the GitLab API.
+        $env:TF_HTTP_ADDRESS = "$address/versions/$oldSerial"
+        Push-Location $recoverySource
+        try {
+            & $tofu init -reconfigure -input=false -no-color
+            if ($LASTEXITCODE -ne 0) { throw 'Could not initialize the historical GitLab state version.' }
+            $oldStateText = & $tofu state pull
+            if ($LASTEXITCODE -ne 0) { throw 'Could not read the historical GitLab state version.' }
+        }
+        finally { Pop-Location }
+        $oldState = $oldStateText | ConvertFrom-Json
+        $oldMarker = $oldState.resources | Where-Object { $_.type -eq 'terraform_data' -and $_.name -eq 'preflight' } | Select-Object -First 1
+        if ([int]$oldState.serial -ne $oldSerial -or -not $oldMarker) {
+            throw 'The historical state version did not contain the expected disposable marker.'
+        }
+        $oldStatePath = Join-Path $root '.local\gitlab-state-recovery-older.tfstate'
+        [System.IO.File]::WriteAllText($oldStatePath, ($oldStateText -join "`n"), [System.Text.UTF8Encoding]::new($false))
+
+        # Restore into a new disposable name. Never overwrite the original.
+        $recoveryName = "preflight-kavrigo-recovery-$([guid]::NewGuid().ToString('N'))"
+        $recoveryAddress = "https://gitlab.com/api/v4/projects/$ProjectId/terraform/state/$recoveryName"
+        $env:TF_HTTP_ADDRESS = $recoveryAddress
+        $env:TF_HTTP_LOCK_ADDRESS = "$recoveryAddress/lock"
+        $env:TF_HTTP_UNLOCK_ADDRESS = "$recoveryAddress/lock"
+        Push-Location $recoveryTarget
+        try {
+            & $tofu init -reconfigure -input=false -no-color
+            if ($LASTEXITCODE -ne 0) { throw 'Could not initialize the disposable recovery state.' }
+            & $tofu state push -lock-timeout=0s $oldStatePath
+            if ($LASTEXITCODE -ne 0) { throw 'Could not restore the older version into a new disposable state.' }
+            $restoredText = & $tofu state pull
+            if ($LASTEXITCODE -ne 0) { throw 'Could not read the restored disposable state.' }
+        }
+        finally { Pop-Location }
+        $restored = $restoredText | ConvertFrom-Json
+        $restoredMarker = $restored.resources | Where-Object { $_.type -eq 'terraform_data' -and $_.name -eq 'preflight' } | Select-Object -First 1
+        if ($restored.lineage -ne $oldState.lineage -or -not $restoredMarker -or
+            $restoredMarker.instances[0].attributes.id -ne $oldMarker.instances[0].attributes.id) {
+            throw 'The restored state does not match the historical version.'
+        }
+        Write-Host "PASS: Historical version $oldSerial was retrieved and restored to separate disposable state $recoveryName."
+        Write-Host 'The original preflight state was not overwritten.'
+    }
+    if ($TestRecovery) {
+        Write-Host 'No DigitalOcean infrastructure was created.'
+    }
+    else {
+        Write-Host 'No DigitalOcean infrastructure was created. Version recovery remains a separate test.'
+    }
 }
 finally {
     if ($locationPushed) { Pop-Location }
@@ -206,4 +272,11 @@ finally {
     $quotedPassphrase = $null
     $stateText = $null
     $state = $null
+    if ($oldStatePath -and (Test-Path -LiteralPath $oldStatePath)) {
+        Remove-Item -LiteralPath $oldStatePath -ErrorAction SilentlyContinue
+    }
+    $oldStateText = $null
+    $oldState = $null
+    $restoredText = $null
+    $restored = $null
 }

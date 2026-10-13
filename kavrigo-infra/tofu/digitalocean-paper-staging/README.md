@@ -60,12 +60,16 @@ either secret into chat or a shell command. Run it from a fresh PowerShell proce
 system execution policy blocks unsigned local scripts; do not change the machine-wide policy.
 Use `-TestLock` with the **same** passphrase to run a second OpenTofu process against that
 disposable state and verify that it is rejected while the first holds the lock, then succeeds
-after release. A successful read/write or lock test is not permission to apply the staging
-root: state-version recovery must still pass separately.
+after release. Use `-TestRecovery` to read an older GitLab state version and restore it into
+a newly named, disposable state using OpenTofu's normal lock and encryption. It never
+overwrites the original preflight state. Its temporary plaintext state file is under ignored
+`.local/` and is removed when the script exits; inspect and remove it after an interrupted
+run. No staging infrastructure apply is permitted until this recovery check passes.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1 -TestLock
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1 -TestRecovery
 ```
 
 ```text
