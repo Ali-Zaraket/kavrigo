@@ -51,6 +51,8 @@ The root is a foundation plan, not an application release. No resource is to be 
 until account access, NAT plan/API access, service-region options, recurring cost, state backend,
 legal/data residency and operator CIDRs are reviewed. The registry is for immutable image
 digests; build/sign/SBOM and deployment promotion need separate work.
+The state-backend choice is recorded separately in [ADR 0048](0048-staging-state-backend.md)
+after the Spaces lock contention preflight failed; no DigitalOcean resources have been applied.
 
 ## Security and compliance impact
 

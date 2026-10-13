@@ -8,8 +8,8 @@ terraform {
     }
   }
 
-  # Configure a separately reviewed encrypted, versioned, locked remote state at init.
-  backend "s3" {}
+  # ADR 0048: configure a reviewed, locked GitLab HTTP state backend via TF_HTTP_*.
+  backend "http" {}
 }
 
 provider "digitalocean" {}

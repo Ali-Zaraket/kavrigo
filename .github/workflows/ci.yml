@@ -56,7 +56,7 @@ jobs:
           tofu_version: 1.12.0
           tofu_wrapper: false
       - run: tofu fmt -check
-      - run: tofu init -backend=false -input=false
+      - run: tofu init -backend=false -lockfile=readonly -input=false
       - run: tofu validate -no-color
 
   paper-staging-workloads:

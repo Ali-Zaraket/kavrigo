@@ -1,6 +1,7 @@
 # DigitalOcean paper staging foundation
 
-This **unapplied** OpenTofu root implements [ADR 0047](../../../docs/adr/0047-digitalocean-paper-staging.md).
+This **unapplied** OpenTofu root implements [ADR 0047](../../../docs/adr/0047-digitalocean-paper-staging.md)
+and the [state-backend decision, ADR 0048](../../../docs/adr/0048-staging-state-backend.md).
 It targets Amsterdam `ams3` by default and creates a VPC, default NAT gateway, isolated-worker
 DOKS cluster, control-plane firewall, managed PostgreSQL 18, managed Valkey 8, database
 firewalls and a private container registry. It does not enable live trading, deploy workloads,
@@ -21,58 +22,40 @@ create a public endpoint, or make Kavrigo ready for a public release.
    disappears. Use a scoped DigitalOcean token through `DIGITALOCEAN_TOKEN`, never in a
    committed file or shell transcript. Review the registry integration's
    [team-wide image-pull scope](https://docs.digitalocean.com/products/kubernetes/how-to/integrate-with-docr/).
-3. Provision a **separate**, private, versioned, access-controlled state backend with
-   encryption, verified locking and recovery. DigitalOcean now [documents Spaces as a remote
-   state backend with `use_lockfile = true`](https://docs.digitalocean.com/products/spaces/reference/terraform-backend/).
-   Use a dedicated `ams3` bucket, configure it through ignored `backend.hcl`, and keep its
-   credentials in environment variables or a secret manager. Enable [bucket
-   versioning](https://docs.digitalocean.com/products/spaces/how-to/enable-versioning/)
-   explicitly. Spaces [documents SSE-C rather than bucket-level
-   encryption](https://docs.digitalocean.com/products/spaces/reference/s3-compatibility/),
-   so this root enforces OpenTofu state **and plan** encryption. Supply a reviewed
-   `TF_ENCRYPTION` configuration at runtime using a dedicated, backed-up key;
-   never put its passphrase in `.tf`, `backend.hcl`, shell history, or CI logs.
-   Without `TF_ENCRYPTION`, this root must fail before writing state or plans.
-   Prove concurrent lock behavior and a version restore using a disposable state key before
-   the first infrastructure apply. State can include managed database credentials. Never use
-   local state for an applied cluster.
+3. Provision a **separate private GitLab project** for encrypted, versioned, access-controlled
+   OpenTofu state with verified locking and recovery. The AMS3 Spaces preflight passed an
+   encrypted read/write but **failed the two-process lock test** on 2026-10-13; do not use
+   Spaces or the old `backend.hcl` for this root. GitLab's [managed OpenTofu state](https://docs.gitlab.com/user/infrastructure/iac/terraform_state/)
+   documents HTTP lock/unlock endpoints on its Free tier; it still needs our own disposable
+   read/write, contention and version-restore tests before any infrastructure apply. Configure
+   its URL, lock/unlock methods and credentials through `TF_HTTP_*` process environment
+   variables. Supply `TF_ENCRYPTION` at runtime using a dedicated, backed-up key; this root
+   enforces client-side state **and plan** encryption. Keep tokens and the encryption
+   passphrase out of `.tf`, shell history, plan artifacts and CI logs. State can contain
+   generated database credentials. Never use local state for an applied cluster.
 4. Obtain the current DOKS version from the account's Kubernetes options (1.36+ for isolated
    workers), a globally unique registry name and current DB/node sizes. Copy
    `staging.tfvars.example` to ignored `staging.tfvars`, replacing every example value.
-5. Generate and review `.terraform.lock.hcl` on the deployment operator platform, commit it,
-   and switch CI to `-lockfile=readonly` before the first apply. CI currently validates the
-   exact provider version without a committed checksum lock because no deployment account
-   or reviewed state backend exists yet.
+5. Review the committed `.terraform.lock.hcl` for DigitalOcean provider `2.104.0` and keep CI
+   on `-lockfile=readonly`. Provider changes require a deliberate lockfile update and review.
 
 ## Validate and review
 
-The operator must first provide Spaces credentials through ephemeral `AWS_ACCESS_KEY_ID` and
-`AWS_SECRET_ACCESS_KEY` environment variables, and the [OpenTofu encryption
-configuration](https://opentofu.org/docs/v1.12/language/state/encryption/) through `TF_ENCRYPTION`.
-Use a dedicated PBKDF2/AES-GCM key for this state, protect and back up the passphrase in a
-password manager, and include both `state` and `plan` methods. The repository only contains
-`enforced = true`; it contains no passphrase or default encryption key. The operator-local
-`backend.hcl` contains the bucket endpoint, name, state key, `use_lockfile = true`, and the
-DigitalOcean S3 compatibility settings, but no credentials. Verify this file and the encryption
-setup with a disposable state key and no infrastructure resources before the first real init.
-On Windows, run `scripts/Test-SpacesState.ps1` from PowerShell. It prompts for the Spaces key pair
-and the backed-up encryption passphrase without echoing them, temporarily sets process-only
-environment variables, and writes/reads a built-in `terraform_data` marker at
-`preflight/ams3-state-v1.tfstate`. It restores the prior environment afterward. This preflight
-does **not** create a VPC, cluster, database, registry, or other DigitalOcean infrastructure.
-It verifies state access and an encrypted round trip. Re-run with `-TestLock` to hold the
-disposable state lock during a 25-second built-in resource replacement and confirm that a
-concurrent `tofu plan -lock-timeout=0s` is rejected. Neither run creates cloud infrastructure.
-Version recovery remains a separate test before the real staging apply.
-If Windows PowerShell 5.1 is set to `AllSigned`, run the local script in a child process with
-`powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File <absolute-script-path>`.
-This changes policy only for that child process, not for the machine or user account.
+The operator must provide the [OpenTofu encryption
+configuration](https://opentofu.org/docs/v1.12/language/state/encryption/) through `TF_ENCRYPTION`
+and the GitLab [HTTP-backend settings](https://opentofu.org/docs/v1.12/language/settings/backends/http/)
+through `TF_HTTP_*`. Use the existing backed-up PBKDF2/AES-GCM passphrase, with both `state`
+and `plan` methods. The repository contains only `enforced = true`, no secret or default key.
+Initialize an **empty disposable GitLab state name first**. Verify encrypted state read/write,
+two-process lock contention and state-version recovery before initializing the real staging
+state name. The prior `scripts/Test-SpacesState.ps1` is retired after its lock failure; do not
+rerun it or use the Spaces preflight object as a staging state source.
 
 ```text
 tofu fmt -check
-tofu init -backend=false -input=false
+tofu init -backend=false -lockfile=readonly -input=false
 tofu validate -no-color
-tofu init -backend-config=backend.hcl -input=false
+tofu init -input=false
 tofu plan -var-file=staging.tfvars -out=staging.tfplan
 tofu show staging.tfplan
 ```

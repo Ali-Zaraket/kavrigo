@@ -59,3 +59,5 @@ Rules (`AGENTS.md` § Architecture-change rule):
 | [0044](0044-honest-control-plane-readiness.md) | Honest control-plane readiness and simulation disclosure | Accepted for local validation |
 | [0045](0045-market-row-license-provenance.md) | Licence provenance on persisted market rows | Accepted for local ingestion schema |
 | [0046](0046-defer-cloud-provider-selection.md) | Defer hosting provider; preserve application service boundaries | Accepted for pre-deployment work |
+| [0047](0047-digitalocean-paper-staging.md) | DigitalOcean foundation for paper-only staging | Accepted for an unapplied staging plan |
+| [0048](0048-staging-state-backend.md) | GitLab-managed OpenTofu state after Spaces lock failure | Accepted for an unapplied staging plan; unverified |

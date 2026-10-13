@@ -1,6 +1,6 @@
 terraform {
-  # The operator supplies TF_ENCRYPTION at runtime. Without it, state and plans
-  # must not be written because DigitalOcean Spaces has no bucket-default SSE.
+  # The operator supplies TF_ENCRYPTION at runtime. Without it, state and
+  # plans must not be written, regardless of backend-side encryption.
   encryption {
     state {
       enforced = true
