@@ -1,6 +1,6 @@
 # ADR 0048: GitLab-managed OpenTofu state for DigitalOcean staging
 
-- **Status:** Accepted for an unapplied staging plan; disposable read/write and lock contention verified, recovery marker observed
+- **Status:** Accepted for an unapplied staging plan; disposable read/write, lock contention and separate-state recovery verified
 - **Date:** 2026-10-13
 - **Deciders:** Product owner, engineering
 - **Spec reference:** `MASTER_BUILD_SPEC.md` §16.14; ADR 0047
@@ -70,10 +70,11 @@ lineage and serial 1; the original test helper incorrectly required those metada
 to match the source history. A later full-JSON marker comparison also failed after OpenTofu
 normalized state metadata. The check now compares the marker's identity, input and output,
 and requires exactly one resource and instance in both disposable states.
-The original preflight state was not overwritten. This verifies recovery into a separate
-state name at the marker-ID level, not restoration over an existing applied state. A rerun
-must pass the corrected content check before initializing the real state. The real staging
-root remains unapplied pending access review, an encrypted plan, and explicit apply review.
+The corrected content check passed on 2026-10-13: encrypted historical version 4 was
+restored under a separate disposable name, and the unique marker ID, input and output
+matched. The original preflight state was not overwritten. This verifies recovery into a
+separate state name, not restoration over an existing applied state. The real staging root
+remains unapplied pending access review, an encrypted plan, and explicit apply review.
 
 ## Security and compliance impact
 

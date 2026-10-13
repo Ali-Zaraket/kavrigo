@@ -27,8 +27,8 @@ create a public endpoint, or make Kavrigo ready for a public release.
    encrypted read/write but **failed the two-process lock test** on 2026-10-13; do not use
    Spaces or the old `backend.hcl` for this root. GitLab's [managed OpenTofu state](https://docs.gitlab.com/user/infrastructure/iac/terraform_state/)
    documents HTTP lock/unlock endpoints on its Free tier. Disposable encrypted read/write and
-   two-process lock contention passed on 2026-10-13; version restore remains untested and is
-   required before any infrastructure apply. Configure its URL, lock/unlock methods and
+   two-process lock contention and separate-state version recovery passed on 2026-10-13.
+   Configure its URL, lock/unlock methods and
    credentials through `TF_HTTP_*` process environment
    variables. Supply `TF_ENCRYPTION` at runtime using a dedicated, backed-up key; this root
    enforces client-side state **and plan** encryption. Keep tokens and the encryption
@@ -39,6 +39,17 @@ create a public endpoint, or make Kavrigo ready for a public release.
    `staging.tfvars.example` to ignored `staging.tfvars`, replacing every example value.
 5. Review the committed `.terraform.lock.hcl` for DigitalOcean provider `2.104.0` and keep CI
    on `-lockfile=readonly`. Provider changes require a deliberate lockfile update and review.
+
+For the next read-only planning step, create a short-lived **Read Only** DigitalOcean API
+token in Account → API. Run `Get-DigitalOceanStagingOptions.ps1` in a fresh PowerShell
+process; it prompts for the token without saving it and lists current DOKS `ams3`, worker
+size and Kubernetes version options. The lookup uses DigitalOcean's documented
+[`GET /v2/kubernetes/options`](https://docs.digitalocean.com/products/kubernetes/reference/api/)
+endpoint and does not create resources. Do not paste the token into chat or a command.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Get-DigitalOceanStagingOptions.ps1
+```
 
 ## Validate and review
 
