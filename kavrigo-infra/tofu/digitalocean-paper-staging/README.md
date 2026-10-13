@@ -56,11 +56,15 @@ GitLab project and the disposable `preflight-kavrigo-v1` state. It prompts for a
 API-scoped GitLab token and the backed-up encryption passphrase, supplies both through its
 temporary process environment while OpenTofu runs, then restores prior values. Do not paste
 either secret into chat or a shell command. Run it from a fresh PowerShell process if the
-system execution policy blocks unsigned local scripts; do not change the machine-wide policy. A successful read/write
-is not permission to apply the staging root: locking and recovery must still pass separately.
+system execution policy blocks unsigned local scripts; do not change the machine-wide policy.
+Use `-TestLock` with the **same** passphrase to run a second OpenTofu process against that
+disposable state and verify that it is rejected while the first holds the lock, then succeeds
+after release. A successful read/write or lock test is not permission to apply the staging
+root: state-version recovery must still pass separately.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1 -TestLock
 ```
 
 ```text
