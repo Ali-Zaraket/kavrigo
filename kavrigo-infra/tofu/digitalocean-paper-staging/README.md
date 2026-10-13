@@ -62,6 +62,9 @@ environment variables, and writes/reads a built-in `terraform_data` marker at
 does **not** create a VPC, cluster, database, registry, or other DigitalOcean infrastructure.
 It verifies state access and an encrypted round trip, not lock contention or version recovery;
 run those separate tests before the real staging apply.
+If Windows PowerShell 5.1 is set to `AllSigned`, run the local script in a child process with
+`powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File <absolute-script-path>`.
+This changes policy only for that child process, not for the machine or user account.
 
 ```text
 tofu fmt -check
