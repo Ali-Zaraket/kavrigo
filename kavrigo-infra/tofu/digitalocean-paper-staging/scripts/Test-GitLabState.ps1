@@ -248,13 +248,19 @@ resource "terraform_data" "preflight" {
         finally { Pop-Location }
         $restored = $restoredText | ConvertFrom-Json
         $restoredMarker = $restored.resources | Where-Object { $_.type -eq 'terraform_data' -and $_.name -eq 'preflight' } | Select-Object -First 1
-        $lineageMatches = $restored.lineage -eq $oldState.lineage
+        # A fresh GitLab state name may assign its own lineage and restart its
+        # serial. Those values identify the destination history, not the
+        # restored resource contents. Check the complete disposable marker.
         $markerMatches = [bool]$restoredMarker -and
-            $restoredMarker.instances[0].attributes.id -eq $oldMarker.instances[0].attributes.id
-        if (-not $lineageMatches -or -not $markerMatches) {
-            throw "The restored state does not match the historical version (lineage matches: $lineageMatches; marker matches: $markerMatches; historical serial: $oldSerial; restored serial: $($restored.serial))."
+            $oldState.resources.Count -eq 1 -and
+            $restored.resources.Count -eq 1 -and
+            (($restoredMarker | ConvertTo-Json -Depth 32 -Compress) -ceq
+                ($oldMarker | ConvertTo-Json -Depth 32 -Compress))
+        if (-not $markerMatches) {
+            throw "The restored disposable marker does not match historical version $oldSerial."
         }
         Write-Host "PASS: Historical version $oldSerial was retrieved and restored to separate disposable state $recoveryName."
+        Write-Host 'The separate state has its own lineage and serial history.'
         Write-Host 'The original preflight state was not overwritten.'
     }
     if ($TestRecovery) {

@@ -1,6 +1,6 @@
 # ADR 0048: GitLab-managed OpenTofu state for DigitalOcean staging
 
-- **Status:** Accepted for an unapplied staging plan; read/write and lock contention verified, version recovery pending
+- **Status:** Accepted for an unapplied staging plan; disposable read/write and lock contention verified, recovery marker observed
 - **Date:** 2026-10-13
 - **Deciders:** Product owner, engineering
 - **Spec reference:** `MASTER_BUILD_SPEC.md` §16.14; ADR 0047
@@ -63,7 +63,15 @@ subsequent run successfully acquired the same state lock and applied, confirming
 The test helper incorrectly reported failure because Windows PowerShell 5.1 returned a null
 `ExitCode` for the background process; the helper now checks its completion log and a
 post-release plan. This is test-harness failure, not evidence of a GitLab lock failure.
-State-version recovery remains untested, so the staging root is still unapplied.
+On 2026-10-13, OpenTofu also retrieved encrypted historical state version 4 and pushed it
+under a fresh disposable recovery name with normal locking. Reading that recovery state
+returned the same unique `terraform_data.preflight` marker. The destination had a distinct
+lineage and serial 1; the original test helper incorrectly required those metadata fields
+to match the source history. The check now compares the complete disposable marker instead.
+The original preflight state was not overwritten. This verifies recovery into a separate
+state name at the marker-ID level, not restoration over an existing applied state. A rerun
+must pass the corrected full-marker check before initializing the real state. The real staging
+root remains unapplied pending access review, an encrypted plan, and explicit apply review.
 
 ## Security and compliance impact
 

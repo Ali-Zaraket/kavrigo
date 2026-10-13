@@ -62,9 +62,11 @@ Use `-TestLock` with the **same** passphrase to run a second OpenTofu process ag
 disposable state and verify that it is rejected while the first holds the lock, then succeeds
 after release. Use `-TestRecovery` to read an older GitLab state version and restore it into
 a newly named, disposable state using OpenTofu's normal lock and encryption. It never
-overwrites the original preflight state. Its temporary plaintext state file is under ignored
-`.local/` and is removed when the script exits; inspect and remove it after an interrupted
-run. No staging infrastructure apply is permitted until this recovery check passes.
+overwrites the original preflight state. The new state name has an independent lineage and
+serial history; the script checks the recovered marker contents. Its temporary plaintext
+state file is under ignored `.local/` and is removed when the script exits; inspect and
+remove it after an interrupted run. No staging infrastructure apply is permitted until this
+recovery check passes.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1
