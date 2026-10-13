@@ -101,15 +101,22 @@ plan {
     $locationPushed = $true
     & $tofu init -reconfigure -input=false -no-color
     if ($LASTEXITCODE -ne 0) { throw 'OpenTofu backend initialization failed.' }
-    & $tofu apply -auto-approve -input=false -no-color
-    if ($LASTEXITCODE -ne 0) { throw 'OpenTofu disposable state write failed.' }
+    if (-not $TestRecovery) {
+        & $tofu apply -auto-approve -input=false -no-color
+        if ($LASTEXITCODE -ne 0) { throw 'OpenTofu disposable state write failed.' }
+    }
     $stateText = & $tofu state pull
     if ($LASTEXITCODE -ne 0) { throw 'OpenTofu disposable state read failed.' }
     $state = $stateText | ConvertFrom-Json
     if (-not ($state.resources | Where-Object { $_.type -eq 'terraform_data' -and $_.name -eq 'preflight' })) {
         throw 'The disposable state marker was not found after reading GitLab state.'
     }
-    Write-Host 'PASS: Encrypted disposable state was written to and read from GitLab.'
+    if ($TestRecovery) {
+        Write-Host 'PASS: Existing encrypted disposable state was read from GitLab.'
+    }
+    else {
+        Write-Host 'PASS: Encrypted disposable state was written to and read from GitLab.'
+    }
     if ($TestLock) {
         Push-Location $contender
         try {
@@ -225,6 +232,7 @@ resource "terraform_data" "preflight" {
         # Restore into a new disposable name. Never overwrite the original.
         $recoveryName = "preflight-kavrigo-recovery-$([guid]::NewGuid().ToString('N'))"
         $recoveryAddress = "https://gitlab.com/api/v4/projects/$ProjectId/terraform/state/$recoveryName"
+        Write-Host "Restoring historical version $oldSerial into disposable state $recoveryName."
         $env:TF_HTTP_ADDRESS = $recoveryAddress
         $env:TF_HTTP_LOCK_ADDRESS = "$recoveryAddress/lock"
         $env:TF_HTTP_UNLOCK_ADDRESS = "$recoveryAddress/lock"
@@ -240,9 +248,11 @@ resource "terraform_data" "preflight" {
         finally { Pop-Location }
         $restored = $restoredText | ConvertFrom-Json
         $restoredMarker = $restored.resources | Where-Object { $_.type -eq 'terraform_data' -and $_.name -eq 'preflight' } | Select-Object -First 1
-        if ($restored.lineage -ne $oldState.lineage -or -not $restoredMarker -or
-            $restoredMarker.instances[0].attributes.id -ne $oldMarker.instances[0].attributes.id) {
-            throw 'The restored state does not match the historical version.'
+        $lineageMatches = $restored.lineage -eq $oldState.lineage
+        $markerMatches = [bool]$restoredMarker -and
+            $restoredMarker.instances[0].attributes.id -eq $oldMarker.instances[0].attributes.id
+        if (-not $lineageMatches -or -not $markerMatches) {
+            throw "The restored state does not match the historical version (lineage matches: $lineageMatches; marker matches: $markerMatches; historical serial: $oldSerial; restored serial: $($restored.serial))."
         }
         Write-Host "PASS: Historical version $oldSerial was retrieved and restored to separate disposable state $recoveryName."
         Write-Host 'The original preflight state was not overwritten.'
