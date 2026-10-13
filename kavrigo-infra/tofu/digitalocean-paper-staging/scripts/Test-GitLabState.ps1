@@ -163,13 +163,14 @@ resource "terraform_data" "preflight" {
         }
         finally {
             $holder.Refresh()
-            if (-not $holder.HasExited) {
-                Wait-Process -Id $holder.Id -Timeout 60 -ErrorAction Stop
+            if (-not $holder.WaitForExit(60000)) {
+                throw 'The lock holder did not finish within 60 seconds; inspect the ignored lock-holder logs.'
             }
+            $holder.WaitForExit()
         }
         $holder.Refresh()
         if ($holder.ExitCode -ne 0) {
-            throw 'The lock holder failed or could not release the state lock; inspect the ignored lock-holder logs.'
+            throw "The lock holder exited with code $($holder.ExitCode); inspect the ignored lock-holder logs."
         }
         $releasedStdout = Join-Path $contender 'post-release.stdout.log'
         $releasedStderr = Join-Path $contender 'post-release.stderr.log'
