@@ -35,8 +35,9 @@ create a public endpoint, or make Kavrigo ready for a public release.
    passphrase out of `.tf`, shell history, plan artifacts and CI logs. State can contain
    generated database credentials. Never use local state for an applied cluster.
 4. Obtain the current DOKS version from the account's Kubernetes options (1.36+ for isolated
-   workers), a globally unique registry name and current DB/node sizes. Copy
-   `staging.tfvars.example` to ignored `staging.tfvars`, replacing every example value.
+   workers), a globally unique registry name and current DB/node sizes. For manual planning,
+   copy `staging.tfvars.example` to ignored `staging.tfvars`, replacing every example value.
+   The guided plan helper below instead writes ignored inputs under `.local/`.
 5. Review the committed `.terraform.lock.hcl` for DigitalOcean provider `2.104.0` and keep CI
    on `-lockfile=readonly`. Provider changes require a deliberate lockfile update and review.
 
@@ -79,11 +80,40 @@ state file is under ignored `.local/` and is removed when the script exits; insp
 remove it after an interrupted run. No staging infrastructure apply is permitted until this
 recovery check passes.
 
+After the preflight passes, `Plan-DigitalOceanStaging.ps1` prompts for an unused registry
+name, your current public IPv4 address with `/32`, the short-lived DigitalOcean **Read Only**
+token, the GitLab state token and the backed-up state passphrase. It rechecks the selected
+Kubernetes version, planned PostgreSQL/Valkey options, and registry tier/region against
+DigitalOcean's current read-only options endpoints, uses the fresh
+`paper-staging-ams3-v1` GitLab state name, and writes a non-secret variable file plus an
+encrypted plan only under ignored `.local/`. The default version is `1.36.5-do.0`, which
+the account listed on 2026-10-13; pass `-KubernetesVersion` if a newer reviewed version is
+chosen. The plan does **not** create DigitalOcean resources. Review the full plan, state
+access, service availability and recurring cost before any apply.
+
+As a rough October 2026 floor for the current defaults, three 2-vCPU/4-GiB workers
+($72/month), the HA control plane ($40), size-1 NAT ($40), a Basic registry ($5), and
+single-node PostgreSQL and Valkey (starting at $15 each) total about **$187/month**.
+This excludes transfer overages, extra storage, external data/workflow services, a load
+balancer and any larger database or node choices. Verify actual account pricing and the
+reviewed plan before paying. Sources: [Droplets](https://www.digitalocean.com/pricing/droplets),
+[DOKS](https://docs.digitalocean.com/products/kubernetes/details/pricing/),
+[NAT](https://docs.digitalocean.com/products/networking/vpc/details/pricing/),
+[registry](https://www.digitalocean.com/products/container-registry),
+[PostgreSQL](https://docs.digitalocean.com/products/databases/postgresql/details/pricing/),
+and [Valkey](https://docs.digitalocean.com/products/databases/valkey/details/pricing/).
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Plan-DigitalOceanStaging.ps1
+```
+
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1 -TestLock
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-GitLabState.ps1 -TestRecovery
 ```
+
+For a manual plan after setting the same credentials and encryption environment, use:
 
 ```text
 tofu fmt -check
