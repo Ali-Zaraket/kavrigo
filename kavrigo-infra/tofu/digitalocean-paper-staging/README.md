@@ -21,13 +21,18 @@ create a public endpoint, or make Kavrigo ready for a public release.
    disappears. Use a scoped DigitalOcean token through `DIGITALOCEAN_TOKEN`, never in a
    committed file or shell transcript. Review the registry integration's
    [team-wide image-pull scope](https://docs.digitalocean.com/products/kubernetes/how-to/integrate-with-docr/).
-3. Provision a **separate**, encrypted, versioned, access-controlled state backend with
-   verified atomic locking and recovery. Put its configuration in ignored `backend.hcl` and
-   store backend credentials outside the repository. Do not assume DigitalOcean Spaces meets
-   these requirements: its [S3 compatibility](https://docs.digitalocean.com/products/spaces/reference/s3-compatibility/)
-   is partial and documents SSE-C, not bucket-level encryption; `use_lockfile` also needs
-   conditional writes, which must be proven before use. State can include managed database
-   credentials. Never use local state for an applied cluster.
+3. Provision a **separate**, private, versioned, access-controlled state backend with
+   encryption, verified locking and recovery. DigitalOcean now [documents Spaces as a remote
+   state backend with `use_lockfile = true`](https://docs.digitalocean.com/products/spaces/reference/terraform-backend/).
+   Use a dedicated `ams3` bucket, configure it through ignored `backend.hcl`, and keep its
+   credentials in environment variables or a secret manager. Enable [bucket
+   versioning](https://docs.digitalocean.com/products/spaces/how-to/enable-versioning/)
+   explicitly. Spaces [documents SSE-C rather than bucket-level
+   encryption](https://docs.digitalocean.com/products/spaces/reference/s3-compatibility/),
+   so configure and test OpenTofu state encryption before placing any real state there.
+   Prove concurrent lock behavior and a version restore using a disposable state key before
+   the first infrastructure apply. State can include managed database credentials. Never use
+   local state for an applied cluster.
 4. Obtain the current DOKS version from the account's Kubernetes options (1.36+ for isolated
    workers), a globally unique registry name and current DB/node sizes. Copy
    `staging.tfvars.example` to ignored `staging.tfvars`, replacing every example value.
