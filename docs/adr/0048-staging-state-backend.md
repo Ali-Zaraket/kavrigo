@@ -76,6 +76,14 @@ matched. The original preflight state was not overwritten. This verifies recover
 separate state name, not restoration over an existing applied state. The real staging root
 remains unapplied pending access review, an encrypted plan, and explicit apply review.
 
+On 2026-10-13, the operator reported that the encrypted real staging plan
+passed a local read-only review: eight creates, zero changes or destroys,
+including the AMS3 VPC, default NAT, isolated-worker DOKS with a restricted
+Kubernetes API, managed PostgreSQL and Valkey with cluster-only firewalls,
+and a private registry. No DigitalOcean resources were applied by the plan or
+review. The projected floor is about USD 187/month before variable charges;
+the paid apply remains a separate operator decision.
+
 ## Security and compliance impact
 
 State may contain generated database credentials. Keep the GitLab project private and its

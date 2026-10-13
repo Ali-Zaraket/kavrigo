@@ -102,6 +102,28 @@ A passing helper is a preliminary check, not authorization to incur charges.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Review-DigitalOceanStagingPlan.ps1
 ```
 
+To deploy the reviewed plan, first accept the recurring charges and create a
+short-lived DigitalOcean **Custom Scopes** token in Account → API for this
+staging apply. The Read Only planning token cannot create resources. The token
+needs read/create access to VPCs, NAT gateways, Kubernetes clusters, managed
+databases and registries; Kubernetes update for registry integration; database
+update for firewalls; and database credential viewing for provider state. In
+DigitalOcean's picker, select the required dependent read scopes as prompted.
+See the [current token scope list](https://docs.digitalocean.com/reference/api/scopes/)
+and [Kubernetes registry integration API](https://docs.digitalocean.com/products/kubernetes/reference/api/).
+Do not paste either token or the passphrase into chat. Revoke the temporary
+DigitalOcean token after the apply and verification are complete.
+
+The helper below rechecks the saved encrypted plan immediately before apply;
+it does not silently replan. It requires `-ApproveMonthlyCharges` and a typed confirmation because
+[OpenTofu does not prompt when applying a saved plan](https://opentofu.org/docs/v1.13/cli/commands/apply/).
+If apply fails after creating some resources, inspect the GitLab state and
+DigitalOcean account before retrying. Do not destroy or replan blindly.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Apply-DigitalOceanStaging.ps1 -ApproveMonthlyCharges
+```
+
 As a rough October 2026 floor for the current defaults, three 2-vCPU/4-GiB workers
 ($72/month), the HA control plane ($40), size-1 NAT ($40), a Basic registry ($5), and
 single-node PostgreSQL and Valkey (starting at $15 each) total about **$187/month**.

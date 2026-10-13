@@ -1,6 +1,8 @@
 #requires -Version 5.1
 # Reads the encrypted saved plan and prints a credential-free deployment summary.
-param()
+param(
+    [switch]$UseExistingEncryption
+)
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
@@ -20,13 +22,14 @@ $passphrase = $null
 $quotedPassphrase = $null
 $locationPushed = $false
 try {
-    $securePassphrase = Read-Host 'State encryption passphrase from your password manager' -AsSecureString
-    $passphrase = [System.Net.NetworkCredential]::new('', $securePassphrase).Password
-    if ($passphrase.Length -lt 32) {
-        throw 'The state encryption passphrase must contain at least 32 characters.'
-    }
-    $quotedPassphrase = ConvertTo-Json -InputObject $passphrase -Compress
-    $env:TF_ENCRYPTION = @"
+    if (-not $UseExistingEncryption) {
+        $securePassphrase = Read-Host 'State encryption passphrase from your password manager' -AsSecureString
+        $passphrase = [System.Net.NetworkCredential]::new('', $securePassphrase).Password
+        if ($passphrase.Length -lt 32) {
+            throw 'The state encryption passphrase must contain at least 32 characters.'
+        }
+        $quotedPassphrase = ConvertTo-Json -InputObject $passphrase -Compress
+        $env:TF_ENCRYPTION = @"
 key_provider "pbkdf2" "gitlab_staging" {
   passphrase = $quotedPassphrase
 }
@@ -40,8 +43,12 @@ plan {
   method = method.aes_gcm.gitlab_staging
 }
 "@
-    $passphrase = $null
-    $quotedPassphrase = $null
+        $passphrase = $null
+        $quotedPassphrase = $null
+    }
+    elseif ([string]::IsNullOrWhiteSpace($env:TF_ENCRYPTION)) {
+        throw 'TF_ENCRYPTION is missing; cannot read the encrypted plan.'
+    }
 
     Push-Location $workingDirectory
     $locationPushed = $true
@@ -114,11 +121,13 @@ plan {
 }
 finally {
     if ($locationPushed) { Pop-Location }
-    if ($null -eq $priorEncryption) {
-        Remove-Item Env:TF_ENCRYPTION -ErrorAction SilentlyContinue
-    }
-    else {
-        $env:TF_ENCRYPTION = $priorEncryption
+    if (-not $UseExistingEncryption) {
+        if ($null -eq $priorEncryption) {
+            Remove-Item Env:TF_ENCRYPTION -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:TF_ENCRYPTION = $priorEncryption
+        }
     }
     if ($securePassphrase) { $securePassphrase.Dispose() }
     $passphrase = $null
