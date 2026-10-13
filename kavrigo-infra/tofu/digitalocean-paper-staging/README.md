@@ -55,6 +55,13 @@ password manager, and include both `state` and `plan` methods. The repository on
 `backend.hcl` contains the bucket endpoint, name, state key, `use_lockfile = true`, and the
 DigitalOcean S3 compatibility settings, but no credentials. Verify this file and the encryption
 setup with a disposable state key and no infrastructure resources before the first real init.
+On Windows, run `scripts/Test-SpacesState.ps1` from PowerShell. It prompts for the Spaces key pair
+and the backed-up encryption passphrase without echoing them, temporarily sets process-only
+environment variables, and writes/reads a built-in `terraform_data` marker at
+`preflight/ams3-state-v1.tfstate`. It restores the prior environment afterward. This preflight
+does **not** create a VPC, cluster, database, registry, or other DigitalOcean infrastructure.
+It verifies state access and an encrypted round trip, not lock contention or version recovery;
+run those separate tests before the real staging apply.
 
 ```text
 tofu fmt -check
