@@ -64,6 +64,15 @@ make down              # stop the local stack
 The local stack is described in [`kavrigo-infra/local/README.md`](kavrigo-infra/local/README.md).
 No external data provider, exchange credential, or model API key is required to run the tests.
 The web frontend serves its public introduction at `/` and the paper workspace at `/app`.
+On Windows, after the one-time Python and web dependency setup, the repeatable local start is:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-KavrigoLocal.ps1
+```
+
+Open `http://localhost:3000/app`. This starts local services, applies existing migrations and
+serves the built web app; it does not deploy to a cloud provider. Run it with `-RebuildWeb` after
+changing web source. The local development Clerk instance remains separate from production auth.
 DigitalOcean paper staging is specified in
 [`kavrigo-infra/tofu/digitalocean-paper-staging/README.md`](kavrigo-infra/tofu/digitalocean-paper-staging/README.md);
 that foundation has not been applied.

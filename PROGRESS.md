@@ -1,5 +1,18 @@
 # Kavrigo progress
 
+**2026-10-13 local-owner run path and CoinGecko Demo preview:** The existing Docker stack and
+Clerk development sign-in now start with `scripts/Start-KavrigoLocal.ps1`; the command applies
+migrations, builds/reuses the web app and serves `http://localhost:3000/app`. A fresh web restart
+and an idempotent repeat run passed. The API and web health endpoints returned 200. An ignored
+local CoinGecko Demo key authenticated a bounded BTC/ETH API request. Integrations now has an
+authenticated, local-only, non-persistent Demo reference-price view with exact decimal values,
+provider observation timestamps, freshness labels and attribution. The anonymous API request
+returned 401. This preview cannot feed agents, backtests or paper fills, and the paid-data,
+activation, hosted identity and independent-review release gates remain open. Focused adapter
+tests (10), an API integration test covering member/non-member access, API non-integration tests
+(117), strict API typing/lint/format, web lint/typecheck, six boundary tests, production web build
+and OpenAPI drift check passed. The owner confirmed BTC/ETH prices appear in a signed-in browser.
+
 **2026-10-10 domain and production identity preparation:** The owner reports control of
 `kavrigo.com`, active Cloudflare DNS, and a ready Clerk production instance. The public Clerk
 Frontend API CNAME and RS256 JWKS endpoint responded to read-only checks. DigitalOcean login is

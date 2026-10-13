@@ -136,6 +136,8 @@ services:
       REDPANDA_BOOTSTRAP_SERVERS: redpanda:9092
       VALKEY_URL: redis://valkey:6379/0
       TEMPORAL_ADDRESS: temporal:7233
+      # Local Demo preview only. The API never persists or trades on this reference feed.
+      COINGECKO_API_KEY: "${COINGECKO_API_KEY:-}"
     ports: ["${KAVRIGO_API_HOST_PORT:-58000}:8000"]
     depends_on:
       postgres: { condition: service_healthy }

@@ -25,12 +25,14 @@ from kavrigo_api.app import create_app
 from kavrigo_api.auth.identity import DevIdentityProvider
 from kavrigo_api.auth.principal import Role
 from kavrigo_api.db.session import Database
+from kavrigo_api.routers import market_preview as market_preview_router
 from kavrigo_api.routers import rehearsals as rehearsal_router
+from kavrigo_api.schemas.market_preview import DemoMarketPreview, DemoReferencePrice
 from kavrigo_api.services.provider_entitlements import (
     DataEntitlementEventDocument,
     entitlement_event_hash,
 )
-from kavrigo_api.settings import Settings
+from kavrigo_api.settings import Settings, get_settings
 from kavrigo_backtest import (
     BacktestResult,
     BacktestRiskAudit,
@@ -224,6 +226,47 @@ class TestWorkspaces:
     def test_workspaces_are_listed_per_user(self, client: TestClient) -> None:
         _create_workspace(client, "alice", "alice-only")
         assert client.get("/v1/workspaces", headers=_auth("bob")).json() == []
+
+
+def test_demo_preview_requires_membership_and_never_exposes_the_key(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace_id = _create_workspace(client, "alice", "demo-preview")
+    route = f"/v1/workspaces/{workspace_id}/market/demo-reference-prices"
+    calls = 0
+
+    async def prices(*_args: Any, **_kwargs: Any) -> DemoMarketPreview:
+        nonlocal calls
+        calls += 1
+        return DemoMarketPreview(
+            fetched_at=datetime(2026, 10, 13, 12, 0, tzinfo=UTC),
+            prices=[
+                DemoReferencePrice(
+                    asset="BTC",
+                    amount=Decimal("78912.12345678"),
+                    observed_at=datetime(2026, 10, 13, 11, 59, tzinfo=UTC),
+                    freshness="fresh",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(market_preview_router, "fetch_demo_prices", prices)
+    client.app.dependency_overrides[get_settings] = lambda: Settings(
+        kavrigo_env="local", auth_provider="dev", coingecko_api_key="test-secret"
+    )
+    try:
+        assert client.get(route).status_code == 401
+        assert client.get(route, headers=_auth("mallory")).status_code == 404
+        assert calls == 0
+        response = client.get(route, headers=_auth("alice"))
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "private, no-store"
+        assert response.json()["prices"][0]["amount"] == "78912.12345678"
+        assert response.json()["attribution"] == "Data provided by CoinGecko"
+        assert "test-secret" not in response.text
+        assert calls == 1
+    finally:
+        client.app.dependency_overrides.pop(get_settings, None)
 
 
 class TestAgentLifecycle:

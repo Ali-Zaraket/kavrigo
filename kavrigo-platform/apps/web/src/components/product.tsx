@@ -10,7 +10,7 @@ import {
   Layers,
   ShieldCheck,
 } from "lucide-react";
-import { type Schema, money, utc, unwrap } from "@/lib/client";
+import { type Schema, decimal, money, utc, unwrap } from "@/lib/client";
 import { useMe, useSession } from "./session";
 import { Empty, Notice } from "./shell";
 import { Button } from "./ui/button";
@@ -899,34 +899,85 @@ function Risk() {
   );
 }
 function Integrations() {
+  const { api, workspace } = useSession();
+  const preview = useQuery({
+    queryKey: [workspace, "coingecko-demo-preview"],
+    queryFn: async ({ signal }) =>
+      unwrap(
+        await api.GET(
+          "/v1/workspaces/{workspace_id}/market/demo-reference-prices",
+          { signal, params: { path: { workspace_id: workspace } } },
+        ),
+      ),
+    retry: false,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+  });
   return (
     <section className="panel">
       <div className="panel-heading">
         <h2>Provider freshness</h2>
-        <span className="chip chip-warning">NO LIVE FEED</span>
+        <span className="chip chip-warning">NO LICENSED AGENT FEED</span>
       </div>
-      {[
-        "BTC / ETH market data",
-        "News intelligence",
-        "Network context",
-        "Model gateway",
-      ].map((source) => (
-        <div className="integration-row" key={source}>
-          <Database size={22} aria-hidden="true" />
-          <div>
-            <h3>{source}</h3>
-            <p>
-              {source === "Model gateway"
-                ? "Local mock available to the engine. Hosted provider not configured."
-                : "Live transport is not connected to this product view."}
+      <div className="integration-row">
+        <Database size={22} aria-hidden="true" />
+        <div>
+          <h3>BTC / ETH reference prices</h3>
+          <p>
+            Local CoinGecko Demo preview. These prices do not enter agent
+            decisions, backtests, or paper fills.
+          </p>
+          {preview.data?.prices.map((price) => (
+            <p key={price.asset}>
+              <strong>
+                {price.asset}: {decimal(String(price.amount))} USD
+              </strong>
+              {" · "}
+              {price.freshness === "fresh" ? "Fresh" : "Stale"}
+              {" · observed "}
+              {utc(price.observed_at)}
             </p>
-          </div>
-          <div>
-            <span className="chip">UNAVAILABLE</span>
-            <small>Last observed: unknown</small>
-          </div>
+          ))}
+          {preview.data && (
+            <p>
+              <a
+                href={preview.data.attribution_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {preview.data.attribution}
+              </a>
+            </p>
+          )}
+          {preview.isError && (
+            <p>Demo preview unavailable: {preview.error.message}</p>
+          )}
+          {preview.isPending && <p>Checking Demo reference prices…</p>}
         </div>
-      ))}
+        <div>
+          <span className="chip">DEMO · RESEARCH ONLY</span>
+          <small>Not a paper trading input</small>
+        </div>
+      </div>
+      {["News intelligence", "Network context", "Model gateway"].map(
+        (source) => (
+          <div className="integration-row" key={source}>
+            <Database size={22} aria-hidden="true" />
+            <div>
+              <h3>{source}</h3>
+              <p>
+                {source === "Model gateway"
+                  ? "Local mock available to the engine. Hosted provider not configured."
+                  : "Live transport is not connected to this product view."}
+              </p>
+            </div>
+            <div>
+              <span className="chip">UNAVAILABLE</span>
+              <small>Last observed: unknown</small>
+            </div>
+          </div>
+        ),
+      )}
       <p className="panel-note">
         Stored evidence retains its original source and observation timestamp.
         No heartbeat or configuration flag is presented as proof of fresh market

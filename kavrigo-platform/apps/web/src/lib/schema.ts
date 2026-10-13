@@ -280,6 +280,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/workspaces/{workspace_id}/market/demo-reference-prices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Demo Reference Prices
+     * @description Show BTC/ETH for a local owner only; never feed trading or durable evidence.
+     */
+    get: operations["demo_reference_prices_v1_workspaces__workspace_id__market_demo_reference_prices_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/workspaces/{workspace_id}/agents/{agent_id}/versions/{version}/rehearsals": {
     parameters: {
       query?: never;
@@ -951,6 +971,72 @@ export interface components {
      * @enum {string}
      */
     DecisionState: "bullish" | "bearish" | "neutral" | "high_risk" | "unknown";
+    /** DemoMarketPreview */
+    DemoMarketPreview: {
+      /**
+       * Mode
+       * @default demo
+       * @constant
+       */
+      mode: "demo";
+      /**
+       * Use
+       * @default research_preview_only
+       * @constant
+       */
+      use: "research_preview_only";
+      /**
+       * Provider
+       * @default CoinGecko
+       * @constant
+       */
+      provider: "CoinGecko";
+      /**
+       * Attribution
+       * @default Data provided by CoinGecko
+       * @constant
+       */
+      attribution: "Data provided by CoinGecko";
+      /**
+       * Attribution Url
+       * @default https://www.coingecko.com/en/api
+       * @constant
+       */
+      attribution_url: "https://www.coingecko.com/en/api";
+      /**
+       * Fetched At
+       * Format: date-time
+       */
+      fetched_at: string;
+      /** Prices */
+      prices: components["schemas"]["DemoReferencePrice"][];
+    };
+    /** DemoReferencePrice */
+    DemoReferencePrice: {
+      /**
+       * Asset
+       * @enum {string}
+       */
+      asset: "BTC" | "ETH";
+      /**
+       * Currency
+       * @default USD
+       * @constant
+       */
+      currency: "USD";
+      /** Amount */
+      amount: string;
+      /**
+       * Observed At
+       * Format: date-time
+       */
+      observed_at: string;
+      /**
+       * Freshness
+       * @enum {string}
+       */
+      freshness: "fresh" | "stale";
+    };
     /**
      * EventRiskPolicy
      * @description Behaviour around scheduled high-impact events (``MASTER_BUILD_SPEC.md`` §7.13).
@@ -3378,6 +3464,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Page_AuditSummary_"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  demo_reference_prices_v1_workspaces__workspace_id__market_demo_reference_prices_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workspace_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DemoMarketPreview"];
         };
       };
       /** @description Validation Error */

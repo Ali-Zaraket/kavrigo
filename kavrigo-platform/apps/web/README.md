@@ -64,6 +64,9 @@ assumed owned today. The public homepage is indexable, while `/app` is marked `n
   is simulated; same-key retries reuse the durable input and no order can be submitted.
 - Responsive dark/light workspace shell, keyboard navigation/search, reduced motion and
   visible server-confirmed paper status. Mode lookup failure disables creation.
+- With a CoinGecko Demo key in the ignored root `.env`, Integrations can show an authenticated,
+  local-only BTC/ETH reference-price preview with observation times and attribution. It is
+  read-only, is not retained, and cannot enter agent decisions, backtests, or paper fills.
 
 The control plane can store immutable, MFA-gated policy candidates, but the local web sign-in
 does not establish MFA and the web proxy does not expose candidate mutations. Clerk's `fva`
@@ -72,7 +75,7 @@ separate for any order-capable paper run. Draft saving validates policy ID synta
 or approval. Rehearsals use isolated synthetic inputs, an abstaining mock model and a global risk
 stop; they do not activate a paper strategy or permit orders. No policy mutation, live
 trading, or exchange secret is exposed. Backtest strategy/data wiring, charts, SSE/WS transports,
-current provider freshness, conversational compilation, and live hosted-identity verification
+licensed provider freshness for agent decisions, conversational compilation, and live hosted-identity verification
 are explicit carry-overs. Empty screens do not invent results; historical receipts do not claim
 current reconciliation or freshness.
 

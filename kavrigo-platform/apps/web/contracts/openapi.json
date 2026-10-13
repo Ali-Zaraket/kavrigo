@@ -1765,6 +1765,55 @@
           }
         }
       }
+    },
+    "/v1/workspaces/{workspace_id}/market/demo-reference-prices": {
+      "get": {
+        "tags": [
+          "market-preview"
+        ],
+        "summary": "Demo Reference Prices",
+        "description": "Show BTC/ETH for a local owner only; never feed trading or durable evidence.",
+        "operationId": "demo_reference_prices_v1_workspaces__workspace_id__market_demo_reference_prices_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ws_[0-9a-f]{32}$",
+              "title": "Workspace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoMarketPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6870,6 +6919,104 @@
           "role"
         ],
         "title": "WorkspaceSummary"
+      },
+      "DemoMarketPreview": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "demo",
+            "title": "Mode",
+            "default": "demo"
+          },
+          "use": {
+            "type": "string",
+            "const": "research_preview_only",
+            "title": "Use",
+            "default": "research_preview_only"
+          },
+          "provider": {
+            "type": "string",
+            "const": "CoinGecko",
+            "title": "Provider",
+            "default": "CoinGecko"
+          },
+          "attribution": {
+            "type": "string",
+            "const": "Data provided by CoinGecko",
+            "title": "Attribution",
+            "default": "Data provided by CoinGecko"
+          },
+          "attribution_url": {
+            "type": "string",
+            "const": "https://www.coingecko.com/en/api",
+            "title": "Attribution Url",
+            "default": "https://www.coingecko.com/en/api"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Fetched At"
+          },
+          "prices": {
+            "items": {
+              "$ref": "#/components/schemas/DemoReferencePrice"
+            },
+            "type": "array",
+            "title": "Prices"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fetched_at",
+          "prices"
+        ],
+        "title": "DemoMarketPreview"
+      },
+      "DemoReferencePrice": {
+        "properties": {
+          "asset": {
+            "type": "string",
+            "enum": [
+              "BTC",
+              "ETH"
+            ],
+            "title": "Asset"
+          },
+          "currency": {
+            "type": "string",
+            "const": "USD",
+            "title": "Currency",
+            "default": "USD"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "freshness": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale"
+            ],
+            "title": "Freshness"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "asset",
+          "amount",
+          "observed_at",
+          "freshness"
+        ],
+        "title": "DemoReferencePrice"
       }
     },
     "securitySchemes": {

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Literal, Self
 
-from pydantic import Field, HttpUrl, TypeAdapter, ValidationError, model_validator
+from pydantic import Field, HttpUrl, SecretStr, TypeAdapter, ValidationError, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = ["Settings", "get_settings"]
@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     redpanda_bootstrap_servers: str | None = None
     valkey_url: str | None = None
     temporal_address: str | None = None
+    coingecko_api_key: SecretStr | None = Field(default=None, repr=False)
 
     @model_validator(mode="after")
     def _enforce_live_gate(self) -> Self:

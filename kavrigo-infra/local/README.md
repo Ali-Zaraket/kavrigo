@@ -1,5 +1,17 @@
 # Local development stack
 
+For the current Windows checkout, the one-command startup is:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-KavrigoLocal.ps1
+```
+
+Run it from the repository root after installing the Python workspace and web dependencies.
+It starts the Compose stack with local Clerk, applies migrations, and starts a hidden built web
+server at `http://localhost:3000/app`. Re-running it is safe. Pass `-RebuildWeb` after changing
+web source. Web logs and the process ID are kept under ignored `.local/`. This is a local-owner
+run path; it does not establish a licensed production market feed or a hosted release.
+
 ```bash
 make setup   # Python virtualenv + workspace packages
 make up      # start the stack

@@ -22,6 +22,7 @@ from kavrigo_api.routers import (
     agents,
     health,
     inspection,
+    market_preview,
     paper_activation,
     paper_policies,
     rehearsals,
@@ -134,6 +135,7 @@ def create_app(
     app.include_router(workspaces.router)
     app.include_router(agents.router)
     app.include_router(inspection.router)
+    app.include_router(market_preview.router)
     app.include_router(rehearsals.router)
     app.include_router(paper_policies.router)
     app.include_router(paper_activation.router)

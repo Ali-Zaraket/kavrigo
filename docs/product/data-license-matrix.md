@@ -1,7 +1,8 @@
 # Data provider and licence matrix
 
-**Status:** the owner has private CoinGecko support correspondence for review; no paid plan,
-active production entitlement, or approved retention/deletion procedure is recorded.
+**Status:** the owner has private CoinGecko support correspondence for review and a free Demo key
+for a local, non-persistent research preview. No paid plan, active production entitlement, or
+approved retention/deletion procedure is recorded.
 
 `MASTER_BUILD_SPEC.md` §8.3: *data licensing is a launch blocker.* The legal right to use and
 display a provider's data is as much an engineering requirement as the API key. A public,
@@ -37,7 +38,7 @@ the API until the corresponding row is completed with written confirmation.
 | Binance Spot Testnet WS | local execution-disabled agent rehearsal | native WS | **simulated practice environment only** | never present as real-market data or performance evidence |
 | Coinbase Exchange public WS | none | native WS adapter retained for tests only | **blocked** | Aug. 7, 2026 terms restrict third-party apps, external display/derived works, and AI/agent use without written consent |
 | Kraken public API | none | not enabled | **blocked pending permission** | official API guide requires prior permission for non-personal commercial use |
-| CoinGecko | BTC/ETH prices, charts, internal paper decisions and backtests | paid commercial API | **scope clarification held privately; not activated** | subscribe to a suitable plan, review governing terms, implement attribution and deletion controls; no raw API or bulk-data redistribution |
+| CoinGecko | BTC/ETH reference preview locally; intended future prices, charts, internal paper decisions and backtests | Demo for local preview; paid commercial API for product use | **Demo preview only; commercial path not activated** | subscribe to a suitable plan, review governing terms, implement attribution and deletion controls; no raw API or bulk-data redistribution |
 | CoinGlass | funding, OI, liquidations, positioning | REST (production), MCP (research) | **not confirmed** | commercial display rights; MCP is beta (ADR 0005) |
 | Dune | custom on-chain queries, decoded contract data | API + MCP | **not confirmed** | derived-data and display rights |
 | CryptoQuant | exchange-flow and on-chain metrics | REST | deferred | evaluate after V1 |
@@ -111,6 +112,11 @@ the [brand guide](https://brand.coingecko.com/resources/attribution-guide) lists
 formats. Resolve the exact attribution presentation and deletion of backups in the release legal
 review. The API Terms say they supersede prior email understandings, so support correspondence
 must not be treated as a standalone licence grant.
+
+The local Demo preview reads only BTC/ETH from the documented `/simple/price` endpoint on request.
+It requires workspace authentication, displays source timestamps and attribution, does not persist
+the response, and is not an agent/risk/paper input. It is a development feature, not an active
+commercial entitlement.
 
 Production CoinGecko ingestion remains disabled until the selected paid plan is active, its
 terms and rights are reviewed and recorded in the entitlement ledger, and attribution, rate
