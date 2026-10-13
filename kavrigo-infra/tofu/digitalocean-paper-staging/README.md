@@ -91,6 +91,17 @@ the account listed on 2026-10-13; pass `-KubernetesVersion` if a newer reviewed 
 chosen. The plan does **not** create DigitalOcean resources. Review the full plan, state
 access, service availability and recurring cost before any apply.
 
+Run the read-only review helper after planning. It prompts for the **same**
+state-encryption passphrase and checks the saved plan against the expected
+eight-resource foundation without printing the token, passphrase or operator
+IP address. Do not paste raw `tofu show -json` output into chat: OpenTofu
+documents that JSON plan output can contain sensitive values in plain text.
+A passing helper is a preliminary check, not authorization to incur charges.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Review-DigitalOceanStagingPlan.ps1
+```
+
 As a rough October 2026 floor for the current defaults, three 2-vCPU/4-GiB workers
 ($72/month), the HA control plane ($40), size-1 NAT ($40), a Basic registry ($5), and
 single-node PostgreSQL and Valkey (starting at $15 each) total about **$187/month**.
