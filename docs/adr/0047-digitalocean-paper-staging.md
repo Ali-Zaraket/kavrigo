@@ -26,8 +26,10 @@ cannot be applied unchanged. The existing AWS OpenTofu root has never been appli
 Checked 2026-10-09: [DOKS isolated worker nodes](https://docs.digitalocean.com/products/kubernetes/how-to/create-clusters-with-isolated-worker-nodes/)
 require Kubernetes 1.36+ and a default VPC NAT gateway; isolation can only be chosen at
 cluster creation, and the API remains public unless a control-plane firewall is configured.
-The [provider's NAT resource](https://docs.digitalocean.com/reference/terraform/reference/resources/vpc_nat_gateway/)
-is still labeled Private Preview, so account eligibility must be checked before apply.
+DigitalOcean Support confirmed on 2026-10-13 that VPC NAT gateways and DOKS isolated workers
+are generally available in `ams3` through API or Terraform. The
+[provider's NAT resource page](https://docs.digitalocean.com/reference/terraform/reference/resources/vpc_nat_gateway/)
+still says Private Preview, so the plan and account/API capability must be verified before apply.
 [Managed PostgreSQL](https://docs.digitalocean.com/products/databases/postgresql/how-to/create/)
 supports version 18; the [database firewall](https://docs.digitalocean.com/reference/terraform/reference/resources/database_firewall/)
 supports a Kubernetes cluster as a trusted source. The
@@ -46,7 +48,7 @@ dependencies; do not silently replace Redpanda with DigitalOcean Kafka. The AWS 
 unapplied and unchanged. Do not create `paper-prod` or `live-prod` from this root.
 
 The root is a foundation plan, not an application release. No resource is to be applied
-until account access, NAT availability, service-region options, recurring cost, state backend,
+until account access, NAT plan/API access, service-region options, recurring cost, state backend,
 legal/data residency and operator CIDRs are reviewed. The registry is for immutable image
 digests; build/sign/SBOM and deployment promotion need separate work.
 
@@ -67,8 +69,8 @@ in this deployment.
 
 Staging will depend on DigitalOcean plus Redpanda Cloud, ClickHouse Cloud and Temporal Cloud.
 Network routing, egress cost, latency and outage behavior must be measured. NAT is billed
-separately and its provider resource may require preview access. If preview access is not
-available, stop and revise the plan; do not silently switch to public worker IPs. The
+separately. Support confirms AMS3 availability, but if the account/API still rejects the NAT
+resource, stop and revise the plan; do not silently switch to public worker IPs. The
 DigitalOcean account/team must be dedicated or registry pull scope explicitly accepted.
 
 ## Migration and rollback

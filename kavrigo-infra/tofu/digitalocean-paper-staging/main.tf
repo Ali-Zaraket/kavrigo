@@ -24,7 +24,7 @@ resource "digitalocean_vpc" "paper" {
   description = "Kavrigo paper-only staging"
 }
 
-# This provider resource is marked Private Preview. Verify account eligibility before apply.
+# Support confirmed AMS3 availability; the provider docs still say Private Preview. Verify plan/API access.
 resource "digitalocean_vpc_nat_gateway" "paper" {
   name   = "${local.name}-nat"
   type   = "PUBLIC"

@@ -3,5 +3,5 @@ registry_name      = "replace-with-unique-kavrigo-registry"
 kubernetes_version = "1.36.1-do.0"
 operator_cidrs     = ["198.51.100.10/32"] # Replace documentation IP with actual operator egress.
 
-# region defaults to ams3. Confirm registry_region, instance sizes, NAT preview eligibility,
+# region defaults to ams3. Confirm registry_region, instance sizes, NAT account/API access,
 # high-availability/cost requirements, and current Kubernetes version before applying.

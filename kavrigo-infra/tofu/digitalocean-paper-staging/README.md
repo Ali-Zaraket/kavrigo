@@ -11,8 +11,11 @@ create a public endpoint, or make Kavrigo ready for a public release.
 1. Create a DigitalOcean account and a dedicated or reviewed team with billing and MFA.
    Check [current regional offerings](https://docs.digitalocean.com/products/kubernetes/)
    and database/registry options in `ams3`; obtain approval for recurring DOKS, NAT, database,
-   registry, load-balancer and egress charges. Confirm this account can create the
-   [NAT resource still labeled Private Preview](https://docs.digitalocean.com/reference/terraform/reference/resources/vpc_nat_gateway/).
+   registry, load-balancer and egress charges. DigitalOcean Support confirmed on 2026-10-13
+   that VPC NAT Gateway and DOKS isolated workers are generally available in `ams3` via API or
+   Terraform. The [Terraform NAT page](https://docs.digitalocean.com/reference/terraform/reference/resources/vpc_nat_gateway/)
+   still says Private Preview; verify actual account/API access with the reviewed plan before
+   apply. The root creates the VPC first, so no manual VPC is required.
 2. Record the operator's stable public egress CIDR. The control-plane firewall deliberately
    rejects `0.0.0.0/0`; rotating this address needs a reviewed plan before the old address
    disappears. Use a scoped DigitalOcean token through `DIGITALOCEAN_TOKEN`, never in a
@@ -45,8 +48,10 @@ tofu show staging.tfplan
 ```
 
 Review the plan and state access controls with a second operator before any paid apply.
-Never commit `.tfvars`, backend settings, plan or state. After an approved apply, verify the
-nodes have no external IPv4, the NAT is default, the Kubernetes API allows only approved
+Never commit `.tfvars`, backend settings, plan or state. Confirm that the plan orders VPC, default
+NAT gateway, then isolated-worker DOKS creation; isolation cannot be enabled after cluster
+creation. After an approved apply, verify the nodes have no external IPv4, the NAT is default,
+the Kubernetes API allows only approved
 CIDRs, both DB firewalls trust only this cluster, TLS is enforced, and no public DB host is
 used by workloads. Record the actual resources and recurring cost.
 
